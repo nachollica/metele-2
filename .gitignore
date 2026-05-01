@@ -1,0 +1,11 @@
+node_modules/
+
+tsconfig.tsbuildinfo
+out/
+*.gz
+
+*~
+.*
+!.gitignore
+!.gitkeep
+!.dockerignore
