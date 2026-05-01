@@ -1,9 +1,7 @@
-"use client"
+import { redirect } from "next/navigation"
+import { DEFAULT_LOCALE } from "@/lib/i18n/config"
 
-import { MeteleGame } from "@/components/metele/metele-game"
-
-// All gameplay logic is client-side rendered so the entire app can be
-// served as static assets.
-export default function Page() {
-  return <MeteleGame />
+// Root page redirects to the default locale.
+export default function RootPage() {
+  redirect(`/${DEFAULT_LOCALE}`)
 }

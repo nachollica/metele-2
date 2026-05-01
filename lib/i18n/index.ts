@@ -1,22 +1,33 @@
 "use client"
 
-// Lightweight i18n facade. Today only English is wired up.
-// To add another locale: create e.g. lib/i18n/es.ts with the same shape as en.ts,
-// register it in the `dictionaries` map below, and expose a way to switch locales
-// (context provider, route segment, etc.) — the hook will pick it up automatically.
+// Client-side i18n hooks. Re-exports the server-safe types and
+// constants, and adds React context + hooks for components.
 
-import { en, type Translations } from "./en"
+import { createContext, useContext } from "react"
 
-type Locale = "en"
+import { type Locale, type Translations, DEFAULT_LOCALE, getTranslations } from "./config"
 
-const dictionaries: Record<Locale, Translations> = {
-  en,
+// Re-export everything from config so consumers only need one import
+export { DEFAULT_LOCALE, SUPPORTED_LOCALES, resolveLocale, getTranslations } from "./config"
+export type { Locale, Translations } from "./config"
+
+// ---- React context --------------------------------------------------------
+
+export const LocaleContext = createContext<Locale>(DEFAULT_LOCALE)
+
+/**
+ * Read the current locale from context, typically provided by the
+ * `[lang]/layout.tsx` locale provider.
+ */
+export function useLocale(): Locale {
+  return useContext(LocaleContext)
 }
 
-const DEFAULT_LOCALE: Locale = "en"
-
-export function useTranslations(locale: Locale = DEFAULT_LOCALE): Translations {
-  return dictionaries[locale] ?? dictionaries[DEFAULT_LOCALE]
+/**
+ * Grab the full translations object for the current locale.
+ * Locale is read from context; no argument needed in components.
+ */
+export function useTranslations(): Translations {
+  const locale = useLocale()
+  return getTranslations(locale)
 }
-
-export type { Translations }

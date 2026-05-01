@@ -82,5 +82,3 @@ export const es = {
     minutes: "m",
   },
 } as const
-
-export type Translations = typeof es

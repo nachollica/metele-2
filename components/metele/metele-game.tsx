@@ -7,7 +7,8 @@ import { ResultsModal } from "./results-modal"
 import { SettingsModal } from "./settings-modal"
 import { WritingArea } from "./writing-area"
 
-import { pickRequiredWord } from "@/lib/metele/words"
+import { pickRequiredWord, matchesWord, normalizeForMatch } from "@/lib/metele/words"
+import { useLocale } from "@/lib/i18n"
 import { playBell, primeAudio } from "@/lib/metele/sound"
 import { randomIntervalMs } from "@/lib/metele/random"
 import {
@@ -134,9 +135,11 @@ export function MeteleGame() {
   // "use it in time" deadline, and intentionally does NOT schedule the next
   // spawn — that is the responsibility of `armSpawnTimer`, which is invoked
   // when the active word is consumed by the player.
+  const locale = useLocale()
+
   const spawnRequiredWord = useCallback(() => {
     const currentSettings = settingsRef.current
-    const next = pickRequiredWord(usedWordsRef.current)
+    const next = pickRequiredWord(locale, usedWordsRef.current)
     setCurrentRequiredWord(next)
     // Mirror into the ref synchronously so input handlers running before
     // the next render still see the active word.
@@ -160,7 +163,7 @@ export function MeteleGame() {
         }
       }, currentSettings.requiredWordUseTimerSeconds * 1000)
     }
-  }, [endGame])
+  }, [endGame, locale])
 
   // Schedule the next required word using a randomized interval.
   // The configured `requiredWordIntervalSeconds` is the average; actual intervals
@@ -285,7 +288,7 @@ export function MeteleGame() {
       if (start === end) return
 
       const justFinished = newText.slice(start, end)
-      if (justFinished.toLowerCase() !== required.toLowerCase()) return
+      if (!matchesWord(justFinished, required)) return
 
       // Match! Clear the active required word, record the match range,
       // disarm the "must use word" deadline, and (re)start the spawn timer
@@ -294,7 +297,7 @@ export function MeteleGame() {
       setCurrentRequiredWord(null)
       currentWordRef.current = null
       wordSpawnedAtRef.current = null
-      usedWordsRef.current.add(required.toLowerCase())
+      usedWordsRef.current.add(normalizeForMatch(required))
       if (wordUseTimeoutRef.current !== null) {
         window.clearTimeout(wordUseTimeoutRef.current)
         wordUseTimeoutRef.current = null
