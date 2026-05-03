@@ -5,6 +5,7 @@ import { Timer, Clock, Type, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useTranslations } from "@/lib/i18n"
+import { formatSeconds } from "@/lib/metele/format"
 import { RequiredWordPanel } from "./required-word-panel"
 
 type Props = {
@@ -20,6 +21,8 @@ type Props = {
   characters: number
   /** Cancel the session. */
   onGiveUp: () => void
+  /** Master toggle: false hides the required-word panel entirely. */
+  requiredWordsEnabled: boolean
   /** Current required word (or null between words). */
   requiredWord: string | null
   /** Seconds left to use the current required word, null if disabled / no word. */
@@ -35,6 +38,7 @@ export function GameHud({
   globalSecondsTotal,
   characters,
   onGiveUp,
+  requiredWordsEnabled,
   requiredWord,
   useWordIn,
   useWordTotal,
@@ -44,6 +48,55 @@ export function GameHud({
   const idleProgress = clamp01(idleSecondsLeft / idleSecondsTotal)
   const globalProgress =
     globalSecondsLeft !== null ? clamp01(globalSecondsLeft / globalSecondsTotal) : 1
+
+  const idleBar = (
+    <TimerBar
+      icon={<Timer className="size-3.5" aria-hidden />}
+      label={t.game.idleEndsIn}
+      seconds={idleSecondsLeft}
+      progress={idleProgress}
+      urgent={idleSecondsLeft <= 3}
+    />
+  )
+  const globalBar =
+    globalSecondsLeft !== null ? (
+      <TimerBar
+        icon={<Clock className="size-3.5" aria-hidden />}
+        label={t.game.sessionEndsIn}
+        seconds={globalSecondsLeft}
+        progress={globalProgress}
+        urgent={globalSecondsLeft <= 10}
+      />
+    ) : null
+
+  // Layout: when required-words mechanic is on, stack timer bars on the left
+  // and put the required-word panel on the right. When it's off, fall back to
+  // a simpler layout: idle | global side-by-side, or idle full-width.
+  let body: React.ReactNode
+  if (requiredWordsEnabled) {
+    body = (
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-4">
+        <div className="flex flex-col justify-center gap-2">
+          {idleBar}
+          {globalBar}
+        </div>
+        <RequiredWordPanel
+          word={requiredWord}
+          useWordIn={useWordIn}
+          useWordTotal={useWordTotal}
+        />
+      </div>
+    )
+  } else if (globalBar) {
+    body = (
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+        {idleBar}
+        {globalBar}
+      </div>
+    )
+  } else {
+    body = idleBar
+  }
 
   return (
     <header className="bg-card text-card-foreground flex flex-col gap-3 rounded-lg border p-4 shadow-sm">
@@ -68,34 +121,7 @@ export function GameHud({
         </div>
       </div>
 
-      {/* Row 2: timer bars on the left, required word on the right.
-          On narrow screens it collapses to a stack so neither gets squeezed. */}
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-4">
-        <div className="flex flex-col justify-center gap-2">
-          <TimerBar
-            icon={<Timer className="size-3.5" aria-hidden />}
-            label={t.game.idleEndsIn}
-            seconds={idleSecondsLeft}
-            progress={idleProgress}
-            urgent={idleSecondsLeft <= 3}
-          />
-          {globalSecondsLeft !== null ? (
-            <TimerBar
-              icon={<Clock className="size-3.5" aria-hidden />}
-              label={t.game.sessionEndsIn}
-              seconds={globalSecondsLeft}
-              progress={globalProgress}
-              urgent={globalSecondsLeft <= 10}
-            />
-          ) : null}
-        </div>
-
-        <RequiredWordPanel
-          word={requiredWord}
-          useWordIn={useWordIn}
-          useWordTotal={useWordTotal}
-        />
-      </div>
+      {body}
     </header>
   )
 }
@@ -127,8 +153,7 @@ function TimerBar({
             urgent ? "text-destructive font-semibold" : "text-foreground",
           )}
         >
-          {Math.max(0, Math.ceil(seconds))}
-          {t.units.seconds}
+          {formatSeconds(seconds, t.units)}
         </span>
       </div>
       <div

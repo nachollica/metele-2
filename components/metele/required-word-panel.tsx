@@ -4,6 +4,7 @@ import { Sparkles } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { useTranslations } from "@/lib/i18n"
+import { formatSeconds } from "@/lib/metele/format"
 
 type Props = {
   /** Current required word, or null when none is active. */
@@ -49,8 +50,7 @@ export function RequiredWordPanel({ word, useWordIn, useWordTotal }: Props) {
               urgent ? "text-destructive font-semibold" : "text-muted-foreground",
             )}
           >
-            {t.game.useWordIn} {Math.max(0, useWordIn)}
-            {t.units.seconds}
+            {t.game.useWordIn} {formatSeconds(useWordIn, t.units)}
           </span>
         ) : null}
       </div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, type ReactNode } from "react"
 import { Bell, Play } from "lucide-react"
 
 import {
@@ -11,20 +11,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import {
-  Field,
-  FieldContent,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-} from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 
 import { cn } from "@/lib/utils"
 import { useTranslations } from "@/lib/i18n"
+import { formatSeconds } from "@/lib/metele/format"
 import {
   DEFAULT_SETTINGS,
   PRESETS,
@@ -62,6 +57,9 @@ export function SettingsModal({ open, initial = DEFAULT_SETTINGS, onStart }: Pro
   function handleStart() {
     onStart(settings)
   }
+
+  const fmtSeconds = (v: number) => formatSeconds(v, t.units)
+  const fmtMinutes = (v: number) => `${v}${t.units.minutes}`
 
   return (
     <Dialog open={open}>
@@ -115,114 +113,122 @@ export function SettingsModal({ open, initial = DEFAULT_SETTINGS, onStart }: Pro
 
           <Separator />
 
-          {/* Detailed settings ----------------------------------------- */}
-          <FieldGroup className="gap-4">
-            {/* Idle / main timer (always enabled) */}
-            <Field orientation="horizontal">
-              <FieldContent>
-                <FieldLabel htmlFor="main-timer">{t.settings.mainTimerLabel}</FieldLabel>
-                <FieldDescription>{t.settings.mainTimerHelp}</FieldDescription>
-              </FieldContent>
-              <SecondsInput
-                id="main-timer"
-                value={settings.mainTimerSeconds}
-                min={1}
-                max={60}
-                onChange={(v) => update("mainTimerSeconds", v)}
-              />
-            </Field>
+          {/* Detailed settings — uniform inline rows, no inter-row dividers. */}
+          <div className="flex flex-col">
+            <SettingRow
+              id="main-timer"
+              label={t.settings.mainTimerLabel}
+              description={t.settings.mainTimerHelp}
+              control={
+                <ValueSlider
+                  id="main-timer"
+                  value={settings.mainTimerSeconds}
+                  min={1}
+                  max={60}
+                  onChange={(v) => update("mainTimerSeconds", v)}
+                  format={fmtSeconds}
+                />
+              }
+            />
 
-            <Separator />
-
-            {/* Global / session timer — toggle inline with input */}
-            <Field orientation="horizontal">
-              <FieldContent>
-                <FieldLabel htmlFor="global-timer">{t.settings.globalTimerLabel}</FieldLabel>
-                <FieldDescription>{t.settings.globalTimerHelp}</FieldDescription>
-              </FieldContent>
-              <div className="flex items-center gap-3">
+            <SettingRow
+              id="global-timer"
+              label={t.settings.globalTimerLabel}
+              description={t.settings.globalTimerHelp}
+              toggle={
                 <Switch
                   id="global-timer-toggle"
                   checked={settings.globalTimerEnabled}
                   onCheckedChange={(v) => update("globalTimerEnabled", v)}
                   aria-label={t.settings.globalTimerEnable}
                 />
-                <SecondsInput
+              }
+              control={
+                <ValueSlider
                   id="global-timer"
-                  value={settings.globalTimerSeconds}
-                  min={30}
-                  max={3600}
+                  value={Math.round(settings.globalTimerSeconds / 60)}
+                  min={1}
+                  max={60}
                   disabled={!settings.globalTimerEnabled}
-                  onChange={(v) => update("globalTimerSeconds", v)}
+                  onChange={(v) => update("globalTimerSeconds", v * 60)}
+                  format={fmtMinutes}
                 />
-              </div>
-            </Field>
+              }
+            />
 
-            <Separator />
+            <SettingRow
+              id="word-interval"
+              label={t.settings.requiredWordIntervalLabel}
+              description={t.settings.requiredWordIntervalHelp}
+              toggle={
+                <Switch
+                  id="word-interval-toggle"
+                  checked={settings.requiredWordIntervalEnabled}
+                  onCheckedChange={(v) => update("requiredWordIntervalEnabled", v)}
+                  aria-label={t.settings.requiredWordIntervalEnable}
+                />
+              }
+              control={
+                <ValueSlider
+                  id="word-interval"
+                  value={settings.requiredWordIntervalSeconds}
+                  min={5}
+                  max={300}
+                  disabled={!settings.requiredWordIntervalEnabled}
+                  onChange={(v) => update("requiredWordIntervalSeconds", v)}
+                  format={fmtSeconds}
+                />
+              }
+            />
 
-            {/* Required word interval (always on) */}
-            <Field orientation="horizontal">
-              <FieldContent>
-                <FieldLabel htmlFor="word-interval">
-                  {t.settings.requiredWordIntervalLabel}
-                </FieldLabel>
-                <FieldDescription>{t.settings.requiredWordIntervalHelp}</FieldDescription>
-              </FieldContent>
-              <SecondsInput
-                id="word-interval"
-                value={settings.requiredWordIntervalSeconds}
-                min={5}
-                max={300}
-                onChange={(v) => update("requiredWordIntervalSeconds", v)}
-              />
-            </Field>
-
-            <Separator />
-
-            {/* Required word use deadline — toggle inline with input */}
-            <Field orientation="horizontal">
-              <FieldContent>
-                <FieldLabel htmlFor="use-timer">
-                  {t.settings.requiredWordUseTimerLabel}
-                </FieldLabel>
-                <FieldDescription>{t.settings.requiredWordUseTimerHelp}</FieldDescription>
-              </FieldContent>
-              <div className="flex items-center gap-3">
+            <SettingRow
+              id="use-timer"
+              label={t.settings.requiredWordUseTimerLabel}
+              description={t.settings.requiredWordUseTimerHelp}
+              dimmed={!settings.requiredWordIntervalEnabled}
+              toggle={
                 <Switch
                   id="use-toggle"
                   checked={settings.requiredWordUseTimerEnabled}
                   onCheckedChange={(v) => update("requiredWordUseTimerEnabled", v)}
+                  disabled={!settings.requiredWordIntervalEnabled}
                   aria-label={t.settings.requiredWordUseTimerEnable}
                 />
-                <SecondsInput
+              }
+              control={
+                <ValueSlider
                   id="use-timer"
                   value={settings.requiredWordUseTimerSeconds}
                   min={5}
                   max={300}
-                  disabled={!settings.requiredWordUseTimerEnabled}
+                  disabled={
+                    !settings.requiredWordIntervalEnabled ||
+                    !settings.requiredWordUseTimerEnabled
+                  }
                   onChange={(v) => update("requiredWordUseTimerSeconds", v)}
+                  format={fmtSeconds}
                 />
-              </div>
-            </Field>
+              }
+            />
 
-            <Separator />
-
-            {/* Bell toggle */}
-            <Field orientation="horizontal">
-              <FieldContent>
-                <FieldLabel htmlFor="bell-toggle" className="flex items-center gap-2">
+            <SettingRow
+              id="bell-toggle"
+              label={
+                <span className="flex items-center gap-2">
                   <Bell className="size-4" aria-hidden />
                   {t.settings.bellLabel}
-                </FieldLabel>
-              </FieldContent>
-              <Switch
-                id="bell-toggle"
-                checked={settings.bellEnabled}
-                onCheckedChange={(v) => update("bellEnabled", v)}
-                aria-label={t.settings.bellLabel}
-              />
-            </Field>
-          </FieldGroup>
+                </span>
+              }
+              toggle={
+                <Switch
+                  id="bell-toggle"
+                  checked={settings.bellEnabled}
+                  onCheckedChange={(v) => update("bellEnabled", v)}
+                  aria-label={t.settings.bellLabel}
+                />
+              }
+            />
+          </div>
         </div>
 
         <DialogFooter>
@@ -236,49 +242,91 @@ export function SettingsModal({ open, initial = DEFAULT_SETTINGS, onStart }: Pro
   )
 }
 
-function SecondsInput({
+// Width reserved on the left of every row for the toggle. Non-toggleable rows
+// render an empty spacer of the same width so labels stay vertically aligned.
+const TOGGLE_COL = "w-11 shrink-0"
+// Sliders share a fixed width so rows look uniform regardless of scale.
+const SLIDER_COL = "w-44 shrink-0"
+
+function SettingRow({
+  id,
+  label,
+  description,
+  toggle,
+  control,
+  dimmed = false,
+}: {
+  id: string
+  label: ReactNode
+  description?: ReactNode
+  toggle?: ReactNode
+  control?: ReactNode
+  // Visually muted (used when a parent toggle disables this row's settings).
+  dimmed?: boolean
+}) {
+  return (
+    <div className="flex items-center gap-4 py-3">
+      <div className={cn(TOGGLE_COL, "flex items-center justify-start")}>
+        {toggle}
+      </div>
+      <div
+        className={cn(
+          "flex min-w-0 flex-1 flex-col gap-0.5 transition-opacity",
+          dimmed && "opacity-50",
+        )}
+      >
+        <Label htmlFor={id} className="text-foreground text-sm font-semibold">
+          {label}
+        </Label>
+        {description ? (
+          <span className="text-muted-foreground text-xs leading-snug">
+            {description}
+          </span>
+        ) : null}
+      </div>
+      {control ? <div className={SLIDER_COL}>{control}</div> : null}
+    </div>
+  )
+}
+
+function ValueSlider({
   id,
   value,
   min,
   max,
-  step = 1,
   disabled = false,
   onChange,
+  format,
 }: {
   id: string
   value: number
   min: number
   max: number
-  step?: number
   disabled?: boolean
   onChange: (v: number) => void
+  format: (v: number) => string
 }) {
-  const t = useTranslations()
   return (
     <div
       className={cn(
-        "flex items-center gap-1.5 transition-opacity",
+        "flex items-center gap-3 transition-opacity",
         disabled && "opacity-50",
       )}
     >
-      <Input
+      <Slider
         id={id}
-        type="number"
-        inputMode="numeric"
         min={min}
         max={max}
-        step={step}
+        step={1}
         disabled={disabled}
-        value={value}
-        onChange={(e) => {
-          const next = Number(e.target.value)
-          if (Number.isFinite(next)) {
-            onChange(Math.max(min, Math.min(max, next)))
-          }
-        }}
-        className="w-20 font-mono"
+        value={[value]}
+        onValueChange={(v) => onChange(v[0] ?? min)}
+        aria-label={id}
+        className="flex-1"
       />
-      <span className="text-muted-foreground text-sm">{t.settings.secondsSuffix}</span>
+      <span className="text-muted-foreground w-16 shrink-0 text-right font-mono text-sm tabular-nums">
+        {format(value)}
+      </span>
     </div>
   )
 }

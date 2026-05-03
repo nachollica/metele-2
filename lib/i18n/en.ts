@@ -45,6 +45,7 @@ export const en = {
     globalTimerLabel: "Session length",
     globalTimerHelp: "Total session duration. Disable for an open-ended run.",
     globalTimerEnable: "Limit session length",
+    requiredWordIntervalEnable: "Enable required words",
     requiredWordIntervalLabel: "New required word every",
     requiredWordIntervalHelp:
       "Average time between new required words. Actual intervals are randomized around this value.",
@@ -54,6 +55,7 @@ export const en = {
     requiredWordUseTimerEnable: "Enforce required-word deadline",
     bellLabel: "Play a bell when a new required word appears",
     secondsSuffix: "s",
+    minutesSuffix: "m",
     start: "Start writing",
   },
 

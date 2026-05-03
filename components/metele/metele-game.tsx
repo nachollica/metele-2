@@ -275,7 +275,9 @@ export function MeteleGame() {
       }, currentSettings.globalTimerSeconds * 1000)
     }
 
-    armSpawnTimer()
+    if (currentSettings.requiredWordIntervalEnabled) {
+      armSpawnTimer()
+    }
 
     uiTickRef.current = window.setInterval(() => {
       setNow(Date.now())
@@ -420,6 +422,7 @@ export function MeteleGame() {
             globalSecondsTotal={settings.globalTimerSeconds}
             characters={text.length}
             onGiveUp={() => endGame("manual")}
+            requiredWordsEnabled={settings.requiredWordIntervalEnabled}
             requiredWord={currentRequiredWord}
             useWordIn={useWordIn !== null ? Math.ceil(useWordIn) : null}
             useWordTotal={

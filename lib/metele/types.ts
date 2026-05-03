@@ -7,6 +7,9 @@ export type GameSettings = {
   globalTimerEnabled: boolean
   /** Total session duration in seconds (when enabled). */
   globalTimerSeconds: number
+  /** Master toggle for the required-words mechanic. When false, no required
+   *  words appear and the per-word deadline is moot. */
+  requiredWordIntervalEnabled: boolean
   /** How often a new required word appears (seconds), measured from when the
    *  previous required word was consumed (or from session start for the very
    *  first one). The timer pauses while a required word is unanswered. */
@@ -41,6 +44,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   mainTimerSeconds: 7,
   globalTimerEnabled: true,
   globalTimerSeconds: 300,
+  requiredWordIntervalEnabled: true,
   requiredWordIntervalSeconds: 30,
   requiredWordUseTimerEnabled: true,
   requiredWordUseTimerSeconds: 25,
@@ -73,6 +77,7 @@ export const PRESETS: Preset[] = [
       mainTimerSeconds: 3,
       globalTimerEnabled: true,
       globalTimerSeconds: 120,
+      requiredWordIntervalEnabled: true,
       requiredWordIntervalSeconds: 12,
       requiredWordUseTimerEnabled: true,
       requiredWordUseTimerSeconds: 10,
@@ -85,6 +90,7 @@ export const PRESETS: Preset[] = [
       mainTimerSeconds: 15,
       globalTimerEnabled: false,
       globalTimerSeconds: 600,
+      requiredWordIntervalEnabled: true,
       requiredWordIntervalSeconds: 60,
       requiredWordUseTimerEnabled: false,
       requiredWordUseTimerSeconds: 60,
@@ -97,6 +103,7 @@ export const PRESETS: Preset[] = [
       mainTimerSeconds: 6,
       globalTimerEnabled: true,
       globalTimerSeconds: 240,
+      requiredWordIntervalEnabled: true,
       requiredWordIntervalSeconds: 15,
       requiredWordUseTimerEnabled: true,
       requiredWordUseTimerSeconds: 14,
@@ -109,6 +116,7 @@ export const PRESETS: Preset[] = [
       mainTimerSeconds: 10,
       globalTimerEnabled: true,
       globalTimerSeconds: 1500,
+      requiredWordIntervalEnabled: true,
       requiredWordIntervalSeconds: 45,
       requiredWordUseTimerEnabled: true,
       requiredWordUseTimerSeconds: 40,
@@ -121,6 +129,7 @@ export const PRESETS: Preset[] = [
       mainTimerSeconds: 2,
       globalTimerEnabled: true,
       globalTimerSeconds: 180,
+      requiredWordIntervalEnabled: true,
       requiredWordIntervalSeconds: 8,
       requiredWordUseTimerEnabled: true,
       requiredWordUseTimerSeconds: 7,
@@ -137,6 +146,7 @@ export function findMatchingPreset(s: GameSettings): PresetId | null {
       ps.mainTimerSeconds === s.mainTimerSeconds &&
       ps.globalTimerEnabled === s.globalTimerEnabled &&
       ps.globalTimerSeconds === s.globalTimerSeconds &&
+      ps.requiredWordIntervalEnabled === s.requiredWordIntervalEnabled &&
       ps.requiredWordIntervalSeconds === s.requiredWordIntervalSeconds &&
       ps.requiredWordUseTimerEnabled === s.requiredWordUseTimerEnabled &&
       ps.requiredWordUseTimerSeconds === s.requiredWordUseTimerSeconds &&

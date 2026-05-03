@@ -44,6 +44,7 @@ export const es = {
     globalTimerLabel: "Duración de la sesión",
     globalTimerHelp: "Duración total de la sesión. Desactívalo para una sesión sin límite.",
     globalTimerEnable: "Limitar duración de sesión",
+    requiredWordIntervalEnable: "Activar palabras requeridas",
     requiredWordIntervalLabel: "Nueva palabra requerida cada",
     requiredWordIntervalHelp:
       "Tiempo promedio entre nuevas palabras requeridas. Los intervalos reales se distribuyen aleatoriamente alrededor de este valor.",
@@ -53,6 +54,7 @@ export const es = {
     requiredWordUseTimerEnable: "Imponer límite de tiempo para la palabra",
     bellLabel: "Reproducir un campanillazo cuando aparece una nueva palabra",
     secondsSuffix: "s",
+    minutesSuffix: "m",
     start: "Empezar a escribir",
   },
 
