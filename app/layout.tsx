@@ -7,3 +7,10 @@ export default function RootLayout({
 }>) {
   return children
 }
+
+export function generateStaticParams(): { lang: string }[] {
+  return [
+    { lang: 'en' },
+    { lang: 'es' }
+  ];
+}

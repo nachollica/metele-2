@@ -6,6 +6,35 @@ export const es = {
     tagline: "Un juego de escritura. No pares las manos.",
   },
 
+  welcome: {
+    title: "Bienvenido a METELE",
+    description: "Unas reglas rápidas antes de empezar.",
+    dontShowAgain: "No mostrar de nuevo",
+    start: "Entendido, a escribir",
+    items: {
+      pickVelocity: {
+        title: "Elige tu velocidad",
+        body: "Selecciona un preset o ajusta los temporizadores en la siguiente pantalla.",
+      },
+      createStory: {
+        title: "Crea tu historia",
+        body: "Escribe sin parar en el área principal. Si te quedas inactivo demasiado, se acaba.",
+      },
+      requiredWords: {
+        title: "Palabras requeridas",
+        body: "Aparecen palabras que debes incluir en tu historia antes de que se agote el tiempo.",
+      },
+      noMistakes: {
+        title: "No te preocupes por los errores",
+        body: "No puedes borrar lo escrito. Corrige las erratas al final — sigue avanzando.",
+      },
+      shareSave: {
+        title: "Comparte o guarda para después",
+        body: "Al terminar puedes copiar tu historia, compartirla o guardarla para seguir editando.",
+      },
+    },
+  },
+
   settings: {
     title: "Configuración de sesión",
     description: "Elige un ajuste rápido o personaliza las reglas.",
@@ -48,6 +77,10 @@ export const es = {
       name: "Maratón",
       description: "25 minutos de presión constante.",
     },
+    chaos: {
+      name: "Caos",
+      description: "Inactividad brutal y palabras sin parar. Sobrevive si puedes.",
+    },
   },
 
   game: {
@@ -75,6 +108,7 @@ export const es = {
     playAgain: "Volver a jugar",
     copyStory: "Copiar historia",
     copied: "¡Copiado!",
+    editHint: "Puedes corregir erratas aquí. El navegador subraya las faltas.",
   },
 
   units: {

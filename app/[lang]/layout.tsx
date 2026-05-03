@@ -43,10 +43,3 @@ export default async function LangLayout({
     </html>
   )
 }
-
-export function generateStaticParams(): { lang: string }[] {
-  return [
-    { lang: 'en' },
-    { lang: 'es' }
-  ];
-}

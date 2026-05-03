@@ -54,7 +54,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
 // Keep this list short (3–5 entries); the order is the rendered order.
 // ---------------------------------------------------------------------------
 
-export type PresetId = "classic" | "speed" | "relaxed" | "creative" | "marathon"
+export type PresetId = "classic" | "speed" | "relaxed" | "creative" | "marathon" | "chaos"
 
 export type Preset = {
   id: PresetId
@@ -112,6 +112,18 @@ export const PRESETS: Preset[] = [
       requiredWordIntervalSeconds: 45,
       requiredWordUseTimerEnabled: true,
       requiredWordUseTimerSeconds: 40,
+      bellEnabled: true,
+    },
+  },
+  {
+    id: "chaos",
+    settings: {
+      mainTimerSeconds: 2,
+      globalTimerEnabled: true,
+      globalTimerSeconds: 180,
+      requiredWordIntervalSeconds: 8,
+      requiredWordUseTimerEnabled: true,
+      requiredWordUseTimerSeconds: 7,
       bellEnabled: true,
     },
   },

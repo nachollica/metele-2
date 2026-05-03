@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } f
 import { GameHud } from "./game-hud"
 import { ResultsModal } from "./results-modal"
 import { SettingsModal } from "./settings-modal"
+import { WelcomeModal } from "./welcome-modal"
 import { WritingArea } from "./writing-area"
 
 import { pickRequiredWord, matchesWord, normalizeForMatch } from "@/lib/metele/words"
@@ -19,7 +20,9 @@ import {
   type MatchedRange,
 } from "@/lib/metele/types"
 
-type GameState = "settings" | "playing" | "ended"
+type GameState = "welcome" | "settings" | "playing" | "ended"
+
+const WELCOME_STORAGE_KEY = "metele.welcome.dismissed"
 
 // Word delimiter characters: when one of these is the most recent character,
 // the word that just ended is finalized and (if a required word is active)
@@ -33,9 +36,36 @@ const UI_TICK_MS = 100
 
 export function MeteleGame() {
   // ---- High-level game state ---------------------------------------------
-  const [gameState, setGameState] = useState<GameState>("settings")
+  const [gameState, setGameState] = useState<GameState>("welcome")
   const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS)
   const [result, setResult] = useState<GameResult | null>(null)
+  // Whether timers are actually running. Stays false from `startGame` until the
+  // first real text modification, so the player isn't penalized for the time
+  // between clicking Start and beginning to type.
+  const [armed, setArmed] = useState(false)
+
+  // Skip the welcome modal if the user previously opted out.
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    try {
+      if (window.localStorage.getItem(WELCOME_STORAGE_KEY) === "1") {
+        setGameState("settings")
+      }
+    } catch {
+      // localStorage unavailable; show the welcome modal as default.
+    }
+  }, [])
+
+  function dismissWelcome(dontShowAgain: boolean) {
+    if (dontShowAgain && typeof window !== "undefined") {
+      try {
+        window.localStorage.setItem(WELCOME_STORAGE_KEY, "1")
+      } catch {
+        // ignore
+      }
+    }
+    setGameState("settings")
+  }
 
   // ---- Live game data ----------------------------------------------------
   const [text, setText] = useState("")
@@ -112,7 +142,7 @@ export function MeteleGame() {
     (reason: EndReason) => {
       // Snapshot stats before tearing things down.
       const finalText = textRef.current
-      const durationMs = Date.now() - startedAtRef.current
+      const durationMs = startedAtRef.current === 0 ? 0 : Date.now() - startedAtRef.current
       const trimmed = finalText.trim()
       const wordCount = trimmed.length === 0 ? 0 : trimmed.split(/\s+/).length
 
@@ -209,12 +239,13 @@ export function MeteleGame() {
       currentWordRef.current = null
       usedWordsRef.current = new Set()
 
-      const startedAt = Date.now()
-      startedAtRef.current = startedAt
-      lastInputAtRef.current = startedAt
+      // Timers stay disarmed until the first real input — see `armTimers`.
+      startedAtRef.current = 0
+      lastInputAtRef.current = 0
       wordSpawnedAtRef.current = null
 
       clearAllTimers()
+      setArmed(false)
       setGameState("playing")
 
       // Warm up the audio context inside the user gesture from the Start
@@ -223,31 +254,35 @@ export function MeteleGame() {
         primeAudio()
       }
 
-      // Idle timer starts immediately — the player must begin typing.
-      armIdleTimeout()
-
-      // Global timer.
-      if (newSettings.globalTimerEnabled) {
-        globalTimeoutRef.current = window.setTimeout(() => {
-          endGame("global")
-        }, newSettings.globalTimerSeconds * 1000)
-      }
-
-      // Schedule the first required word using the spawn-interval helper
-      // (which respects the "no word active" guard, but at start there isn't
-      // one so it will fire normally).
-      armSpawnTimer()
-
-      // UI tick to refresh countdown displays.
-      uiTickRef.current = window.setInterval(() => {
-        setNow(Date.now())
-      }, UI_TICK_MS)
-
       // Focus the textarea so the player can type immediately.
       window.setTimeout(() => textareaRef.current?.focus(), 0)
     },
-    [armIdleTimeout, armSpawnTimer, clearAllTimers, endGame],
+    [clearAllTimers],
   )
+
+  // Start all timers. Called on first real text modification after `startGame`.
+  const armTimers = useCallback(() => {
+    const currentSettings = settingsRef.current
+    const startedAt = Date.now()
+    startedAtRef.current = startedAt
+    lastInputAtRef.current = startedAt
+
+    armIdleTimeout()
+
+    if (currentSettings.globalTimerEnabled) {
+      globalTimeoutRef.current = window.setTimeout(() => {
+        endGame("global")
+      }, currentSettings.globalTimerSeconds * 1000)
+    }
+
+    armSpawnTimer()
+
+    uiTickRef.current = window.setInterval(() => {
+      setNow(Date.now())
+    }, UI_TICK_MS)
+
+    setArmed(true)
+  }, [armIdleTimeout, armSpawnTimer, endGame])
 
   // ---- Cleanup on unmount ------------------------------------------------
   useEffect(() => {
@@ -313,9 +348,18 @@ export function MeteleGame() {
       if (gameState !== "playing") return
       const next = e.target.value
 
-      // Any input — typing OR deletion — counts as activity per the spec.
-      lastInputAtRef.current = Date.now()
-      armIdleTimeout()
+      // First real text modification arms the timers. Same condition as the
+      // visible-text mutation check below, so non-text keypresses (Ctrl, Alt,
+      // arrow keys, etc.) don't kick the timers off.
+      if (next === textRef.current) return
+
+      if (!armed) {
+        armTimers()
+      } else {
+        // Any input — typing OR deletion — counts as activity per the spec.
+        lastInputAtRef.current = Date.now()
+        armIdleTimeout()
+      }
 
       setText(next)
 
@@ -325,22 +369,22 @@ export function MeteleGame() {
         checkLatestWord(next, caret)
       }
     },
-    [armIdleTimeout, checkLatestWord, gameState],
+    [armIdleTimeout, armTimers, armed, checkLatestWord, gameState],
   )
 
   // ---- Computed countdown values for HUD --------------------------------
   const idleSecondsLeft = useMemo(() => {
-    if (gameState !== "playing") return settings.mainTimerSeconds
+    if (gameState !== "playing" || !armed) return settings.mainTimerSeconds
     const elapsed = (now - lastInputAtRef.current) / 1000
     return Math.max(0, settings.mainTimerSeconds - elapsed)
-  }, [gameState, now, settings.mainTimerSeconds])
+  }, [armed, gameState, now, settings.mainTimerSeconds])
 
   const globalSecondsLeft = useMemo(() => {
     if (!settings.globalTimerEnabled) return null
-    if (gameState !== "playing") return settings.globalTimerSeconds
+    if (gameState !== "playing" || !armed) return settings.globalTimerSeconds
     const elapsed = (now - startedAtRef.current) / 1000
     return Math.max(0, settings.globalTimerSeconds - elapsed)
-  }, [gameState, now, settings.globalTimerEnabled, settings.globalTimerSeconds])
+  }, [armed, gameState, now, settings.globalTimerEnabled, settings.globalTimerSeconds])
 
   const useWordIn = useMemo(() => {
     if (!settings.requiredWordUseTimerEnabled) return null
@@ -357,6 +401,8 @@ export function MeteleGame() {
   // ---- Render ------------------------------------------------------------
   return (
     <div className="bg-background text-foreground min-h-dvh">
+      <WelcomeModal open={gameState === "welcome"} onContinue={dismissWelcome} />
+
       <SettingsModal open={gameState === "settings"} initial={settings} onStart={startGame} />
 
       <ResultsModal

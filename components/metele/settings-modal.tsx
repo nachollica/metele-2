@@ -126,8 +126,8 @@ export function SettingsModal({ open, initial = DEFAULT_SETTINGS, onStart }: Pro
               <SecondsInput
                 id="main-timer"
                 value={settings.mainTimerSeconds}
-                min={2}
-                max={120}
+                min={1}
+                max={60}
                 onChange={(v) => update("mainTimerSeconds", v)}
               />
             </Field>
@@ -152,7 +152,6 @@ export function SettingsModal({ open, initial = DEFAULT_SETTINGS, onStart }: Pro
                   value={settings.globalTimerSeconds}
                   min={30}
                   max={3600}
-                  step={30}
                   disabled={!settings.globalTimerEnabled}
                   onChange={(v) => update("globalTimerSeconds", v)}
                 />
@@ -174,7 +173,6 @@ export function SettingsModal({ open, initial = DEFAULT_SETTINGS, onStart }: Pro
                 value={settings.requiredWordIntervalSeconds}
                 min={5}
                 max={300}
-                step={5}
                 onChange={(v) => update("requiredWordIntervalSeconds", v)}
               />
             </Field>
@@ -201,7 +199,6 @@ export function SettingsModal({ open, initial = DEFAULT_SETTINGS, onStart }: Pro
                   value={settings.requiredWordUseTimerSeconds}
                   min={5}
                   max={300}
-                  step={5}
                   disabled={!settings.requiredWordUseTimerEnabled}
                   onChange={(v) => update("requiredWordUseTimerSeconds", v)}
                 />

@@ -7,6 +7,35 @@ export const en = {
     tagline: "A writing game. Keep your hands moving.",
   },
 
+  welcome: {
+    title: "Welcome to METELE",
+    description: "A few quick rules before you start writing.",
+    dontShowAgain: "Don't show this again",
+    start: "Got it, let's write",
+    items: {
+      pickVelocity: {
+        title: "Pick your velocity",
+        body: "Choose a preset or fine-tune the timers in the next screen to match your mood.",
+      },
+      createStory: {
+        title: "Create your story",
+        body: "Type non-stop in the main area. Stay idle too long and the session ends.",
+      },
+      requiredWords: {
+        title: "Required words",
+        body: "Words pop up that you must work into your story before time runs out.",
+      },
+      noMistakes: {
+        title: "Don't worry about mistakes",
+        body: "You can't delete what you wrote. Fix typos at the end — keep moving forward.",
+      },
+      shareSave: {
+        title: "Share or save for later",
+        body: "When the run ends you can copy your story, share it, or save it to keep editing.",
+      },
+    },
+  },
+
   settings: {
     title: "Session settings",
     description: "Pick a preset or fine-tune the rules below.",
@@ -49,6 +78,10 @@ export const en = {
       name: "Marathon",
       description: "25 minutes of steady writing pressure.",
     },
+    chaos: {
+      name: "Chaos mode",
+      description: "Brutal idle, words raining down. Survive if you can.",
+    },
   },
 
   game: {
@@ -76,6 +109,7 @@ export const en = {
     playAgain: "Play again",
     copyStory: "Copy story",
     copied: "Copied!",
+    editHint: "You can fix typos here. Misspellings are underlined by your browser.",
   },
 
   units: {
