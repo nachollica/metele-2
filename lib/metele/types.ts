@@ -54,22 +54,51 @@ export const DEFAULT_SETTINGS: GameSettings = {
 // ---------------------------------------------------------------------------
 // Presets
 // Curated session profiles the user can apply with one click. Each preset
-// fully specifies a `GameSettings` object so applying one is just `setState`.
-// Keep this list short (3–5 entries); the order is the rendered order.
+// specifies only the "preset-covered" keys (PRESET_KEYS below). Applying a
+// preset merges these into the current settings, leaving everything else
+// ("personal" settings such as bellEnabled) untouched.
+//
+// To add a new personal setting (not controlled by presets):
+//   1. Add its key to GameSettings and DEFAULT_SETTINGS.
+//   2. Do NOT add it to PRESET_KEYS — that's all it takes.
 // ---------------------------------------------------------------------------
+
+// Keys that presets read and write. Everything in GameSettings that is NOT
+// listed here is a personal setting: ignored during preset matching and
+// untouched when a preset is applied.
+export const PRESET_KEYS = [
+  "mainTimerSeconds",
+  "globalTimerEnabled",
+  "globalTimerSeconds",
+  "requiredWordIntervalEnabled",
+  "requiredWordIntervalSeconds",
+  "requiredWordUseTimerEnabled",
+  "requiredWordUseTimerSeconds",
+] as const
+
+export type PresetKey = (typeof PRESET_KEYS)[number]
+export type PresetSettings = Pick<GameSettings, PresetKey>
 
 export type PresetId = "classic" | "speed" | "relaxed" | "creative" | "marathon" | "chaos"
 
 export type Preset = {
   id: PresetId
   /** Translation key suffix (matches `t.presets[id].name` etc.). */
-  settings: GameSettings
+  settings: PresetSettings
 }
 
 export const PRESETS: Preset[] = [
   {
     id: "classic",
-    settings: { ...DEFAULT_SETTINGS },
+    settings: {
+      mainTimerSeconds: DEFAULT_SETTINGS.mainTimerSeconds,
+      globalTimerEnabled: DEFAULT_SETTINGS.globalTimerEnabled,
+      globalTimerSeconds: DEFAULT_SETTINGS.globalTimerSeconds,
+      requiredWordIntervalEnabled: DEFAULT_SETTINGS.requiredWordIntervalEnabled,
+      requiredWordIntervalSeconds: DEFAULT_SETTINGS.requiredWordIntervalSeconds,
+      requiredWordUseTimerEnabled: DEFAULT_SETTINGS.requiredWordUseTimerEnabled,
+      requiredWordUseTimerSeconds: DEFAULT_SETTINGS.requiredWordUseTimerSeconds,
+    },
   },
   {
     id: "speed",
@@ -81,7 +110,6 @@ export const PRESETS: Preset[] = [
       requiredWordIntervalSeconds: 12,
       requiredWordUseTimerEnabled: true,
       requiredWordUseTimerSeconds: 10,
-      bellEnabled: true,
     },
   },
   {
@@ -94,7 +122,6 @@ export const PRESETS: Preset[] = [
       requiredWordIntervalSeconds: 60,
       requiredWordUseTimerEnabled: false,
       requiredWordUseTimerSeconds: 60,
-      bellEnabled: true,
     },
   },
   {
@@ -107,7 +134,6 @@ export const PRESETS: Preset[] = [
       requiredWordIntervalSeconds: 15,
       requiredWordUseTimerEnabled: true,
       requiredWordUseTimerSeconds: 14,
-      bellEnabled: true,
     },
   },
   {
@@ -120,7 +146,6 @@ export const PRESETS: Preset[] = [
       requiredWordIntervalSeconds: 45,
       requiredWordUseTimerEnabled: true,
       requiredWordUseTimerSeconds: 40,
-      bellEnabled: true,
     },
   },
   {
@@ -133,27 +158,14 @@ export const PRESETS: Preset[] = [
       requiredWordIntervalSeconds: 8,
       requiredWordUseTimerEnabled: true,
       requiredWordUseTimerSeconds: 7,
-      bellEnabled: true,
     },
   },
 ]
 
-/** Find which preset (if any) exactly matches a settings object. */
+/** Find which preset (if any) matches the preset-covered keys of a settings object. */
 export function findMatchingPreset(s: GameSettings): PresetId | null {
   for (const p of PRESETS) {
-    const ps = p.settings
-    if (
-      ps.mainTimerSeconds === s.mainTimerSeconds &&
-      ps.globalTimerEnabled === s.globalTimerEnabled &&
-      ps.globalTimerSeconds === s.globalTimerSeconds &&
-      ps.requiredWordIntervalEnabled === s.requiredWordIntervalEnabled &&
-      ps.requiredWordIntervalSeconds === s.requiredWordIntervalSeconds &&
-      ps.requiredWordUseTimerEnabled === s.requiredWordUseTimerEnabled &&
-      ps.requiredWordUseTimerSeconds === s.requiredWordUseTimerSeconds &&
-      ps.bellEnabled === s.bellEnabled
-    ) {
-      return p.id
-    }
+    if (PRESET_KEYS.every((k) => p.settings[k] === s[k])) return p.id
   }
   return null
 }

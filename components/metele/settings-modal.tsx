@@ -51,7 +51,8 @@ export function SettingsModal({ open, initial = DEFAULT_SETTINGS, onStart }: Pro
 
   function applyPreset(id: PresetId) {
     const preset = PRESETS.find((p) => p.id === id)
-    if (preset) setSettings(preset.settings)
+    // Merge: only overwrite preset-covered keys, preserving personal settings.
+    if (preset) setSettings((prev) => ({ ...prev, ...preset.settings }))
   }
 
   function handleStart() {
@@ -266,7 +267,7 @@ function SettingRow({
 }) {
   return (
     <div className="flex items-center gap-4 py-3">
-      <div className={cn(TOGGLE_COL, "flex items-center justify-start")}>
+      <div className={cn(TOGGLE_COL, "flex items-center justify-start transition-opacity", dimmed && "opacity-50")}>
         {toggle}
       </div>
       <div
