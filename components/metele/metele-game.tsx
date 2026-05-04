@@ -27,7 +27,7 @@ const WELCOME_STORAGE_KEY = "metele.welcome.dismissed"
 // Word delimiter characters: when one of these is the most recent character,
 // the word that just ended is finalized and (if a required word is active)
 // compared to it.
-const WORD_DELIMITERS = /[\s.,;:!?'"()\[\]{}\-—–…/\\]/
+const WORD_DELIMITERS = /[\s.,;:!?'"()[\]{}\-—–…/\\]/
 
 // Tick interval for UI countdowns. We use a single 100ms interval for all
 // cosmetic countdowns, while game-ending events use independent timeouts so
