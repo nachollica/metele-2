@@ -66,7 +66,7 @@ export function SettingsModal({ open, initial = DEFAULT_SETTINGS, onStart }: Pro
     <Dialog open={open}>
       <DialogContent
         showCloseButton={false}
-        className="sm:max-w-2xl"
+        className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl"
         // Prevent dismiss without starting the game.
         onEscapeKeyDown={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
@@ -112,10 +112,12 @@ export function SettingsModal({ open, initial = DEFAULT_SETTINGS, onStart }: Pro
             </div>
           </section>
 
-          <Separator />
+          {/* Detailed settings hidden below lg: mobile/tablet-portrait users
+              get the presets-only flow. */}
+          <Separator className="hidden lg:block" />
 
           {/* Detailed settings — uniform inline rows, no inter-row dividers. */}
-          <div className="flex flex-col">
+          <div className="hidden flex-col lg:flex">
             <SettingRow
               id="main-timer"
               label={t.settings.mainTimerLabel}

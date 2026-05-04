@@ -100,16 +100,18 @@ export function GameHud({
 
   return (
     <header className="bg-card text-card-foreground flex flex-col gap-3 rounded-lg border p-4 shadow-sm">
-      {/* Row 1: title + char count + give up */}
+      {/* Row 1: title + char count + give up.
+          On <lg (mobile/tablet-portrait) only the give-up button stays —
+          screen real estate is reserved for timers, required word, text area. */}
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-baseline gap-3">
+        <div className="hidden items-baseline gap-3 lg:flex">
           <h1 className="font-serif text-xl font-semibold tracking-tight">{t.app.title}</h1>
           <span className="text-muted-foreground hidden text-sm sm:inline">
             {t.app.tagline}
           </span>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="text-muted-foreground flex items-center gap-1.5 text-sm">
+        <div className="ml-auto flex items-center gap-3">
+          <div className="text-muted-foreground hidden items-center gap-1.5 text-sm lg:flex">
             <Type className="size-3.5" aria-hidden />
             <span className="text-foreground font-mono tabular-nums">{characters}</span>
             <span className="hidden sm:inline">{t.game.characters}</span>
