@@ -120,4 +120,14 @@ export const en = {
   },
 } as const
 
-export type Translations = typeof en
+// Widen literal types from `as const` so other locales (es, future ones)
+// with different string values still satisfy the shape.
+type Widen<T> = T extends string
+  ? string
+  : T extends number
+    ? number
+    : T extends boolean
+      ? boolean
+      : { [K in keyof T]: Widen<T[K]> }
+
+export type Translations = Widen<typeof en>
