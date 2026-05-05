@@ -45,16 +45,12 @@ export function GameHud({
 }: Props) {
   const t = useTranslations()
 
-  const idleProgress = clamp01(idleSecondsLeft / idleSecondsTotal)
-  const globalProgress =
-    globalSecondsLeft !== null ? clamp01(globalSecondsLeft / globalSecondsTotal) : 1
-
   const idleBar = (
     <TimerBar
       icon={<Timer className="size-3.5" aria-hidden />}
       label={t.game.idleEndsIn}
       seconds={idleSecondsLeft}
-      progress={idleProgress}
+      total={idleSecondsTotal}
       urgent={idleSecondsLeft <= 3}
     />
   )
@@ -64,7 +60,7 @@ export function GameHud({
         icon={<Clock className="size-3.5" aria-hidden />}
         label={t.game.sessionEndsIn}
         seconds={globalSecondsLeft}
-        progress={globalProgress}
+        total={globalSecondsTotal}
         urgent={globalSecondsLeft <= 10}
       />
     ) : null
@@ -132,16 +128,17 @@ function TimerBar({
   icon,
   label,
   seconds,
-  progress,
+  total,
   urgent,
 }: {
   icon: React.ReactNode
   label: string
   seconds: number
-  progress: number
+  total: number
   urgent: boolean
 }) {
   const t = useTranslations()
+  const progress = clamp01(seconds / total)
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center justify-between text-xs">
@@ -164,7 +161,7 @@ function TimerBar({
         aria-label={label}
         aria-valuenow={Math.max(0, Math.round(seconds))}
         aria-valuemin={0}
-        aria-valuemax={Math.max(1, Math.round(seconds / Math.max(progress, 0.0001)))}
+        aria-valuemax={Math.max(1, Math.round(total))}
       >
         <div
           className={cn(

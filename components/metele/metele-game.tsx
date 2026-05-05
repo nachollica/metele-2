@@ -35,6 +35,8 @@ const WORD_DELIMITERS = /[\s.,;:!?'"()[\]{}\-—–…/\\]/
 const UI_TICK_MS = 100
 
 export function MeteleGame() {
+  const locale = useLocale()
+
   // ---- High-level game state ---------------------------------------------
   const [gameState, setGameState] = useState<GameState>("welcome")
   const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS)
@@ -165,8 +167,6 @@ export function MeteleGame() {
   // "use it in time" deadline, and intentionally does NOT schedule the next
   // spawn — that is the responsibility of `armSpawnTimer`, which is invoked
   // when the active word is consumed by the player.
-  const locale = useLocale()
-
   const spawnRequiredWord = useCallback(() => {
     const currentSettings = settingsRef.current
     const next = pickRequiredWord(locale, usedWordsRef.current)
@@ -440,10 +440,6 @@ export function MeteleGame() {
               onChange={handleChange}
               matches={matches}
               disabled={gameState !== "playing"}
-              onAppendOnly={() => {
-                // User attempted a non-append operation; no action needed,
-                // but we could log or trigger a visual feedback here.
-              }}
             />
           </div>
         </main>

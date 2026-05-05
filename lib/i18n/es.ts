@@ -10,7 +10,7 @@ export const es = {
     title: "Bienvenido a METELE",
     description: "Unas reglas rápidas antes de empezar.",
     dontShowAgain: "No mostrar de nuevo",
-    start: "Entendido, a escribir",
+    start: "Entendido",
     items: {
       pickVelocity: {
         title: "Elige tu velocidad",

@@ -11,7 +11,7 @@ export const en = {
     title: "Welcome to METELE",
     description: "A few quick rules before you start writing.",
     dontShowAgain: "Don't show this again",
-    start: "Got it, let's write",
+    start: "Got it",
     items: {
       pickVelocity: {
         title: "Pick your velocity",

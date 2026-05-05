@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { Copy, RotateCcw, Check } from "lucide-react"
 
 import {
@@ -26,27 +26,43 @@ type Props = {
 
 export function ResultsModal({ open, result, onPlayAgain }: Props) {
   const t = useTranslations()
+
+  return (
+    <Dialog open={open}>
+      <DialogContent
+        showCloseButton={false}
+        className="sm:max-w-2xl"
+        onEscapeKeyDown={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
+      >
+        <DialogHeader>
+          <DialogTitle className="font-serif text-2xl">{t.results.title}</DialogTitle>
+          <DialogDescription>
+            {result ? reasonText(result.reason, t) : ""}
+          </DialogDescription>
+        </DialogHeader>
+        {result ? (
+          // Re-mount on every new result so the editable buffer resets cleanly
+          // without a useEffect-driven sync.
+          <ResultsBody key={result.durationMs} result={result} onPlayAgain={onPlayAgain} />
+        ) : null}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function ResultsBody({
+  result,
+  onPlayAgain,
+}: {
+  result: GameResult
+  onPlayAgain: () => void
+}) {
+  const t = useTranslations()
   const [copied, setCopied] = useState(false)
-  const [editedText, setEditedText] = useState("")
-
-  // Reset the editable buffer whenever a new result comes in.
-  useEffect(() => {
-    setEditedText(result?.text ?? "")
-  }, [result])
-
-  if (!result) return null
-
-  const reasonText =
-    result.reason === "idle"
-      ? t.results.reasonIdle
-      : result.reason === "global"
-        ? t.results.reasonGlobal
-        : result.reason === "unused-word"
-          ? t.results.reasonUnusedWord
-          : t.results.reasonManual
+  const [editedText, setEditedText] = useState(result.text)
 
   async function handleCopy() {
-    if (!result) return
     try {
       if (navigator.clipboard) {
         await navigator.clipboard.writeText(editedText)
@@ -71,69 +87,73 @@ export function ResultsModal({ open, result, onPlayAgain }: Props) {
   }
 
   return (
-    <Dialog open={open}>
-      <DialogContent
-        showCloseButton={false}
-        className="sm:max-w-2xl"
-        onEscapeKeyDown={(e) => e.preventDefault()}
-        onInteractOutside={(e) => e.preventDefault()}
-      >
-        <DialogHeader>
-          <DialogTitle className="font-serif text-2xl">{t.results.title}</DialogTitle>
-          <DialogDescription>{reasonText}</DialogDescription>
-        </DialogHeader>
+    <>
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <Stat label={t.results.duration} value={formatDuration(result.durationMs)} />
+        <Stat label={t.results.characters} value={result.characters.toString()} />
+        <Stat label={t.results.words} value={result.words.toString()} />
+        <Stat label={t.results.requiredWordsUsed} value={result.requiredWordsUsed.toString()} />
+      </div>
 
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <Stat label={t.results.duration} value={formatDuration(result.durationMs)} />
-          <Stat label={t.results.characters} value={result.characters.toString()} />
-          <Stat label={t.results.words} value={result.words.toString()} />
-          <Stat label={t.results.requiredWordsUsed} value={result.requiredWordsUsed.toString()} />
-        </div>
+      <Separator />
 
-        <Separator />
+      <div className="flex flex-col gap-2">
+        <h3 className="text-muted-foreground text-xs font-medium tracking-widest uppercase">
+          {t.results.yourStory}
+        </h3>
+        <textarea
+          value={editedText}
+          onChange={(e) => setEditedText(e.target.value)}
+          spellCheck
+          wrap="soft"
+          aria-label={t.results.yourStory}
+          className={cn(
+            "bg-muted/40 h-48 w-full resize-none rounded-md border p-4",
+            "font-serif text-base leading-relaxed",
+            "whitespace-pre-wrap break-words [overflow-wrap:anywhere]",
+            "focus-visible:ring-ring/40 outline-none focus-visible:ring-2",
+          )}
+        />
+        <p className="text-muted-foreground text-xs">{t.results.editHint}</p>
+      </div>
 
-        <div className="flex flex-col gap-2">
-          <h3 className="text-muted-foreground text-xs font-medium tracking-widest uppercase">
-            {t.results.yourStory}
-          </h3>
-          <textarea
-            value={editedText}
-            onChange={(e) => setEditedText(e.target.value)}
-            spellCheck
-            wrap="soft"
-            aria-label={t.results.yourStory}
-            className={cn(
-              "bg-muted/40 h-48 w-full resize-none rounded-md border p-4",
-              "font-serif text-base leading-relaxed",
-              "whitespace-pre-wrap break-words [overflow-wrap:anywhere]",
-              "focus-visible:ring-ring/40 outline-none focus-visible:ring-2",
-            )}
-          />
-          <p className="text-muted-foreground text-xs">{t.results.editHint}</p>
-        </div>
-
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={handleCopy} disabled={!editedText}>
-            {copied ? (
-              <>
-                <Check className="size-4" aria-hidden />
-                {t.results.copied}
-              </>
-            ) : (
-              <>
-                <Copy className="size-4" aria-hidden />
-                {t.results.copyStory}
-              </>
-            )}
-          </Button>
-          <Button onClick={onPlayAgain}>
-            <RotateCcw className="size-4" aria-hidden />
-            {t.results.playAgain}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      <DialogFooter className="gap-2">
+        <Button variant="outline" onClick={handleCopy} disabled={!editedText}>
+          {copied ? (
+            <>
+              <Check className="size-4" aria-hidden />
+              {t.results.copied}
+            </>
+          ) : (
+            <>
+              <Copy className="size-4" aria-hidden />
+              {t.results.copyStory}
+            </>
+          )}
+        </Button>
+        <Button onClick={onPlayAgain}>
+          <RotateCcw className="size-4" aria-hidden />
+          {t.results.playAgain}
+        </Button>
+      </DialogFooter>
+    </>
   )
+}
+
+function reasonText(
+  reason: GameResult["reason"],
+  t: ReturnType<typeof useTranslations>,
+): string {
+  switch (reason) {
+    case "idle":
+      return t.results.reasonIdle
+    case "global":
+      return t.results.reasonGlobal
+    case "unused-word":
+      return t.results.reasonUnusedWord
+    case "manual":
+      return t.results.reasonManual
+  }
 }
 
 function Stat({ label, value }: { label: string; value: string }) {

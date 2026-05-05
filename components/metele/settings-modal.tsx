@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState, type ReactNode } from "react"
-import { Bell, Play } from "lucide-react"
+import { Bell, Pencil } from "lucide-react"
 
 import {
   Dialog,
@@ -37,6 +37,14 @@ type Props = {
 export function SettingsModal({ open, initial = DEFAULT_SETTINGS, onStart }: Props) {
   const t = useTranslations()
   const [settings, setSettings] = useState<GameSettings>(initial)
+  // Sync local edits back to the latest `initial` reference. Compare-prev-prop
+  // pattern (no useEffect) — runs in render, only re-renders when the parent
+  // actually swaps the reference (e.g. previous game's settings on replay).
+  const [prevInitial, setPrevInitial] = useState(initial)
+  if (prevInitial !== initial) {
+    setPrevInitial(initial)
+    setSettings(initial)
+  }
 
   // Auto-detect when the current settings match a preset so we can highlight
   // it. This stays in sync even if the user manually tweaks values to match.
@@ -236,7 +244,7 @@ export function SettingsModal({ open, initial = DEFAULT_SETTINGS, onStart }: Pro
 
         <DialogFooter>
           <Button onClick={handleStart} className="w-full sm:w-auto">
-            <Play className="size-4" aria-hidden />
+            <Pencil className="size-4" aria-hidden />
             {t.settings.start}
           </Button>
         </DialogFooter>

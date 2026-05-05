@@ -1,17 +1,17 @@
 "use client"
 
-import { forwardRef, useMemo, type ChangeEvent, type ForwardedRef, type KeyboardEvent } from "react"
+import { useMemo, type ChangeEvent, type KeyboardEvent, type Ref } from "react"
 
 import { cn } from "@/lib/utils"
 import { useTranslations } from "@/lib/i18n"
 import type { MatchedRange } from "@/lib/metele/types"
 
 type Props = {
+  ref?: Ref<HTMLTextAreaElement>
   value: string
   onChange: (e: ChangeEvent<HTMLTextAreaElement>) => void
   matches: MatchedRange[]
   disabled?: boolean
-  onAppendOnly?: (shouldRejectKey: boolean) => void
 }
 
 // Shared typography classes for the textarea and the backdrop. They MUST match
@@ -31,10 +31,7 @@ const SHARED_TEXT_CLASSES = cn(
  * Text is append-only: no backspace, no editing, no cursor movement except
  * to the end. Selection is allowed but cannot be deleted/replaced.
  */
-export const WritingArea = forwardRef(function WritingArea(
-  { value, onChange, matches, disabled, onAppendOnly }: Props,
-  ref: ForwardedRef<HTMLTextAreaElement>,
-) {
+export function WritingArea({ ref, value, onChange, matches, disabled }: Props) {
   const t = useTranslations()
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -60,28 +57,37 @@ export const WritingArea = forwardRef(function WritingArea(
       e.key === "ArrowDown"
     ) {
       e.preventDefault()
-      onAppendOnly?.(true)
       return
     }
 
     // Block: Cut, Undo, Redo, Select All if it would select non-end content
-    if ((e.ctrlKey || e.metaKey) && (e.key === "x" || e.key === "z" || e.key === "y" || (e.key === "a" && selectionStart === 0 && selectionEnd < value.length))) {
+    const isCmd = e.ctrlKey || e.metaKey
+    const isEditShortcut =
+      isCmd &&
+      (e.key === "x" ||
+        e.key === "z" ||
+        e.key === "y" ||
+        (e.key === "a" && selectionStart === 0 && selectionEnd < value.length))
+    if (isEditShortcut) {
       e.preventDefault()
-      onAppendOnly?.(true)
       return
     }
 
     // Allow typing only at the end of the text. If there's a selection, reject.
     if (isSelection) {
       e.preventDefault()
-      onAppendOnly?.(true)
       return
     }
 
     // If the cursor is not at the end, and the key is a printable character, reject.
-    if (selectionEnd < value.length && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    if (
+      selectionEnd < value.length &&
+      e.key.length === 1 &&
+      !e.ctrlKey &&
+      !e.metaKey &&
+      !e.altKey
+    ) {
       e.preventDefault()
-      onAppendOnly?.(true)
       return
     }
   }
@@ -94,7 +100,6 @@ export const WritingArea = forwardRef(function WritingArea(
     if (next.length < value.length) {
       // Backspace or deletion snuck through; reject by not calling onChange.
       e.target.value = value
-      onAppendOnly?.(true)
       return
     }
 
@@ -106,7 +111,6 @@ export const WritingArea = forwardRef(function WritingArea(
         if (next[i] !== value[i]) {
           // Middle edit detected.
           e.target.value = value
-          onAppendOnly?.(true)
           return
         }
       }
@@ -185,4 +189,4 @@ export const WritingArea = forwardRef(function WritingArea(
       />
     </div>
   )
-})
+}

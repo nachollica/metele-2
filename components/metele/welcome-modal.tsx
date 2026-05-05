@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Gauge, PenLine, Sparkles, Eraser, Share2, Pencil } from "lucide-react"
+import { Gauge, PenLine, Sparkles, Eraser, Share2, Check } from "lucide-react"
 
 import {
   Dialog,
@@ -73,7 +73,7 @@ export function WelcomeModal({ open, onContinue }: Props) {
             </Label>
           </div>
           <Button onClick={() => onContinue(dontShow)} className="w-full sm:w-auto">
-            <Pencil className="size-4" aria-hidden />
+            <Check className="size-4" aria-hidden />
             {t.welcome.start}
           </Button>
         </DialogFooter>
