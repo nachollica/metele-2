@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState, type ReactNode } from "react"
-import { Bell, Pencil } from "lucide-react"
+import { Bell, Pencil, Tags } from "lucide-react"
 
 import {
   Dialog,
@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
@@ -229,6 +230,42 @@ export function SettingsModal({ open, initial = DEFAULT_SETTINGS, onStart }: Pro
             />
 
             <SettingRow
+              id="category-words"
+              label={
+                <span className="flex items-center gap-2">
+                  <Tags className="size-4" aria-hidden />
+                  {t.settings.categoryWordsLabel}
+                </span>
+              }
+              description={t.settings.categoryWordsHelp}
+              dimmed={!settings.requiredWordIntervalEnabled}
+              toggle={
+                <Switch
+                  id="category-words-toggle"
+                  checked={settings.categoryWordsEnabled}
+                  onCheckedChange={(v) => update("categoryWordsEnabled", v)}
+                  disabled={!settings.requiredWordIntervalEnabled}
+                  aria-label={t.settings.categoryWordsEnable}
+                />
+              }
+              control={
+                <Input
+                  id="category-words"
+                  type="text"
+                  value={settings.categoryWordsInput}
+                  onChange={(e) => update("categoryWordsInput", e.target.value)}
+                  placeholder={t.settings.categoryWordsPlaceholder}
+                  disabled={
+                    !settings.requiredWordIntervalEnabled ||
+                    !settings.categoryWordsEnabled
+                  }
+                  aria-label={t.settings.categoryWordsLabel}
+                  className="text-sm"
+                />
+              }
+            />
+
+            <SettingRow
               id="bell-toggle"
               label={
                 <span className="flex items-center gap-2">
@@ -236,11 +273,13 @@ export function SettingsModal({ open, initial = DEFAULT_SETTINGS, onStart }: Pro
                   {t.settings.bellLabel}
                 </span>
               }
+              dimmed={!settings.requiredWordIntervalEnabled}
               toggle={
                 <Switch
                   id="bell-toggle"
                   checked={settings.bellEnabled}
                   onCheckedChange={(v) => update("bellEnabled", v)}
+                  disabled={!settings.requiredWordIntervalEnabled}
                   aria-label={t.settings.bellLabel}
                 />
               }

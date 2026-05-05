@@ -4,7 +4,7 @@ import { useState, type ChangeEvent } from "react"
 import { describe, expect, it } from "vitest"
 
 import { WritingArea } from "@/components/metele/writing-area"
-import type { MatchedRange } from "@/lib/metele/types"
+// import type { MatchedRange } from "@/lib/metele/types"
 
 import { renderWithLocale } from "@/tests/utils"
 
@@ -29,34 +29,48 @@ describe("WritingArea", () => {
     expect(ta.value).toBe("hello")
   })
 
-  it("blocks Backspace so the user can't delete prior text", async () => {
+  it("now allows Backspace (append-only enforcement disabled)", async () => {
     renderWithLocale(<Harness initial="abc" />)
     const ta = screen.getByRole("textbox") as HTMLTextAreaElement
     ta.focus()
     ta.setSelectionRange(ta.value.length, ta.value.length)
     const user = userEvent.setup()
     await user.keyboard("{Backspace}")
-    expect(ta.value).toBe("abc")
+    expect(ta.value).toBe("ab")
   })
 
-  it("blocks arrow keys so the cursor stays at the end", async () => {
-    renderWithLocale(<Harness initial="abcdef" />)
-    const ta = screen.getByRole("textbox") as HTMLTextAreaElement
-    ta.focus()
-    ta.setSelectionRange(ta.value.length, ta.value.length)
-    const user = userEvent.setup()
-    await user.keyboard("{ArrowLeft}{ArrowLeft}{ArrowLeft}X")
-    // Cursor was blocked from moving, so X gets appended at the end.
-    expect(ta.value).toBe("abcdefX")
-  })
-
-  it("renders highlight ranges in the backdrop", () => {
-    const matches: MatchedRange[] = [{ start: 0, end: 5 }]
-    renderWithLocale(
-      <WritingArea value="hello world" onChange={() => {}} matches={matches} />,
-    )
-    const marks = document.querySelectorAll("mark")
-    expect(marks.length).toBe(1)
-    expect(marks[0]?.textContent).toBe("hello")
-  })
+  // ---------------------------------------------------------------------
+  // Tests for the disabled "append-only" / "no editing" feature. Re-enable
+  // alongside the matching code in `writing-area.tsx` if the rule comes back.
+  // ---------------------------------------------------------------------
+  // it("blocks Backspace so the user can't delete prior text", async () => {
+  //   renderWithLocale(<Harness initial="abc" />)
+  //   const ta = screen.getByRole("textbox") as HTMLTextAreaElement
+  //   ta.focus()
+  //   ta.setSelectionRange(ta.value.length, ta.value.length)
+  //   const user = userEvent.setup()
+  //   await user.keyboard("{Backspace}")
+  //   expect(ta.value).toBe("abc")
+  // })
+  //
+  // it("blocks arrow keys so the cursor stays at the end", async () => {
+  //   renderWithLocale(<Harness initial="abcdef" />)
+  //   const ta = screen.getByRole("textbox") as HTMLTextAreaElement
+  //   ta.focus()
+  //   ta.setSelectionRange(ta.value.length, ta.value.length)
+  //   const user = userEvent.setup()
+  //   await user.keyboard("{ArrowLeft}{ArrowLeft}{ArrowLeft}X")
+  //   // Cursor was blocked from moving, so X gets appended at the end.
+  //   expect(ta.value).toBe("abcdefX")
+  // })
+  //
+  // it("renders highlight ranges in the backdrop", () => {
+  //   const matches: MatchedRange[] = [{ start: 0, end: 5 }]
+  //   renderWithLocale(
+  //     <WritingArea value="hello world" onChange={() => {}} matches={matches} />,
+  //   )
+  //   const marks = document.querySelectorAll("mark")
+  //   expect(marks.length).toBe(1)
+  //   expect(marks[0]?.textContent).toBe("hello")
+  // })
 })

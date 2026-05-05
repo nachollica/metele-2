@@ -20,6 +20,13 @@ export type GameSettings = {
   requiredWordUseTimerSeconds: number
   /** Play a bell sound when a new required word appears. */
   bellEnabled: boolean
+  /** Whether to draw required words from a custom pool generated from
+   *  user-supplied categories (via the backend `/words/related` endpoint).
+   *  When false, the game uses the hardcoded per-locale pool. */
+  categoryWordsEnabled: boolean
+  /** Raw, comma-separated category/seed words the user typed
+   *  (e.g. "kitchen, food, restaurants"). Parsed at game start. */
+  categoryWordsInput: string
 }
 
 export type EndReason = "idle" | "global" | "unused-word" | "manual"
@@ -49,6 +56,8 @@ export const DEFAULT_SETTINGS: GameSettings = {
   requiredWordUseTimerEnabled: true,
   requiredWordUseTimerSeconds: 25,
   bellEnabled: true,
+  categoryWordsEnabled: false,
+  categoryWordsInput: "",
 }
 
 // ---------------------------------------------------------------------------

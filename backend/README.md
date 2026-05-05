@@ -1,7 +1,8 @@
 # METELE backend
 
-FastAPI service that handles user auth (Google / Instagram / Facebook OAuth).
-Pairs with the Next.js frontend at the project root.
+FastAPI service that handles user auth (Google / Instagram / Facebook OAuth)
+and a small WordNet-backed helper for the game's word pool. Pairs with the
+Next.js frontend at the project root.
 
 ## Quickstart
 
@@ -36,9 +37,25 @@ return 503 — the mock variants always work.
 | `GET /auth/{provider}/callback` | Exchanges the auth code, mints a session JWT, redirects to `return_to#token=...&user=...`. |
 | `GET /auth/me` | Returns the current user — `Authorization: Bearer <jwt>`. |
 | `POST /auth/logout` | No-op for stateless JWTs (token wipe is client-side). 204. |
+| `POST /words/related` | Expands "category" words into related words via WordNet hyponyms (EN/ES). |
 | `GET /health` | Liveness probe. |
 
 `{provider}` ∈ `google`, `instagram`, `facebook`.
+
+### `POST /words/related`
+
+Body: `{ "words": ["animal"], "language": "en", "depth": 2, "limit": 100 }`.
+
+`language` is optional. Resolution order:
+
+1. Explicit `language` field in the body.
+2. `Accept-Language` header (q-values respected, first supported tag wins).
+3. Otherwise → **400**. The server never silently defaults to English.
+
+Supported languages: `en`, `es`. Backed by [NLTK WordNet](https://www.nltk.org/howto/wordnet.html)
+plus the Open Multilingual WordNet for Spanish lemmas. The first request
+bootstraps the corpora into NLTK's data dir; subsequent calls are local
+lookups.
 
 ## Tests
 

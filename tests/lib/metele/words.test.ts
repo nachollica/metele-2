@@ -17,6 +17,20 @@ describe("normalizeForMatch", () => {
   it("is idempotent on plain ASCII", () => {
     expect(normalizeForMatch("hello")).toBe("hello")
   })
+
+  it("folds cedilla letters (ç → c)", () => {
+    expect(normalizeForMatch("façade")).toBe("facade")
+    expect(normalizeForMatch("Garçon")).toBe("garcon")
+  })
+
+  it("folds stroked / ligature / sharp letters that don't decompose", () => {
+    expect(normalizeForMatch("łaska")).toBe("laska")
+    expect(normalizeForMatch("Straße")).toBe("strasse")
+    expect(normalizeForMatch("Ørsted")).toBe("orsted")
+    expect(normalizeForMatch("œuvre")).toBe("oeuvre")
+    expect(normalizeForMatch("Ægir")).toBe("aegir")
+    expect(normalizeForMatch("Þórr")).toBe("thorr")
+  })
 })
 
 describe("matchesWord", () => {

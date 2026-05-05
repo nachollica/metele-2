@@ -23,7 +23,7 @@ export const en = {
       },
       requiredWords: {
         title: "Required words",
-        body: "Words pop up that you must work into your story before time runs out.",
+        body: "Words pop up during your story. Use them to score, or let them fade after a few seconds. Enable the deadline rule to make unused words end your session.",
       },
       noMistakes: {
         title: "Don't worry about mistakes",
@@ -51,9 +51,16 @@ export const en = {
       "Average time between new required words. Actual intervals are randomized around this value.",
     requiredWordUseTimerLabel: "Time to use the required word",
     requiredWordUseTimerHelp:
-      "If the latest required word isn't used within this time, the session ends.",
+      "When enabled: if you don't use the word in time, the session ends. When disabled: words appear for a few seconds and quietly disappear without penalty.",
     requiredWordUseTimerEnable: "Enforce required-word deadline",
     bellLabel: "Play a bell when a new required word appears",
+    categoryWordsLabel: "Custom word categories",
+    categoryWordsHelp:
+      "Comma-separated seed words (e.g. \"kitchen, food, restaurants\"). Required words will be drawn from a pool of related words.",
+    categoryWordsEnable: "Use custom word categories",
+    categoryWordsPlaceholder: "kitchen, food, restaurants",
+    categoryWordsLoading: "Loading category words…",
+    categoryWordsError: "Couldn't fetch category words. Falling back to default pool.",
     secondsSuffix: "s",
     minutesSuffix: "m",
     start: "Start writing",

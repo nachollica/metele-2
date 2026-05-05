@@ -22,7 +22,7 @@ export const es = {
       },
       requiredWords: {
         title: "Palabras requeridas",
-        body: "Aparecen palabras que debes incluir en tu historia antes de que se agote el tiempo.",
+        body: "Aparecen palabras durante tu historia. Úsalas para sumar, o déjalas desaparecer tras unos segundos. Activa el límite de tiempo para que sea obligatorio usarlas.",
       },
       noMistakes: {
         title: "No te preocupes por los errores",
@@ -50,9 +50,16 @@ export const es = {
       "Tiempo promedio entre nuevas palabras requeridas. Los intervalos reales se distribuyen aleatoriamente alrededor de este valor.",
     requiredWordUseTimerLabel: "Tiempo para usar la palabra requerida",
     requiredWordUseTimerHelp:
-      "Si no usas la última palabra requerida a tiempo, la sesión termina.",
+      "Activado: si no usas la palabra a tiempo, la sesión termina. Desactivado: las palabras aparecen durante algunos segundos y desaparecen sin penalización.",
     requiredWordUseTimerEnable: "Imponer límite de tiempo para la palabra",
     bellLabel: "Reproducir un campanillazo cuando aparece una nueva palabra",
+    categoryWordsLabel: "Categorías de palabras personalizadas",
+    categoryWordsHelp:
+      "Palabras semilla separadas por comas (p. ej. \"cocina, comida, restaurantes\"). Las palabras requeridas se elegirán de un grupo de palabras relacionadas.",
+    categoryWordsEnable: "Usar categorías personalizadas",
+    categoryWordsPlaceholder: "cocina, comida, restaurantes",
+    categoryWordsLoading: "Cargando palabras de la categoría…",
+    categoryWordsError: "No se pudieron obtener palabras. Usando el grupo por defecto.",
     secondsSuffix: "s",
     minutesSuffix: "m",
     start: "Empezar a escribir",

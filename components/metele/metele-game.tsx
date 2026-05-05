@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react"
+import { Loader2 } from "lucide-react"
 
 import { GameHud } from "./game-hud"
 import { ResultsModal } from "./results-modal"
@@ -9,7 +10,8 @@ import { WelcomeModal } from "./welcome-modal"
 import { WritingArea } from "./writing-area"
 
 import { pickRequiredWord, matchesWord, normalizeForMatch } from "@/lib/metele/words"
-import { useLocale } from "@/lib/i18n"
+import { fetchRelatedWords, parseCategoriesInput } from "@/lib/metele/words-api"
+import { useLocale, useTranslations } from "@/lib/i18n"
 import { playBell, primeAudio } from "@/lib/metele/sound"
 import { randomIntervalMs } from "@/lib/metele/random"
 import {
@@ -20,7 +22,12 @@ import {
   type MatchedRange,
 } from "@/lib/metele/types"
 
-type GameState = "welcome" | "settings" | "playing" | "ended"
+type GameState = "welcome" | "settings" | "loading" | "playing" | "ended"
+
+// Max time we'll block the user on the categories backend call. After this
+// the game starts with the hardcoded fallback pool while the request (if it
+// ever resolves) is silently discarded.
+const CATEGORIES_FETCH_TIMEOUT_MS = 2500
 
 const WELCOME_STORAGE_KEY = "metele.welcome.dismissed"
 
@@ -34,8 +41,14 @@ const WORD_DELIMITERS = /[\s.,;:!?'"()[\]{}\-—–…/\\]/
 // they remain accurate even if the tab is throttled.
 const UI_TICK_MS = 100
 
+// When the "use word in N seconds" deadline is disabled, required words still
+// disappear automatically after this many seconds (whether or not the player
+// used them). No game-over is triggered.
+const WORD_AUTO_DISMISS_MS = 7_000
+
 export function MeteleGame() {
   const locale = useLocale()
+  const t = useTranslations()
 
   // ---- High-level game state ---------------------------------------------
   const [gameState, setGameState] = useState<GameState>("welcome")
@@ -90,6 +103,11 @@ export function MeteleGame() {
   // captured at start time and stay correct across replays.
   const settingsRef = useRef<GameSettings>(DEFAULT_SETTINGS)
 
+  // Active custom word pool fetched from the backend at game start. Null
+  // means "use the hardcoded per-locale pool" (categories disabled, no input,
+  // or backend call failed).
+  const customPoolRef = useRef<readonly string[] | null>(null)
+
   // Independent timers for game-ending events.
   const idleTimeoutRef = useRef<number | null>(null)
   const globalTimeoutRef = useRef<number | null>(null)
@@ -99,6 +117,9 @@ export function MeteleGame() {
   const wordSpawnTimeoutRef = useRef<number | null>(null)
   const wordUseTimeoutRef = useRef<number | null>(null)
   const uiTickRef = useRef<number | null>(null)
+  // Stable ref to armSpawnTimer so the auto-dismiss timeout can schedule the
+  // next spawn without creating a circular useCallback dep.
+  const armSpawnTimerRef = useRef<() => void>(() => {})
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
 
@@ -163,13 +184,20 @@ export function MeteleGame() {
   )
 
   // ---- Required word lifecycle ------------------------------------------
-  // Spawning ONLY happens via this function. It selects a new word, arms the
-  // "use it in time" deadline, and intentionally does NOT schedule the next
-  // spawn — that is the responsibility of `armSpawnTimer`, which is invoked
-  // when the active word is consumed by the player.
+  // Spawning ONLY happens via this function. It selects a new word and arms
+  // the word-lifecycle timer:
+  //   - With deadline: timer ends the game ("unused-word") if the word isn't
+  //     typed in time. The next spawn is scheduled by `armSpawnTimer`, which
+  //     is called from `checkLatestWord` when the player matches.
+  //   - Without deadline: timer silently dismisses the word after
+  //     WORD_AUTO_DISMISS_MS and arms the next spawn directly.
   const spawnRequiredWord = useCallback(() => {
     const currentSettings = settingsRef.current
-    const next = pickRequiredWord(locale, usedWordsRef.current)
+    const next = pickRequiredWord(
+      locale,
+      usedWordsRef.current,
+      customPoolRef.current ?? undefined,
+    )
     setCurrentRequiredWord(next)
     // Mirror into the ref synchronously so input handlers running before
     // the next render still see the active word.
@@ -180,18 +208,29 @@ export function MeteleGame() {
       playBell()
     }
 
-    // (Re)arm the "must use word in time" timer if enabled.
+    // (Re)arm the word lifecycle timer.
     if (wordUseTimeoutRef.current !== null) {
       window.clearTimeout(wordUseTimeoutRef.current)
       wordUseTimeoutRef.current = null
     }
     if (currentSettings.requiredWordUseTimerEnabled) {
+      // Deadline mode: game over if word not used in time.
       wordUseTimeoutRef.current = window.setTimeout(() => {
-        // If the word is still active when this fires, the player ran out.
         if (currentWordRef.current !== null) {
           endGame("unused-word")
         }
       }, currentSettings.requiredWordUseTimerSeconds * 1000)
+    } else {
+      // No-deadline mode: word quietly disappears after WORD_AUTO_DISMISS_MS,
+      // then `armSpawnTimer` schedules the next word.
+      wordUseTimeoutRef.current = window.setTimeout(() => {
+        if (currentWordRef.current === null) return
+        setCurrentRequiredWord(null)
+        currentWordRef.current = null
+        wordSpawnedAtRef.current = null
+        wordUseTimeoutRef.current = null
+        armSpawnTimerRef.current()
+      }, WORD_AUTO_DISMISS_MS)
     }
   }, [endGame, locale])
 
@@ -215,6 +254,12 @@ export function MeteleGame() {
     }, intervalMs)
   }, [spawnRequiredWord])
 
+  // Keep the ref pointing at the latest armSpawnTimer so the auto-dismiss
+  // timeout in `spawnRequiredWord` can call it without a circular dep.
+  useEffect(() => {
+    armSpawnTimerRef.current = armSpawnTimer
+  }, [armSpawnTimer])
+
   // ---- Idle timeout ------------------------------------------------------
   const armIdleTimeout = useCallback(() => {
     if (idleTimeoutRef.current !== null) {
@@ -226,8 +271,10 @@ export function MeteleGame() {
   }, [endGame])
 
   // ---- Start / restart ---------------------------------------------------
-  const startGame = useCallback(
-    (newSettings: GameSettings) => {
+  // Actually transition into the playing state with the (possibly null)
+  // custom pool already resolved. Pure: no async work happens here.
+  const beginPlaying = useCallback(
+    (newSettings: GameSettings, pool: readonly string[] | null) => {
       // Reset all in-game state.
       setSettings(newSettings)
       settingsRef.current = newSettings
@@ -238,6 +285,7 @@ export function MeteleGame() {
       textRef.current = ""
       currentWordRef.current = null
       usedWordsRef.current = new Set()
+      customPoolRef.current = pool && pool.length > 0 ? pool : null
 
       // Timers stay disarmed until the first real input — see `armTimers`.
       startedAtRef.current = 0
@@ -258,6 +306,45 @@ export function MeteleGame() {
       window.setTimeout(() => textareaRef.current?.focus(), 0)
     },
     [clearAllTimers],
+  )
+
+  // Entry point invoked by the SettingsModal's "Start writing" button.
+  // If the user opted into custom categories, show a spinner while we fetch
+  // the related-words pool, racing the request against
+  // CATEGORIES_FETCH_TIMEOUT_MS. Whichever finishes first wins; on timeout
+  // or any failure we start with the hardcoded fallback pool. The backend
+  // is purely opportunistic — the static frontend works without it.
+  const startGame = useCallback(
+    (newSettings: GameSettings) => {
+      const seeds =
+        newSettings.requiredWordIntervalEnabled &&
+        newSettings.categoryWordsEnabled
+          ? parseCategoriesInput(newSettings.categoryWordsInput)
+          : []
+
+      if (seeds.length === 0) {
+        beginPlaying(newSettings, null)
+        return
+      }
+
+      setGameState("loading")
+
+      let resolved = false
+      const timeout = new Promise<null>((resolve) =>
+        window.setTimeout(() => resolve(null), CATEGORIES_FETCH_TIMEOUT_MS),
+      )
+      Promise.race([fetchRelatedWords(seeds, locale), timeout]).then((pool) => {
+        if (resolved) return
+        resolved = true
+        if (pool === null) {
+          console.log(
+            "[metele] no custom word pool (timeout or backend unreachable); using hardcoded pool",
+          )
+        }
+        beginPlaying(newSettings, pool)
+      })
+    },
+    [beginPlaying, locale],
   )
 
   // Start all timers. Called on first real text modification after `startGame`.
@@ -413,7 +500,20 @@ export function MeteleGame() {
         onPlayAgain={() => setGameState("settings")}
       />
 
-      {gameState !== "settings" ? (
+      {gameState === "loading" ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="flex h-dvh flex-col items-center justify-center gap-4"
+        >
+          <Loader2 className="text-primary size-10 animate-spin" aria-hidden />
+          <span className="text-muted-foreground text-sm">
+            {t.settings.categoryWordsLoading}
+          </span>
+        </div>
+      ) : null}
+
+      {gameState === "playing" || gameState === "ended" ? (
         <main className="mx-auto flex h-dvh max-w-5xl flex-col gap-4 p-4 sm:p-6">
           <GameHud
             idleSecondsLeft={idleSecondsLeft}
