@@ -19,6 +19,7 @@ import { Separator } from "@/components/ui/separator"
 
 import { cn } from "@/lib/utils"
 import { useTranslations } from "@/lib/i18n"
+import { AuthButton } from "@/components/auth/auth-button"
 import { formatSeconds } from "@/lib/metele/format"
 import {
   DEFAULT_SETTINGS,
@@ -80,8 +81,13 @@ export function SettingsModal({ open, initial = DEFAULT_SETTINGS, onStart }: Pro
         onInteractOutside={(e) => e.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle className="font-serif text-2xl">{t.settings.title}</DialogTitle>
-          <DialogDescription>{t.settings.description}</DialogDescription>
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex flex-col gap-1.5">
+              <DialogTitle className="font-serif text-2xl">{t.settings.title}</DialogTitle>
+              <DialogDescription>{t.settings.description}</DialogDescription>
+            </div>
+            <AuthButton />
+          </div>
         </DialogHeader>
 
         <div className="flex flex-col gap-6">

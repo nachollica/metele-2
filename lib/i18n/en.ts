@@ -118,6 +118,32 @@ export const en = {
     seconds: "s",
     minutes: "m",
   },
+
+  auth: {
+    signedOut: "Sign in",
+    signedIn: "Account",
+    logIn: "Log in",
+    logOut: "Log out",
+    signUp: "Create account",
+    title: "Sign in to METELE",
+    description:
+      "You can play without an account. Sign in to unlock saved stories and leaderboards (coming soon).",
+    continueWith: "Continue with {provider}",
+    google: "Google",
+    instagram: "Instagram",
+    facebook: "Facebook",
+    or: "or",
+    tryMock: "Try mock account (dev)",
+    cancel: "Maybe later",
+    finishingSignIn: "Finishing sign-in…",
+    signInFailed: "Sign-in failed.",
+    signInFailedRetry: "Try again",
+    backToGame: "Back to the game",
+    welcomeBack: "Welcome back, {name}",
+    accountMenuLabel: "Account menu",
+    profileEmail: "Email",
+    profileProvider: "Signed in with {provider}",
+  },
 } as const
 
 // Widen literal types from `as const` so other locales (es, future ones)

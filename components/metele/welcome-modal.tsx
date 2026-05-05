@@ -43,8 +43,10 @@ export function WelcomeModal({ open, onContinue }: Props) {
         onInteractOutside={(e) => e.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle className="font-serif text-2xl">{t.welcome.title}</DialogTitle>
-          <DialogDescription>{t.welcome.description}</DialogDescription>
+          <div className="flex flex-col gap-1.5">
+            <DialogTitle className="font-serif text-2xl">{t.welcome.title}</DialogTitle>
+            <DialogDescription>{t.welcome.description}</DialogDescription>
+          </div>
         </DialogHeader>
 
         <ul className="flex flex-col gap-4">

@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useTranslations } from "@/lib/i18n"
 import { formatSeconds } from "@/lib/metele/format"
+import { AuthButton } from "@/components/auth/auth-button"
 import { RequiredWordPanel } from "./required-word-panel"
 
 type Props = {
@@ -116,6 +117,7 @@ export function GameHud({
             <X className="size-4" aria-hidden />
             {t.game.pause}
           </Button>
+          <AuthButton />
         </div>
       </div>
 
