@@ -54,6 +54,10 @@ export function MeteleGame() {
   const [gameState, setGameState] = useState<GameState>("welcome")
   const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS)
   const [result, setResult] = useState<GameResult | null>(null)
+  // Visibility of the post-session stats modal. Independent from `gameState`
+  // because the player can dismiss the modal and remain in the "ended" state
+  // with an editable read-only-of-rules game area.
+  const [resultsModalOpen, setResultsModalOpen] = useState(false)
   // Whether timers are actually running. Stays false from `startGame` until the
   // first real text modification, so the player isn't penalized for the time
   // between clicking Start and beginning to type.
@@ -170,7 +174,11 @@ export function MeteleGame() {
       const wordCount = trimmed.length === 0 ? 0 : trimmed.split(/\s+/).length
 
       clearAllTimers()
+      // Freeze the HUD's `now` reference so all derived countdowns reflect the
+      // moment of game-over and stay there for the post-session edit screen.
+      setNow(Date.now())
       setGameState("ended")
+      setResultsModalOpen(true)
       setResult({
         reason,
         durationMs,
@@ -182,6 +190,18 @@ export function MeteleGame() {
     },
     [clearAllTimers],
   )
+
+  // Close the post-session stats modal. The player remains in the "ended"
+  // state with an editable text area but no timers/required words.
+  const closeResultsModal = useCallback(() => {
+    setResultsModalOpen(false)
+  }, [])
+
+  // Return to the settings screen to start a new session.
+  const startAgain = useCallback(() => {
+    setResultsModalOpen(false)
+    setGameState("settings")
+  }, [])
 
   // ---- Required word lifecycle ------------------------------------------
   // Spawning ONLY happens via this function. It selects a new word and arms
@@ -434,14 +454,21 @@ export function MeteleGame() {
   // ---- Input handler -----------------------------------------------------
   const handleChange = useCallback(
     (e: ChangeEvent<HTMLTextAreaElement>) => {
-      if (gameState !== "playing") return
       const next = e.target.value
-
-      // First real text modification arms the timers. Same condition as the
-      // visible-text mutation check below, so non-text keypresses (Ctrl, Alt,
-      // arrow keys, etc.) don't kick the timers off.
       if (next === textRef.current) return
 
+      // Post-session edit mode: free-form editing, no timers, no required-word
+      // scanning. The player can correct typos until they hit "Start again".
+      if (gameState === "ended") {
+        setText(next)
+        return
+      }
+
+      if (gameState !== "playing") return
+
+      // First real text modification arms the timers. Same condition as the
+      // visible-text mutation check above, so non-text keypresses (Ctrl, Alt,
+      // arrow keys, etc.) don't kick the timers off.
       if (!armed) {
         armTimers()
       } else {
@@ -462,15 +489,22 @@ export function MeteleGame() {
   )
 
   // ---- Computed countdown values for HUD --------------------------------
+  // While "playing" these tick along with the UI interval. While "ended" `now`
+  // is frozen at game-over time so the bars stay where they were when the
+  // session finished.
   const idleSecondsLeft = useMemo(() => {
-    if (gameState !== "playing" || !armed) return settings.mainTimerSeconds
+    if ((gameState !== "playing" && gameState !== "ended") || !armed) {
+      return settings.mainTimerSeconds
+    }
     const elapsed = (now - lastInputAtRef.current) / 1000
     return Math.max(0, settings.mainTimerSeconds - elapsed)
   }, [armed, gameState, now, settings.mainTimerSeconds])
 
   const globalSecondsLeft = useMemo(() => {
     if (!settings.globalTimerEnabled) return null
-    if (gameState !== "playing" || !armed) return settings.globalTimerSeconds
+    if ((gameState !== "playing" && gameState !== "ended") || !armed) {
+      return settings.globalTimerSeconds
+    }
     const elapsed = (now - startedAtRef.current) / 1000
     return Math.max(0, settings.globalTimerSeconds - elapsed)
   }, [armed, gameState, now, settings.globalTimerEnabled, settings.globalTimerSeconds])
@@ -495,9 +529,9 @@ export function MeteleGame() {
       <SettingsModal open={gameState === "settings"} initial={settings} onStart={startGame} />
 
       <ResultsModal
-        open={gameState === "ended"}
+        open={gameState === "ended" && resultsModalOpen}
         result={result}
-        onPlayAgain={() => setGameState("settings")}
+        onClose={closeResultsModal}
       />
 
       {gameState === "loading" ? (
@@ -521,7 +555,9 @@ export function MeteleGame() {
             globalSecondsLeft={globalSecondsLeft}
             globalSecondsTotal={settings.globalTimerSeconds}
             characters={text.length}
+            paused={gameState === "ended"}
             onGiveUp={() => endGame("manual")}
+            onStartAgain={startAgain}
             requiredWordsEnabled={settings.requiredWordIntervalEnabled}
             requiredWord={currentRequiredWord}
             useWordIn={useWordIn !== null ? Math.ceil(useWordIn) : null}
@@ -539,7 +575,6 @@ export function MeteleGame() {
               value={text}
               onChange={handleChange}
               matches={matches}
-              disabled={gameState !== "playing"}
             />
           </div>
         </main>

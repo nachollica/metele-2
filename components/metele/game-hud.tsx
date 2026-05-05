@@ -1,6 +1,6 @@
 "use client"
 
-import { Timer, Clock, Type, X } from "lucide-react"
+import { Timer, Clock, Type, X, RotateCcw } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -20,8 +20,12 @@ type Props = {
   globalSecondsTotal: number
   /** Live character count of the story. */
   characters: number
-  /** Cancel the session. */
+  /** True when the session has ended and the player is in post-session edit mode. */
+  paused: boolean
+  /** Cancel the active session. Used while playing. */
   onGiveUp: () => void
+  /** Open the settings screen for a new session. Used while paused. */
+  onStartAgain: () => void
   /** Master toggle: false hides the required-word panel entirely. */
   requiredWordsEnabled: boolean
   /** Current required word (or null between words). */
@@ -38,7 +42,9 @@ export function GameHud({
   globalSecondsLeft,
   globalSecondsTotal,
   characters,
+  paused,
   onGiveUp,
+  onStartAgain,
   requiredWordsEnabled,
   requiredWord,
   useWordIn,
@@ -69,6 +75,8 @@ export function GameHud({
   // Layout: when required-words mechanic is on, stack timer bars on the left
   // and put the required-word panel on the right. When it's off, fall back to
   // a simpler layout: idle | global side-by-side, or idle full-width.
+  // The panel stays visible in post-session edit mode so the player sees the
+  // session frozen exactly as they left it.
   let body: React.ReactNode
   if (requiredWordsEnabled) {
     body = (
@@ -113,10 +121,17 @@ export function GameHud({
             <span className="text-foreground font-mono tabular-nums">{characters}</span>
             <span className="hidden sm:inline">{t.game.characters}</span>
           </div>
-          <Button variant="outline" size="sm" onClick={onGiveUp}>
-            <X className="size-4" aria-hidden />
-            {t.game.pause}
-          </Button>
+          {paused ? (
+            <Button variant="outline" size="sm" onClick={onStartAgain}>
+              <RotateCcw className="size-4" aria-hidden />
+              {t.game.startAgain}
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" onClick={onGiveUp}>
+              <X className="size-4" aria-hidden />
+              {t.game.pause}
+            </Button>
+          )}
           <AuthButton />
         </div>
       </div>

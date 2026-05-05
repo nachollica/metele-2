@@ -15,7 +15,9 @@ const baseProps: Props = {
   globalSecondsLeft: 60,
   globalSecondsTotal: 60,
   characters: 0,
+  paused: false,
   onGiveUp: () => {},
+  onStartAgain: () => {},
   requiredWordsEnabled: true,
   requiredWord: null,
   useWordIn: null,
@@ -56,5 +58,19 @@ describe("GameHud", () => {
     const user = userEvent.setup()
     await user.click(screen.getByRole("button", { name: /give up/i }))
     expect(onGiveUp).toHaveBeenCalledOnce()
+  })
+
+  it("swaps the give-up button for a start-again button when paused", async () => {
+    const onStartAgain = vi.fn()
+    renderHud({ paused: true, onStartAgain })
+    expect(screen.queryByRole("button", { name: /give up/i })).not.toBeInTheDocument()
+    const user = userEvent.setup()
+    await user.click(screen.getByRole("button", { name: /start again/i }))
+    expect(onStartAgain).toHaveBeenCalledOnce()
+  })
+
+  it("keeps the required-word panel and the active word visible when paused", () => {
+    renderHud({ paused: true, requiredWord: "ghost" })
+    expect(screen.getByText("ghost")).toBeInTheDocument()
   })
 })

@@ -9,58 +9,57 @@ export const en = {
 
   welcome: {
     title: "Welcome to METELE",
-    description: "A few quick rules before you start writing.",
+    description: "Quick rules before you start.",
     dontShowAgain: "Don't show this again",
     start: "Got it",
     items: {
       pickVelocity: {
         title: "Pick your velocity",
-        body: "Choose a preset or fine-tune the timers in the next screen to match your mood.",
+        body: "Pick a preset or tune the timers on the next screen.",
       },
       createStory: {
-        title: "Create your story",
-        body: "Type non-stop in the main area. Stay idle too long and the session ends.",
+        title: "Write non-stop",
+        body: "Keep typing in the main area. Stay idle too long and the session ends.",
       },
       requiredWords: {
         title: "Required words",
-        body: "Words pop up during your story. Use them to score, or let them fade after a few seconds. Enable the deadline rule to make unused words end your session.",
+        body: "Words pop up while you write. Use them or let them fade. Enable the deadline rule to penalize unused words.",
       },
       noMistakes: {
-        title: "Don't worry about mistakes",
-        body: "You can't delete what you wrote. Fix typos at the end — keep moving forward.",
+        title: "Don't stop for typos",
+        body: "Push forward while the session runs. Polish the story afterward.",
       },
       shareSave: {
-        title: "Share or save for later",
-        body: "When the run ends you can copy your story, share it, or save it to keep editing.",
+        title: "Review and refine",
+        body: "When the session ends you see your stats, then return to the story to edit or copy it.",
       },
     },
   },
 
   settings: {
     title: "Session settings",
-    description: "Pick a preset or fine-tune the rules below.",
+    description: "Pick a preset or tweak below.",
     presetsLabel: "Quick presets",
     mainTimerLabel: "Idle timeout",
-    mainTimerHelp: "Seconds with no keystrokes before the session ends.",
+    mainTimerHelp: "Seconds idle before the session ends.",
     globalTimerLabel: "Session length",
-    globalTimerHelp: "Total session duration. Disable for an open-ended run.",
+    globalTimerHelp: "Total session length. Disable for open-ended.",
     globalTimerEnable: "Limit session length",
     requiredWordIntervalEnable: "Enable required words",
     requiredWordIntervalLabel: "New required word every",
-    requiredWordIntervalHelp:
-      "Average time between new required words. Actual intervals are randomized around this value.",
+    requiredWordIntervalHelp: "Average gap between new words; randomized.",
     requiredWordUseTimerLabel: "Time to use the required word",
     requiredWordUseTimerHelp:
-      "When enabled: if you don't use the word in time, the session ends. When disabled: words appear for a few seconds and quietly disappear without penalty.",
+      "On: unused words end the session. Off: words fade after a few seconds.",
     requiredWordUseTimerEnable: "Enforce required-word deadline",
-    bellLabel: "Play a bell when a new required word appears",
+    bellLabel: "Bell when a new required word appears",
     categoryWordsLabel: "Custom word categories",
     categoryWordsHelp:
-      "Comma-separated seed words (e.g. \"kitchen, food, restaurants\"). Required words will be drawn from a pool of related words.",
+      "Comma-separated seed words. Required words drawn from a related pool.",
     categoryWordsEnable: "Use custom word categories",
     categoryWordsPlaceholder: "kitchen, food, restaurants",
     categoryWordsLoading: "Loading category words…",
-    categoryWordsError: "Couldn't fetch category words. Falling back to default pool.",
+    categoryWordsError: "Couldn't fetch category words. Using default pool.",
     secondsSuffix: "s",
     minutesSuffix: "m",
     start: "Start writing",
@@ -102,6 +101,7 @@ export const en = {
     characters: "characters",
     placeholder: "Begin your story. Don't stop typing…",
     pause: "Give up",
+    startAgain: "Start again",
   },
 
   results: {
@@ -114,11 +114,7 @@ export const en = {
     characters: "Characters written",
     words: "Words",
     requiredWordsUsed: "Required words used",
-    yourStory: "Your story",
-    playAgain: "Play again",
-    copyStory: "Copy story",
-    copied: "Copied!",
-    editHint: "You can fix typos here. Misspellings are underlined by your browser.",
+    close: "Continue editing",
   },
 
   units: {

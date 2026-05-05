@@ -1,6 +1,6 @@
 import { screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 
 import { ResultsModal } from "@/components/metele/results-modal"
 import type { GameResult } from "@/lib/metele/types"
@@ -17,21 +17,13 @@ const baseResult: GameResult = {
 }
 
 describe("ResultsModal", () => {
-  afterEach(() => {
-    vi.restoreAllMocks()
-  })
-
   it("renders nothing when closed", () => {
-    renderWithLocale(
-      <ResultsModal open={false} result={baseResult} onPlayAgain={() => {}} />,
-    )
+    renderWithLocale(<ResultsModal open={false} result={baseResult} onClose={() => {}} />)
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
   })
 
   it("displays computed stats and the per-reason description", () => {
-    renderWithLocale(
-      <ResultsModal open result={baseResult} onPlayAgain={() => {}} />,
-    )
+    renderWithLocale(<ResultsModal open result={baseResult} onClose={() => {}} />)
     expect(screen.getByText("01:05")).toBeInTheDocument()
     expect(screen.getByText("240")).toBeInTheDocument()
     expect(screen.getByText("42")).toBeInTheDocument()
@@ -39,40 +31,17 @@ describe("ResultsModal", () => {
     expect(screen.getByText(/stopped typing/i)).toBeInTheDocument()
   })
 
-  it("seeds the editable textarea with the captured story and lets the user edit it", async () => {
-    renderWithLocale(
-      <ResultsModal open result={baseResult} onPlayAgain={() => {}} />,
-    )
-    const textarea = screen.getByRole("textbox") as HTMLTextAreaElement
-    expect(textarea.value).toBe(baseResult.text)
-    const user = userEvent.setup()
-    await user.type(textarea, " The end.")
-    expect(textarea.value).toBe(`${baseResult.text} The end.`)
+  it("does not render the story text or an editable textarea", () => {
+    renderWithLocale(<ResultsModal open result={baseResult} onClose={() => {}} />)
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument()
+    expect(screen.queryByText(baseResult.text)).not.toBeInTheDocument()
   })
 
-  it("copies the captured story to the clipboard and shows the 'Copied' feedback", async () => {
-    // user-event v14 installs its own navigator.clipboard stub. We read back
-    // from that stub to verify the component called clipboard.writeText with
-    // the right payload.
+  it("calls onClose when the close button is clicked", async () => {
+    const onClose = vi.fn()
+    renderWithLocale(<ResultsModal open result={baseResult} onClose={onClose} />)
     const user = userEvent.setup()
-    renderWithLocale(
-      <ResultsModal open result={baseResult} onPlayAgain={() => {}} />,
-    )
-
-    await user.click(screen.getByRole("button", { name: /copy story/i }))
-
-    expect(await screen.findByText(/copied/i)).toBeInTheDocument()
-    const copied = await navigator.clipboard.readText()
-    expect(copied).toBe(baseResult.text)
-  })
-
-  it("calls onPlayAgain when the Play again button is clicked", async () => {
-    const onPlayAgain = vi.fn()
-    renderWithLocale(
-      <ResultsModal open result={baseResult} onPlayAgain={onPlayAgain} />,
-    )
-    const user = userEvent.setup()
-    await user.click(screen.getByRole("button", { name: /play again/i }))
-    expect(onPlayAgain).toHaveBeenCalledOnce()
+    await user.click(screen.getByRole("button", { name: /continue editing/i }))
+    expect(onClose).toHaveBeenCalledOnce()
   })
 })

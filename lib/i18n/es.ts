@@ -8,54 +8,53 @@ export const es = {
 
   welcome: {
     title: "Bienvenido a METELE",
-    description: "Unas reglas rápidas antes de empezar.",
+    description: "Reglas rápidas antes de empezar.",
     dontShowAgain: "No mostrar de nuevo",
     start: "Entendido",
     items: {
       pickVelocity: {
         title: "Elige tu velocidad",
-        body: "Selecciona un preset o ajusta los temporizadores en la siguiente pantalla.",
+        body: "Elige un preset o ajusta los temporizadores en la próxima pantalla.",
       },
       createStory: {
-        title: "Crea tu historia",
-        body: "Escribe sin parar en el área principal. Si te quedas inactivo demasiado, se acaba.",
+        title: "Escribe sin parar",
+        body: "Sigue escribiendo en el área principal. Si te quedas inactivo demasiado, se acaba.",
       },
       requiredWords: {
         title: "Palabras requeridas",
-        body: "Aparecen palabras durante tu historia. Úsalas para sumar, o déjalas desaparecer tras unos segundos. Activa el límite de tiempo para que sea obligatorio usarlas.",
+        body: "Aparecen palabras mientras escribes. Úsalas o déjalas desaparecer. Activa el plazo para penalizar las no usadas.",
       },
       noMistakes: {
-        title: "No te preocupes por los errores",
-        body: "No puedes borrar lo escrito. Corrige las erratas al final — sigue avanzando.",
+        title: "No te frenes por las erratas",
+        body: "Avanza durante la sesión. Al terminar podrás pulir la historia.",
       },
       shareSave: {
-        title: "Comparte o guarda para después",
-        body: "Al terminar puedes copiar tu historia, compartirla o guardarla para seguir editando.",
+        title: "Revisa y pule",
+        body: "Al terminar verás tus estadísticas; después vuelves a la historia para editarla o copiarla.",
       },
     },
   },
 
   settings: {
     title: "Configuración de sesión",
-    description: "Elige un ajuste rápido o personaliza las reglas.",
+    description: "Elige un preset o ajusta abajo.",
     presetsLabel: "Ajustes rápidos",
     mainTimerLabel: "Tiempo de inactividad",
-    mainTimerHelp: "Segundos sin pulsaciones de tecla antes de que termine la sesión.",
+    mainTimerHelp: "Segundos inactivo antes de terminar.",
     globalTimerLabel: "Duración de la sesión",
-    globalTimerHelp: "Duración total de la sesión. Desactívalo para una sesión sin límite.",
+    globalTimerHelp: "Duración total. Desactiva para sesión sin límite.",
     globalTimerEnable: "Limitar duración de sesión",
     requiredWordIntervalEnable: "Activar palabras requeridas",
     requiredWordIntervalLabel: "Nueva palabra requerida cada",
-    requiredWordIntervalHelp:
-      "Tiempo promedio entre nuevas palabras requeridas. Los intervalos reales se distribuyen aleatoriamente alrededor de este valor.",
+    requiredWordIntervalHelp: "Intervalo promedio entre palabras; aleatorio.",
     requiredWordUseTimerLabel: "Tiempo para usar la palabra requerida",
     requiredWordUseTimerHelp:
-      "Activado: si no usas la palabra a tiempo, la sesión termina. Desactivado: las palabras aparecen durante algunos segundos y desaparecen sin penalización.",
+      "Activado: las palabras no usadas terminan la sesión. Desactivado: desaparecen tras unos segundos.",
     requiredWordUseTimerEnable: "Imponer límite de tiempo para la palabra",
-    bellLabel: "Reproducir un campanillazo cuando aparece una nueva palabra",
+    bellLabel: "Campanillazo al aparecer una nueva palabra",
     categoryWordsLabel: "Categorías de palabras personalizadas",
     categoryWordsHelp:
-      "Palabras semilla separadas por comas (p. ej. \"cocina, comida, restaurantes\"). Las palabras requeridas se elegirán de un grupo de palabras relacionadas.",
+      "Palabras semilla separadas por comas. Las requeridas vendrán de un grupo relacionado.",
     categoryWordsEnable: "Usar categorías personalizadas",
     categoryWordsPlaceholder: "cocina, comida, restaurantes",
     categoryWordsLoading: "Cargando palabras de la categoría…",
@@ -101,6 +100,7 @@ export const es = {
     characters: "caracteres",
     placeholder: "Empieza tu historia. No dejes de escribir…",
     pause: "Abandonar",
+    startAgain: "Empezar de nuevo",
   },
 
   results: {
@@ -113,11 +113,7 @@ export const es = {
     characters: "Caracteres escritos",
     words: "Palabras",
     requiredWordsUsed: "Palabras requeridas usadas",
-    yourStory: "Tu historia",
-    playAgain: "Volver a jugar",
-    copyStory: "Copiar historia",
-    copied: "¡Copiado!",
-    editHint: "Puedes corregir erratas aquí. El navegador subraya las faltas.",
+    close: "Seguir editando",
   },
 
   units: {
