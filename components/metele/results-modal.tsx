@@ -1,8 +1,5 @@
 "use client"
 
-import { useState } from "react"
-import { Copy, RotateCcw, Check } from "lucide-react"
-
 import {
   Dialog,
   DialogContent,
@@ -12,19 +9,18 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
 
-import { cn } from "@/lib/utils"
 import { useTranslations } from "@/lib/i18n"
+import { formatDurationMs } from "@/lib/metele/format"
 import type { GameResult } from "@/lib/metele/types"
 
 type Props = {
   open: boolean
   result: GameResult | null
-  onPlayAgain: () => void
+  onClose: () => void
 }
 
-export function ResultsModal({ open, result, onPlayAgain }: Props) {
+export function ResultsModal({ open, result, onClose }: Props) {
   const t = useTranslations()
 
   return (
@@ -36,107 +32,29 @@ export function ResultsModal({ open, result, onPlayAgain }: Props) {
         onInteractOutside={(e) => e.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle className="font-serif text-2xl">{t.results.title}</DialogTitle>
+          <DialogTitle className="text-2xl">{t.results.title}</DialogTitle>
           <DialogDescription>
             {result ? reasonText(result.reason, t) : ""}
           </DialogDescription>
         </DialogHeader>
         {result ? (
-          // Re-mount on every new result so the editable buffer resets cleanly
-          // without a useEffect-driven sync.
-          <ResultsBody key={result.durationMs} result={result} onPlayAgain={onPlayAgain} />
+          <>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <Stat label={t.results.duration} value={formatDurationMs(result.durationMs)} />
+              <Stat label={t.results.characters} value={result.characters.toString()} />
+              <Stat label={t.results.words} value={result.words.toString()} />
+              <Stat
+                label={t.results.requiredWordsUsed}
+                value={result.requiredWordsUsed.toString()}
+              />
+            </div>
+            <DialogFooter>
+              <Button onClick={onClose}>{t.results.close}</Button>
+            </DialogFooter>
+          </>
         ) : null}
       </DialogContent>
     </Dialog>
-  )
-}
-
-function ResultsBody({
-  result,
-  onPlayAgain,
-}: {
-  result: GameResult
-  onPlayAgain: () => void
-}) {
-  const t = useTranslations()
-  const [copied, setCopied] = useState(false)
-  const [editedText, setEditedText] = useState(result.text)
-
-  async function handleCopy() {
-    try {
-      if (navigator.clipboard) {
-        await navigator.clipboard.writeText(editedText)
-      } else {
-        // navigator.clipboard unavailable in non-secure contexts (HTTP on non-localhost).
-        // execCommand is deprecated but works as fallback.
-        const el = document.createElement("textarea")
-        el.value = editedText
-        el.style.position = "fixed"
-        el.style.opacity = "0"
-        document.body.appendChild(el)
-        el.focus()
-        el.select()
-        document.execCommand("copy")
-        document.body.removeChild(el)
-      }
-      setCopied(true)
-      window.setTimeout(() => setCopied(false), 1500)
-    } catch {
-      // ignore
-    }
-  }
-
-  return (
-    <>
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <Stat label={t.results.duration} value={formatDuration(result.durationMs)} />
-        <Stat label={t.results.characters} value={result.characters.toString()} />
-        <Stat label={t.results.words} value={result.words.toString()} />
-        <Stat label={t.results.requiredWordsUsed} value={result.requiredWordsUsed.toString()} />
-      </div>
-
-      <Separator />
-
-      <div className="flex flex-col gap-2">
-        <h3 className="text-muted-foreground text-xs font-medium tracking-widest uppercase">
-          {t.results.yourStory}
-        </h3>
-        <textarea
-          value={editedText}
-          onChange={(e) => setEditedText(e.target.value)}
-          spellCheck
-          wrap="soft"
-          aria-label={t.results.yourStory}
-          className={cn(
-            "bg-muted/40 h-48 w-full resize-none rounded-md border p-4",
-            "font-serif text-base leading-relaxed",
-            "whitespace-pre-wrap break-words [overflow-wrap:anywhere]",
-            "focus-visible:ring-ring/40 outline-none focus-visible:ring-2",
-          )}
-        />
-        <p className="text-muted-foreground text-xs">{t.results.editHint}</p>
-      </div>
-
-      <DialogFooter className="gap-2">
-        <Button variant="outline" onClick={handleCopy} disabled={!editedText}>
-          {copied ? (
-            <>
-              <Check className="size-4" aria-hidden />
-              {t.results.copied}
-            </>
-          ) : (
-            <>
-              <Copy className="size-4" aria-hidden />
-              {t.results.copyStory}
-            </>
-          )}
-        </Button>
-        <Button onClick={onPlayAgain}>
-          <RotateCcw className="size-4" aria-hidden />
-          {t.results.playAgain}
-        </Button>
-      </DialogFooter>
-    </>
   )
 }
 
@@ -163,11 +81,4 @@ function Stat({ label, value }: { label: string; value: string }) {
       <span className="font-mono text-lg font-semibold tabular-nums">{value}</span>
     </div>
   )
-}
-
-function formatDuration(ms: number): string {
-  const totalSeconds = Math.round(ms / 1000)
-  const m = Math.floor(totalSeconds / 60)
-  const s = totalSeconds % 60
-  return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
 }

@@ -1,9 +1,8 @@
 "use client"
 
-import { Timer, Clock, Type, X } from "lucide-react"
+import { Timer, Clock } from "lucide-react"
 
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+import { cn, clamp01 } from "@/lib/utils"
 import { useTranslations } from "@/lib/i18n"
 import { formatSeconds } from "@/lib/metele/format"
 import { RequiredWordPanel } from "./required-word-panel"
@@ -17,10 +16,6 @@ type Props = {
   globalSecondsLeft: number | null
   /** Total session length (for proportional bar). */
   globalSecondsTotal: number
-  /** Live character count of the story. */
-  characters: number
-  /** Cancel the session. */
-  onGiveUp: () => void
   /** Master toggle: false hides the required-word panel entirely. */
   requiredWordsEnabled: boolean
   /** Current required word (or null between words). */
@@ -31,13 +26,16 @@ type Props = {
   useWordTotal: number | null
 }
 
+/**
+ * Body card for the game screen: timer bars and the required-word panel.
+ * The screen-level chrome (title, primary action, auth) lives in the shared
+ * AppHeader so it stays identical to the settings screen.
+ */
 export function GameHud({
   idleSecondsLeft,
   idleSecondsTotal,
   globalSecondsLeft,
   globalSecondsTotal,
-  characters,
-  onGiveUp,
   requiredWordsEnabled,
   requiredWord,
   useWordIn,
@@ -95,32 +93,12 @@ export function GameHud({
   }
 
   return (
-    <header className="bg-card text-card-foreground flex flex-col gap-3 rounded-lg border p-4 shadow-sm">
-      {/* Row 1: title + char count + give up.
-          On <lg (mobile/tablet-portrait) only the give-up button stays —
-          screen real estate is reserved for timers, required word, text area. */}
-      <div className="flex items-center justify-between gap-3">
-        <div className="hidden items-baseline gap-3 lg:flex">
-          <h1 className="font-serif text-xl font-semibold tracking-tight">{t.app.title}</h1>
-          <span className="text-muted-foreground hidden text-sm sm:inline">
-            {t.app.tagline}
-          </span>
-        </div>
-        <div className="ml-auto flex items-center gap-3">
-          <div className="text-muted-foreground hidden items-center gap-1.5 text-sm lg:flex">
-            <Type className="size-3.5" aria-hidden />
-            <span className="text-foreground font-mono tabular-nums">{characters}</span>
-            <span className="hidden sm:inline">{t.game.characters}</span>
-          </div>
-          <Button variant="outline" size="sm" onClick={onGiveUp}>
-            <X className="size-4" aria-hidden />
-            {t.game.pause}
-          </Button>
-        </div>
-      </div>
-
+    <section
+      aria-label={t.app.title}
+      className="bg-card text-card-foreground rounded-lg border p-4 shadow-sm"
+    >
       {body}
-    </header>
+    </section>
   )
 }
 
@@ -175,7 +153,3 @@ function TimerBar({
   )
 }
 
-function clamp01(n: number): number {
-  if (!Number.isFinite(n)) return 0
-  return Math.max(0, Math.min(1, n))
-}

@@ -79,8 +79,16 @@
 }
 
 @theme inline {
+  /* ── Main UI font ─────────────────────────────────────────────────
+   * Uncomment ONE of the lines below and comment the others to switch
+   * the display font across the entire app.                          */
   --font-sans: var(--font-geist), 'Geist Fallback', system-ui, sans-serif;
-  --font-serif: var(--font-lora), 'Lora Fallback', Georgia, serif;
+  /* --font-sans: var(--font-lora), 'Lora Fallback', Georgia, serif; */
+  /* --font-sans: 'Inter', system-ui, sans-serif; */
+  /* --font-sans: 'Outfit', system-ui, sans-serif; */
+
+  /* Serif alias — kept for backward compat; points to the same font */
+  --font-serif: var(--font-sans);
   --font-mono: 'Geist Mono', 'Geist Mono Fallback', ui-monospace, monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);

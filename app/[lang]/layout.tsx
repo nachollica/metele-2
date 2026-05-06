@@ -5,6 +5,7 @@ import "../globals.css"
 
 import { resolveLocale } from "@/lib/i18n/config"
 import { LocaleProvider } from "@/lib/i18n/locale-provider"
+import { AuthProvider } from "@/lib/auth"
 
 // Reject any path segment that isn't a supported locale. Without this,
 // requests like /favicon.ico would be parsed as { lang: "favicon.ico" }.
@@ -43,7 +44,7 @@ export default async function LangLayout({
     <html lang={locale} className={`${geist.variable} ${lora.variable} bg-background`}>
       <body className="font-sans antialiased">
         <LocaleProvider locale={locale}>
-          {children}
+          <AuthProvider>{children}</AuthProvider>
         </LocaleProvider>
         {process.env.NODE_ENV === "production" && <Analytics />}
       </body>

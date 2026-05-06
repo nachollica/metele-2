@@ -1,15 +1,20 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react"
+import { Loader2, Pencil, RotateCcw, X } from "lucide-react"
 
+import { AppHeader, PrimaryActionButton } from "./app-header"
+import { AppShell } from "./app-shell"
 import { GameHud } from "./game-hud"
 import { ResultsModal } from "./results-modal"
-import { SettingsModal } from "./settings-modal"
+import { SettingsPanel } from "./settings-panel"
 import { WelcomeModal } from "./welcome-modal"
 import { WritingArea } from "./writing-area"
 
 import { pickRequiredWord, matchesWord, normalizeForMatch } from "@/lib/metele/words"
-import { useLocale } from "@/lib/i18n"
+import { fetchRelatedWords, parseCategoriesInput } from "@/lib/metele/words-api"
+import { createStory, type Story } from "@/lib/metele/stories-api"
+import { useLocale, useTranslations } from "@/lib/i18n"
 import { playBell, primeAudio } from "@/lib/metele/sound"
 import { randomIntervalMs } from "@/lib/metele/random"
 import {
@@ -20,7 +25,12 @@ import {
   type MatchedRange,
 } from "@/lib/metele/types"
 
-type GameState = "welcome" | "settings" | "playing" | "ended"
+type GameState = "welcome" | "settings" | "loading" | "playing" | "ended" | "viewing"
+
+// Max time we'll block the user on the categories backend call. After this
+// the game starts with the hardcoded fallback pool while the request (if it
+// ever resolves) is silently discarded.
+const CATEGORIES_FETCH_TIMEOUT_MS = 2500
 
 const WELCOME_STORAGE_KEY = "metele.welcome.dismissed"
 
@@ -34,17 +44,29 @@ const WORD_DELIMITERS = /[\s.,;:!?'"()[\]{}\-—–…/\\]/
 // they remain accurate even if the tab is throttled.
 const UI_TICK_MS = 100
 
+// When the "use word in N seconds" deadline is disabled, required words still
+// disappear automatically after this many seconds (whether or not the player
+// used them). No game-over is triggered.
+const WORD_AUTO_DISMISS_MS = 7_000
+
 export function MeteleGame() {
   const locale = useLocale()
+  const t = useTranslations()
 
   // ---- High-level game state ---------------------------------------------
   const [gameState, setGameState] = useState<GameState>("welcome")
   const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS)
   const [result, setResult] = useState<GameResult | null>(null)
+  // Visibility of the post-session stats modal. Independent from `gameState`
+  // because the player can dismiss the modal and remain in the "ended" state
+  // with an editable read-only-of-rules game area.
+  const [resultsModalOpen, setResultsModalOpen] = useState(false)
   // Whether timers are actually running. Stays false from `startGame` until the
   // first real text modification, so the player isn't penalized for the time
   // between clicking Start and beginning to type.
   const [armed, setArmed] = useState(false)
+  // Bumped after a successful POST so the sidebar refetches.
+  const [storiesRefreshKey, setStoriesRefreshKey] = useState(0)
 
   // Skip the welcome modal if the user previously opted out.
   useEffect(() => {
@@ -90,6 +112,11 @@ export function MeteleGame() {
   // captured at start time and stay correct across replays.
   const settingsRef = useRef<GameSettings>(DEFAULT_SETTINGS)
 
+  // Active custom word pool fetched from the backend at game start. Null
+  // means "use the hardcoded per-locale pool" (categories disabled, no input,
+  // or backend call failed).
+  const customPoolRef = useRef<readonly string[] | null>(null)
+
   // Independent timers for game-ending events.
   const idleTimeoutRef = useRef<number | null>(null)
   const globalTimeoutRef = useRef<number | null>(null)
@@ -99,6 +126,9 @@ export function MeteleGame() {
   const wordSpawnTimeoutRef = useRef<number | null>(null)
   const wordUseTimeoutRef = useRef<number | null>(null)
   const uiTickRef = useRef<number | null>(null)
+  // Stable ref to armSpawnTimer so the auto-dismiss timeout can schedule the
+  // next spawn without creating a circular useCallback dep.
+  const armSpawnTimerRef = useRef<() => void>(() => {})
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
 
@@ -149,7 +179,11 @@ export function MeteleGame() {
       const wordCount = trimmed.length === 0 ? 0 : trimmed.split(/\s+/).length
 
       clearAllTimers()
+      // Freeze the HUD's `now` reference so all derived countdowns reflect the
+      // moment of game-over and stay there for the post-session edit screen.
+      setNow(Date.now())
       setGameState("ended")
+      setResultsModalOpen(true)
       setResult({
         reason,
         durationMs,
@@ -162,14 +196,79 @@ export function MeteleGame() {
     [clearAllTimers],
   )
 
+  // Close the post-session stats modal. The player remains in the "ended"
+  // state with an editable text area but no timers/required words.
+  const closeResultsModal = useCallback(() => {
+    setResultsModalOpen(false)
+  }, [])
+
+  // Return to the settings screen to start a new session. Persists the just-
+  // finished session to the backend (anonymous for now) so it shows up in the
+  // sidebar. The POST is fire-and-forget — sidebar refetches once it resolves.
+  const startAgain = useCallback(() => {
+    const finalText = textRef.current.trim()
+    if (finalText.length > 0 && result !== null) {
+      const payload = {
+        text: textRef.current,
+        lang: locale,
+        settings: settingsRef.current as unknown as Record<string, unknown>,
+        stats: {
+          reason: result.reason,
+          durationMs: result.durationMs,
+          characters: result.characters,
+          words: result.words,
+          requiredWordsUsed: result.requiredWordsUsed,
+        } as Record<string, unknown>,
+      }
+      createStory(payload).then((created) => {
+        if (created !== null) {
+          setStoriesRefreshKey((k) => k + 1)
+        }
+      })
+    }
+    setResultsModalOpen(false)
+    setGameState("settings")
+  }, [locale, result])
+
+  // Load a story from the sidebar into the main pane in read-only viewing
+  // mode. Tears down any timers (in case the user clicked while the game was
+  // running) and shows just the text — no HUD, no settings, no stats modal.
+  const viewStory = useCallback(
+    (story: Story) => {
+      clearAllTimers()
+      setResultsModalOpen(false)
+      setMatches([])
+      setCurrentRequiredWord(null)
+      currentWordRef.current = null
+      setText(story.text)
+      textRef.current = story.text
+      setGameState("viewing")
+    },
+    [clearAllTimers],
+  )
+
+  // Exit the read-only story view back to settings.
+  const closeStoryView = useCallback(() => {
+    setText("")
+    textRef.current = ""
+    setGameState("settings")
+  }, [])
+
   // ---- Required word lifecycle ------------------------------------------
-  // Spawning ONLY happens via this function. It selects a new word, arms the
-  // "use it in time" deadline, and intentionally does NOT schedule the next
-  // spawn — that is the responsibility of `armSpawnTimer`, which is invoked
-  // when the active word is consumed by the player.
+  // Spawning ONLY happens via this function. It selects a new word and arms
+  // the word-lifecycle timer:
+  //   - With deadline: timer ends the game ("unused-word") if the word isn't
+  //     typed in time. The next spawn is scheduled by `armSpawnTimer`, which
+  //     is called from `checkLatestWord` when the player matches.
+  //   - Without deadline: timer silently dismisses the word after
+  //     WORD_AUTO_DISMISS_MS and arms the next spawn directly.
   const spawnRequiredWord = useCallback(() => {
     const currentSettings = settingsRef.current
-    const next = pickRequiredWord(locale, usedWordsRef.current)
+    const next = pickRequiredWord(
+      locale,
+      usedWordsRef.current,
+      customPoolRef.current ?? undefined,
+    )
     setCurrentRequiredWord(next)
     // Mirror into the ref synchronously so input handlers running before
     // the next render still see the active word.
@@ -180,18 +279,29 @@ export function MeteleGame() {
       playBell()
     }
 
-    // (Re)arm the "must use word in time" timer if enabled.
+    // (Re)arm the word lifecycle timer.
     if (wordUseTimeoutRef.current !== null) {
       window.clearTimeout(wordUseTimeoutRef.current)
       wordUseTimeoutRef.current = null
     }
     if (currentSettings.requiredWordUseTimerEnabled) {
+      // Deadline mode: game over if word not used in time.
       wordUseTimeoutRef.current = window.setTimeout(() => {
-        // If the word is still active when this fires, the player ran out.
         if (currentWordRef.current !== null) {
           endGame("unused-word")
         }
       }, currentSettings.requiredWordUseTimerSeconds * 1000)
+    } else {
+      // No-deadline mode: word quietly disappears after WORD_AUTO_DISMISS_MS,
+      // then `armSpawnTimer` schedules the next word.
+      wordUseTimeoutRef.current = window.setTimeout(() => {
+        if (currentWordRef.current === null) return
+        setCurrentRequiredWord(null)
+        currentWordRef.current = null
+        wordSpawnedAtRef.current = null
+        wordUseTimeoutRef.current = null
+        armSpawnTimerRef.current()
+      }, WORD_AUTO_DISMISS_MS)
     }
   }, [endGame, locale])
 
@@ -215,6 +325,12 @@ export function MeteleGame() {
     }, intervalMs)
   }, [spawnRequiredWord])
 
+  // Keep the ref pointing at the latest armSpawnTimer so the auto-dismiss
+  // timeout in `spawnRequiredWord` can call it without a circular dep.
+  useEffect(() => {
+    armSpawnTimerRef.current = armSpawnTimer
+  }, [armSpawnTimer])
+
   // ---- Idle timeout ------------------------------------------------------
   const armIdleTimeout = useCallback(() => {
     if (idleTimeoutRef.current !== null) {
@@ -226,8 +342,10 @@ export function MeteleGame() {
   }, [endGame])
 
   // ---- Start / restart ---------------------------------------------------
-  const startGame = useCallback(
-    (newSettings: GameSettings) => {
+  // Actually transition into the playing state with the (possibly null)
+  // custom pool already resolved. Pure: no async work happens here.
+  const beginPlaying = useCallback(
+    (newSettings: GameSettings, pool: readonly string[] | null) => {
       // Reset all in-game state.
       setSettings(newSettings)
       settingsRef.current = newSettings
@@ -238,6 +356,7 @@ export function MeteleGame() {
       textRef.current = ""
       currentWordRef.current = null
       usedWordsRef.current = new Set()
+      customPoolRef.current = pool && pool.length > 0 ? pool : null
 
       // Timers stay disarmed until the first real input — see `armTimers`.
       startedAtRef.current = 0
@@ -258,6 +377,45 @@ export function MeteleGame() {
       window.setTimeout(() => textareaRef.current?.focus(), 0)
     },
     [clearAllTimers],
+  )
+
+  // Entry point invoked by the SettingsModal's "Start writing" button.
+  // If the user opted into custom categories, show a spinner while we fetch
+  // the related-words pool, racing the request against
+  // CATEGORIES_FETCH_TIMEOUT_MS. Whichever finishes first wins; on timeout
+  // or any failure we start with the hardcoded fallback pool. The backend
+  // is purely opportunistic — the static frontend works without it.
+  const startGame = useCallback(
+    (newSettings: GameSettings) => {
+      const seeds =
+        newSettings.requiredWordIntervalEnabled &&
+        newSettings.categoryWordsEnabled
+          ? parseCategoriesInput(newSettings.categoryWordsInput)
+          : []
+
+      if (seeds.length === 0) {
+        beginPlaying(newSettings, null)
+        return
+      }
+
+      setGameState("loading")
+
+      let resolved = false
+      const timeout = new Promise<null>((resolve) =>
+        window.setTimeout(() => resolve(null), CATEGORIES_FETCH_TIMEOUT_MS),
+      )
+      Promise.race([fetchRelatedWords(seeds, locale), timeout]).then((pool) => {
+        if (resolved) return
+        resolved = true
+        if (pool === null) {
+          console.log(
+            "[metele] no custom word pool (timeout or backend unreachable); using hardcoded pool",
+          )
+        }
+        beginPlaying(newSettings, pool)
+      })
+    },
+    [beginPlaying, locale],
   )
 
   // Start all timers. Called on first real text modification after `startGame`.
@@ -347,14 +505,21 @@ export function MeteleGame() {
   // ---- Input handler -----------------------------------------------------
   const handleChange = useCallback(
     (e: ChangeEvent<HTMLTextAreaElement>) => {
-      if (gameState !== "playing") return
       const next = e.target.value
-
-      // First real text modification arms the timers. Same condition as the
-      // visible-text mutation check below, so non-text keypresses (Ctrl, Alt,
-      // arrow keys, etc.) don't kick the timers off.
       if (next === textRef.current) return
 
+      // Post-session edit mode: free-form editing, no timers, no required-word
+      // scanning. The player can correct typos until they hit "Start again".
+      if (gameState === "ended") {
+        setText(next)
+        return
+      }
+
+      if (gameState !== "playing") return
+
+      // First real text modification arms the timers. Same condition as the
+      // visible-text mutation check above, so non-text keypresses (Ctrl, Alt,
+      // arrow keys, etc.) don't kick the timers off.
       if (!armed) {
         armTimers()
       } else {
@@ -375,15 +540,22 @@ export function MeteleGame() {
   )
 
   // ---- Computed countdown values for HUD --------------------------------
+  // While "playing" these tick along with the UI interval. While "ended" `now`
+  // is frozen at game-over time so the bars stay where they were when the
+  // session finished.
   const idleSecondsLeft = useMemo(() => {
-    if (gameState !== "playing" || !armed) return settings.mainTimerSeconds
+    if ((gameState !== "playing" && gameState !== "ended") || !armed) {
+      return settings.mainTimerSeconds
+    }
     const elapsed = (now - lastInputAtRef.current) / 1000
     return Math.max(0, settings.mainTimerSeconds - elapsed)
   }, [armed, gameState, now, settings.mainTimerSeconds])
 
   const globalSecondsLeft = useMemo(() => {
     if (!settings.globalTimerEnabled) return null
-    if (gameState !== "playing" || !armed) return settings.globalTimerSeconds
+    if ((gameState !== "playing" && gameState !== "ended") || !armed) {
+      return settings.globalTimerSeconds
+    }
     const elapsed = (now - startedAtRef.current) / 1000
     return Math.max(0, settings.globalTimerSeconds - elapsed)
   }, [armed, gameState, now, settings.globalTimerEnabled, settings.globalTimerSeconds])
@@ -401,49 +573,121 @@ export function MeteleGame() {
   ])
 
   // ---- Render ------------------------------------------------------------
+  // Primary action button shown in the AppHeader varies by state. Settings ↔
+  // game ↔ ended all use the same slot so the button stays anchored.
+  let primaryAction: React.ReactNode = null
+  if (gameState === "welcome" || gameState === "settings") {
+    primaryAction = (
+      <PrimaryActionButton
+        icon={<Pencil className="size-4" aria-hidden />}
+        label={t.settings.start}
+        onClick={() => startGame(settings)}
+      />
+    )
+  } else if (gameState === "playing") {
+    primaryAction = (
+      <PrimaryActionButton
+        icon={<X className="size-4" aria-hidden />}
+        label={t.game.quit}
+        onClick={() => endGame("manual")}
+      />
+    )
+  } else if (gameState === "ended") {
+    primaryAction = (
+      <PrimaryActionButton
+        icon={<RotateCcw className="size-4" aria-hidden />}
+        label={t.game.startAgain}
+        onClick={startAgain}
+      />
+    )
+  } else if (gameState === "viewing") {
+    primaryAction = (
+      <PrimaryActionButton
+        icon={<X className="size-4" aria-hidden />}
+        label={t.game.closeStory}
+        onClick={closeStoryView}
+      />
+    )
+  }
+
   return (
-    <div className="bg-background text-foreground min-h-dvh">
+    <AppShell storiesRefreshKey={storiesRefreshKey} onStorySelect={viewStory}>
       <WelcomeModal open={gameState === "welcome"} onContinue={dismissWelcome} />
 
-      <SettingsModal open={gameState === "settings"} initial={settings} onStart={startGame} />
-
       <ResultsModal
-        open={gameState === "ended"}
+        open={gameState === "ended" && resultsModalOpen}
         result={result}
-        onPlayAgain={() => setGameState("settings")}
+        onClose={closeResultsModal}
       />
 
-      {gameState !== "settings" ? (
-        <main className="mx-auto flex h-dvh max-w-5xl flex-col gap-4 p-4 sm:p-6">
-          <GameHud
-            idleSecondsLeft={idleSecondsLeft}
-            idleSecondsTotal={settings.mainTimerSeconds}
-            globalSecondsLeft={globalSecondsLeft}
-            globalSecondsTotal={settings.globalTimerSeconds}
-            characters={text.length}
-            onGiveUp={() => endGame("manual")}
-            requiredWordsEnabled={settings.requiredWordIntervalEnabled}
-            requiredWord={currentRequiredWord}
-            useWordIn={useWordIn !== null ? Math.ceil(useWordIn) : null}
-            useWordTotal={
-              settings.requiredWordUseTimerEnabled
-                ? settings.requiredWordUseTimerSeconds
-                : null
-            }
-          />
+      {gameState === "loading" ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="flex flex-1 flex-col items-center justify-center gap-4"
+        >
+          <Loader2 className="text-primary size-10 animate-spin" aria-hidden />
+          <span className="text-muted-foreground text-sm">
+            {t.settings.categoryWordsLoading}
+          </span>
+        </div>
+      ) : (
+        <main className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col gap-4 p-4 sm:p-6">
+          <AppHeader action={primaryAction} />
 
-          {/* Writing area takes the entire remaining space. */}
-          <div className="flex min-h-0 flex-1">
-            <WritingArea
-              ref={textareaRef}
-              value={text}
-              onChange={handleChange}
-              matches={matches}
-              disabled={gameState !== "playing"}
-            />
-          </div>
+          {gameState === "welcome" || gameState === "settings" ? (
+            <SettingsPanel settings={settings} onChange={setSettings} />
+          ) : null}
+
+          {gameState === "viewing" ? (
+            <>
+              <p
+                role="status"
+                className="text-muted-foreground text-xs italic"
+              >
+                {t.game.viewingStory}
+              </p>
+              <div className="flex min-h-0 flex-1">
+                <WritingArea
+                  value={text}
+                  onChange={() => {}}
+                  matches={[]}
+                  readOnly
+                />
+              </div>
+            </>
+          ) : null}
+
+          {gameState === "playing" || gameState === "ended" ? (
+            <>
+              <GameHud
+                idleSecondsLeft={idleSecondsLeft}
+                idleSecondsTotal={settings.mainTimerSeconds}
+                globalSecondsLeft={globalSecondsLeft}
+                globalSecondsTotal={settings.globalTimerSeconds}
+                requiredWordsEnabled={settings.requiredWordIntervalEnabled}
+                requiredWord={currentRequiredWord}
+                useWordIn={useWordIn !== null ? Math.ceil(useWordIn) : null}
+                useWordTotal={
+                  settings.requiredWordUseTimerEnabled
+                    ? settings.requiredWordUseTimerSeconds
+                    : null
+                }
+              />
+
+              {/* Writing area takes the entire remaining space. */}
+              <div className="flex min-h-0 flex-1">
+                <WritingArea
+                  ref={textareaRef}
+                  value={text}
+                  onChange={handleChange}
+                  matches={matches}
+                />
+              </div>
+            </>
+          ) : null}
         </main>
-      ) : null}
-    </div>
+      )}
+    </AppShell>
   )
 }
