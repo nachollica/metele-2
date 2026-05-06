@@ -14,6 +14,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -82,6 +83,7 @@ export function WelcomeModal({ open, onContinue }: Props) {
         onKeyDown={onKeyDown}
       >
         <DialogTitle className="sr-only">{t.welcome.items.intro.title}</DialogTitle>
+        <DialogDescription className="sr-only">{t.welcome.items.intro.body}</DialogDescription>
 
         <div
           role="group"

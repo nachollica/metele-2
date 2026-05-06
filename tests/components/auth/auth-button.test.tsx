@@ -19,6 +19,7 @@ function makeAnonymous(): AuthContextValue {
     logout: vi.fn(),
     getAccessToken: vi.fn().mockResolvedValue(null),
     applyLocalUser: vi.fn(),
+    loginAsDevUser: vi.fn().mockResolvedValue(true),
   }
 }
 
@@ -60,6 +61,7 @@ describe("AuthButton", () => {
         email: "x@example.com",
         name: "Jane Doe",
         avatarUrl: null,
+        customPresets: [],
       },
     }
     renderWithLocale(<AuthButton />)
@@ -80,6 +82,7 @@ describe("AuthButton", () => {
         email: null,
         name: "Jane Doe",
         avatarUrl: null,
+        customPresets: [],
       },
       logout,
     }

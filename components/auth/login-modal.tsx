@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { TerminalSquare } from "lucide-react"
 
 import {
   Dialog,
@@ -28,10 +29,17 @@ const PROVIDER_ICONS: Record<AuthProviderId, React.ComponentType<{ className?: s
   twitter: TwitterIcon,
 }
 
+// Sentinel "provider" value used to mark the dev-user button as pending.
+// Outside of the AUTH_PROVIDERS union so the real provider list stays clean.
+const DEV_PENDING = "__dev__"
+
 export function LoginModal({ open, onOpenChange }: Props) {
   const t = useTranslations()
-  const { loginWithProvider } = useAuth()
-  const [pending, setPending] = useState<AuthProviderId | null>(null)
+  const { loginWithProvider, loginAsDevUser } = useAuth()
+  const [pending, setPending] = useState<AuthProviderId | typeof DEV_PENDING | null>(
+    null,
+  )
+  const [devError, setDevError] = useState<string | null>(null)
 
   async function handleProvider(provider: AuthProviderId) {
     setPending(provider)
@@ -40,6 +48,19 @@ export function LoginModal({ open, onOpenChange }: Props) {
     } catch {
       setPending(null)
     }
+  }
+
+  async function handleDevLogin() {
+    setPending(DEV_PENDING)
+    setDevError(null)
+    const ok = await loginAsDevUser()
+    if (!ok) {
+      setDevError(t.auth.devLoginFailed)
+      setPending(null)
+      return
+    }
+    onOpenChange(false)
+    setPending(null)
   }
 
   return (
@@ -68,6 +89,24 @@ export function LoginModal({ open, onOpenChange }: Props) {
               </Button>
             )
           })}
+
+          <Button
+            variant="outline"
+            size="lg"
+            className="w-full justify-start gap-3 border-dashed"
+            onClick={() => void handleDevLogin()}
+            disabled={pending !== null}
+          >
+            <TerminalSquare className="size-5" aria-hidden />
+            <span className="flex-1 text-left">
+              {t.auth.continueWith.replace("{provider}", t.auth.devUser)}
+            </span>
+          </Button>
+          {devError ? (
+            <p className="text-destructive text-xs" role="alert">
+              {devError}
+            </p>
+          ) : null}
         </div>
 
         <DialogFooter>

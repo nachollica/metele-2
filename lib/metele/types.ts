@@ -88,7 +88,9 @@ export const PRESET_KEYS = [
 export type PresetKey = (typeof PRESET_KEYS)[number]
 export type PresetSettings = Pick<GameSettings, PresetKey>
 
-export type PresetId = "classic" | "speed" | "relaxed" | "creative" | "marathon" | "chaos"
+// System presets shipped with the app. The settings screen reserves the
+// 6th slot for the "custom modes" toggle, so this list MUST stay at 5.
+export type PresetId = "classic" | "speed" | "relaxed" | "creative" | "marathon"
 
 export type Preset = {
   id: PresetId
@@ -157,23 +159,37 @@ export const PRESETS: Preset[] = [
       requiredWordUseTimerSeconds: 40,
     },
   },
-  {
-    id: "chaos",
-    settings: {
-      mainTimerSeconds: 2,
-      globalTimerEnabled: true,
-      globalTimerSeconds: 180,
-      requiredWordIntervalEnabled: true,
-      requiredWordIntervalSeconds: 8,
-      requiredWordUseTimerEnabled: true,
-      requiredWordUseTimerSeconds: 7,
-    },
-  },
 ]
+
+/** Build a PresetSettings (the preset-covered subset) from a full GameSettings.
+ *  Used when saving the settings panel's current state as a custom preset. */
+export function extractPresetSettings(s: GameSettings): PresetSettings {
+  return {
+    mainTimerSeconds: s.mainTimerSeconds,
+    globalTimerEnabled: s.globalTimerEnabled,
+    globalTimerSeconds: s.globalTimerSeconds,
+    requiredWordIntervalEnabled: s.requiredWordIntervalEnabled,
+    requiredWordIntervalSeconds: s.requiredWordIntervalSeconds,
+    requiredWordUseTimerEnabled: s.requiredWordUseTimerEnabled,
+    requiredWordUseTimerSeconds: s.requiredWordUseTimerSeconds,
+  }
+}
 
 /** Find which preset (if any) matches the preset-covered keys of a settings object. */
 export function findMatchingPreset(s: GameSettings): PresetId | null {
   for (const p of PRESETS) {
+    if (PRESET_KEYS.every((k) => p.settings[k] === s[k])) return p.id
+  }
+  return null
+}
+
+/** Like `findMatchingPreset` but for a list of user-defined custom presets.
+ *  Returns the matching custom preset's id, or null. */
+export function findMatchingCustomPreset(
+  s: GameSettings,
+  presets: ReadonlyArray<{ id: string; settings: PresetSettings }>,
+): string | null {
+  for (const p of presets) {
     if (PRESET_KEYS.every((k) => p.settings[k] === s[k])) return p.id
   }
   return null

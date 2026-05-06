@@ -273,6 +273,11 @@ export function MeteleGame() {
       currentWordRef.current = null
       setText(story.text)
       textRef.current = story.text
+      // The user could have come from the profile screen via the sidebar;
+      // jumping out of profile this way invalidates any pending
+      // "go back to previous" breadcrumb, so reset it.
+      previousStateRef.current = null
+      pausedAtRef.current = null
       setGameState("viewing")
     },
     [clearAllTimers],
@@ -282,6 +287,8 @@ export function MeteleGame() {
   const closeStoryView = useCallback(() => {
     setText("")
     textRef.current = ""
+    previousStateRef.current = null
+    pausedAtRef.current = null
     setGameState("settings")
   }, [])
 
@@ -293,11 +300,16 @@ export function MeteleGame() {
   // / settings / ended / viewing) just sets the breadcrumb — no clocks are
   // running.
   const openProfile = useCallback(() => {
-    if (previousStateRef.current !== null) return
+    // Already on the profile screen — no-op rather than clobbering the
+    // saved breadcrumb. (The dropdown menu item is still rendered there
+    // because the AuthButton is shared across screens.)
+    if (gameState === "profile") return
     previousStateRef.current = gameState
     if (gameState === "playing") {
       pausedAtRef.current = Date.now()
       clearAllTimers()
+    } else {
+      pausedAtRef.current = null
     }
     setGameState("profile")
   }, [clearAllTimers, gameState])
@@ -354,12 +366,22 @@ export function MeteleGame() {
     const previous = previousStateRef.current ?? "settings"
     previousStateRef.current = null
     if (previous === "playing") {
+      const savedPausedAt = pausedAtRef.current
+      pausedAtRef.current = null
+      // If the player hadn't typed anything yet (timers never armed), there
+      // is nothing to resume — the timers will start on the first keystroke.
+      // Skipping the resume math also avoids the corner case where the
+      // ref-based idle math computes a negative remaining and immediately
+      // ends the session right after the user clicks "Go back".
+      if (!armed || savedPausedAt === null) {
+        setGameState("playing")
+        window.setTimeout(() => textareaRef.current?.focus(), 0)
+        return
+      }
       // Shift the timer reference points forward by the wall-clock time
       // spent in the profile screen so the remaining countdown values are
       // the same as when the player left.
-      const pausedAt = pausedAtRef.current ?? Date.now()
-      const elapsedPausedMs = Date.now() - pausedAt
-      pausedAtRef.current = null
+      const elapsedPausedMs = Date.now() - savedPausedAt
       lastInputAtRef.current += elapsedPausedMs
       startedAtRef.current += elapsedPausedMs
       if (wordSpawnedAtRef.current !== null) {
@@ -371,7 +393,7 @@ export function MeteleGame() {
       return
     }
     setGameState(previous)
-  }, [resumePlaying])
+  }, [armed, resumePlaying])
 
   // ---- Required word lifecycle ------------------------------------------
   // Spawning ONLY happens via this function. It selects a new word and arms

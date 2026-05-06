@@ -103,6 +103,22 @@ def get_current_user(
     fields when they've changed in Auth0).
     """
     token = _extract_token(authorization)
+
+    # Local-dev backdoor. When the dev user is enabled and the caller
+    # presents the configured shared-secret string (NOT a JWT), look up the
+    # pre-seeded dev row directly and skip the JWKS verification path.
+    if settings.dev_user_enabled and token == settings.dev_user_token:
+        dev = db.get(User, settings.dev_user_id)
+        if dev is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=(
+                    "Dev user not seeded. Run "
+                    "`python -m app.scripts.seed_dev_user`."
+                ),
+            )
+        return dev
+
     claims = verify_access_token(token, settings)
     sub = claims.get("sub")
     if not isinstance(sub, str) or not sub:

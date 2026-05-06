@@ -47,6 +47,15 @@ class User(SQLModel, table=True):
         sa_column=Column(DateTime(timezone=True), nullable=False),
     )
 
+    # User-defined session presets. Stored as a JSON list of objects shaped
+    # like ``{"id": str, "name": str, "settings": {...preset-covered keys...}}``.
+    # Validated at the API boundary (see ``models.CustomPreset``); the DB
+    # layer treats it as opaque JSON.
+    custom_presets: list[dict[str, Any]] = Field(
+        default_factory=list,
+        sa_column=Column(JSONField, nullable=False, default=list),
+    )
+
 
 class Story(SQLModel, table=True):
     """A finished writing session."""

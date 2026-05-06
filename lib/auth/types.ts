@@ -25,4 +25,19 @@ export type AuthUser = {
   email: string | null
   name: string
   avatarUrl: string | null
+  customPresets: CustomPreset[]
 }
+
+// User-defined session preset. Mirrors the backend `CustomPreset` model
+// (`backend/app/models.py`). Stored as a JSON list on the user row;
+// settings are validated at the API boundary against `PresetSettings`,
+// which corresponds to `PresetSettings` in `lib/metele/types.ts`.
+export type CustomPreset = {
+  id: string
+  name: string
+  settings: import("@/lib/metele/types").PresetSettings
+}
+
+// Hard cap on user-defined presets. Mirrors `MAX_CUSTOM_PRESETS` in the
+// backend — also dictates the number of slots the settings screen draws.
+export const MAX_CUSTOM_PRESETS = 5

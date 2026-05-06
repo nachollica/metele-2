@@ -27,6 +27,9 @@ def settings() -> Settings:
         frontend_origin="http://localhost:3000",
         auth0_domain="test-tenant.us.auth0.com",
         auth0_audience="https://api.metele.test",
+        dev_user_enabled=True,
+        dev_user_id="dev",
+        dev_user_token="dev-test-token",
     )
 
 

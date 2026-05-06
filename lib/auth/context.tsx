@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -19,8 +20,15 @@ import { useLocale } from "@/lib/i18n"
 import {
   AUTH0_CONNECTION,
   buildRedirectUri,
+  fetchMe,
   readAuth0Config,
 } from "./client"
+import {
+  clearDevSession,
+  loginDev,
+  readDevSession,
+  type DevSession,
+} from "./dev"
 import type { AuthProvider as AuthProviderId, AuthUser } from "./types"
 
 type AuthStatus = "loading" | "authenticated" | "anonymous"
@@ -31,6 +39,9 @@ export type AuthContextValue = {
   // Kicks off a redirect-based login against Auth0 for the chosen social
   // connection. Returns the user to the configured callback URL.
   loginWithProvider: (provider: AuthProviderId) => Promise<void>
+  // Local-dev backdoor: hits `POST /auth/dev-login` and stores the
+  // returned hardcoded token. Returns true on success.
+  loginAsDevUser: () => Promise<boolean>
   logout: () => void
   // Resolves to a fresh API access token, or null if the user is anonymous
   // / Auth0 is unreachable. Used by the stories/words clients.
@@ -38,14 +49,17 @@ export type AuthContextValue = {
   // Override the locally-displayed user record. Called by the profile screen
   // after a successful PATCH so the avatar/name shown in the header match the
   // saved values without waiting for an Auth0 token refresh.
-  applyLocalUser: (user: AuthUser) => void
+  applyLocalUser: (user: AuthUser | null) => void
 }
 
-// Context for fields that aren't part of the upstream Auth0 SDK — currently
-// just the locally-overridden user record after a profile edit.
+// Context for fields that aren't part of the upstream Auth0 SDK:
+//   - `override`: locally-edited copy of the current user.
+//   - `dev`: active dev-user session (hardcoded-token backdoor).
 type LocalAuthState = {
   override: AuthUser | null
-  setOverride: (user: AuthUser) => void
+  setOverride: (user: AuthUser | null) => void
+  dev: DevSession | null
+  setDev: (session: DevSession | null) => void
 }
 
 const LocalAuthContext = createContext<LocalAuthState | null>(null)
@@ -69,9 +83,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 function LocalAuthProvider({ children }: { children: ReactNode }) {
   const [override, setOverride] = useState<AuthUser | null>(null)
+  // Read the dev session in a post-mount effect rather than as the
+  // useState initializer: the SSR render has no localStorage and would
+  // otherwise diverge from the client's first render, tripping the
+  // hydration mismatch check.
+  const [dev, setDev] = useState<DevSession | null>(null)
+  useEffect(() => {
+    const stored = readDevSession()
+    if (stored !== null) setDev(stored)
+  }, [])
   const value = useMemo<LocalAuthState>(
-    () => ({ override, setOverride }),
-    [override],
+    () => ({ override, setOverride, dev, setDev }),
+    [override, dev],
   )
   return <LocalAuthContext value={value}>{children}</LocalAuthContext>
 }
@@ -115,9 +138,41 @@ function ConfiguredAuthProvider({
       useRefreshTokens={true}
       onRedirectCallback={onRedirectCallback}
     >
-      <LocalAuthProvider>{children}</LocalAuthProvider>
+      <LocalAuthProvider>
+        <AuthBootstrap />
+        {children}
+      </LocalAuthProvider>
     </Auth0SDKProvider>
   )
+}
+
+// Pull the canonical user record from `/auth/me` once Auth0 has issued a
+// token. Auth0 only knows about its own profile fields — app-specific data
+// like the user's custom presets lives on our backend, so we overlay the
+// SDK user with the row from the DB. Runs once per token refresh.
+function AuthBootstrap() {
+  const a0 = useAuth0()
+  const local = useContext(LocalAuthContext)
+  useEffect(() => {
+    if (!a0.isAuthenticated || !local) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const token = await a0.getAccessTokenSilently()
+        if (cancelled) return
+        const user = await fetchMe(token)
+        if (cancelled || user === null) return
+        local.setOverride(user)
+      } catch {
+        // Silent fall-through: components see the SDK user with empty
+        // customPresets until the next refresh succeeds.
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [a0, local])
+  return null
 }
 
 // ---- Hook ----------------------------------------------------------------
@@ -128,6 +183,7 @@ export function useAuth(): AuthContextValue {
   const locale = useLocale()
   const a0 = useAuth0()
   const local = useContext(LocalAuthContext)
+  const devSession = local?.dev ?? null
 
   const loginWithProvider = useCallback(
     async (provider: AuthProviderId) => {
@@ -142,16 +198,32 @@ export function useAuth(): AuthContextValue {
     [a0, locale],
   )
 
+  const loginAsDevUser = useCallback(async (): Promise<boolean> => {
+    const session = await loginDev()
+    if (session === null) return false
+    local?.setDev(session)
+    return true
+  }, [local])
+
   const logout = useCallback(() => {
+    if (devSession !== null) {
+      // Dev user has no Auth0 session to revoke — just drop the local
+      // token and reload to land in the anonymous state.
+      clearDevSession()
+      local?.setDev(null)
+      local?.setOverride(null)
+      return
+    }
     a0.logout({
       logoutParams: {
         returnTo:
           typeof window === "undefined" ? "" : `${window.location.origin}/${locale}`,
       },
     })
-  }, [a0, locale])
+  }, [a0, devSession, local, locale])
 
   const getAccessToken = useCallback(async (): Promise<string | null> => {
+    if (devSession !== null) return devSession.token
     if (!a0.isAuthenticated) return null
     try {
       return await a0.getAccessTokenSilently()
@@ -160,7 +232,7 @@ export function useAuth(): AuthContextValue {
       // treats null as "anonymous" and falls back accordingly.
       return null
     }
-  }, [a0])
+  }, [a0, devSession])
 
   const sdkUser: AuthUser | null = useMemo(() => {
     const u = a0.user
@@ -170,37 +242,54 @@ export function useAuth(): AuthContextValue {
       name: u.name ?? u.email ?? u.sub,
       email: u.email ?? null,
       avatarUrl: u.picture ?? null,
+      // SDK doesn't carry app-specific fields. Components that need the
+      // current customPresets list should fetch `/auth/me` and call
+      // `applyLocalUser` so the overlay covers it.
+      customPresets: [],
     }
   }, [a0.user])
 
-  // Local override (set by ProfilePanel after a successful save) takes
-  // precedence over the SDK's copy so the header reflects edits before a
-  // token refresh would replace them.
-  const user: AuthUser | null = local?.override ?? sdkUser
+  // Resolution order: local override > dev session > Auth0 SDK.
+  // Local override wins so a profile edit shows up immediately; dev
+  // session provides the user shape when no Auth0 SDK user exists.
+  const user: AuthUser | null =
+    local?.override ?? devSession?.user ?? sdkUser
 
   const applyLocalUser = useCallback(
-    (next: AuthUser) => {
+    (next: AuthUser | null) => {
       local?.setOverride(next)
     },
     [local],
   )
 
-  const status: AuthStatus = a0.isLoading
-    ? "loading"
-    : a0.isAuthenticated
+  const status: AuthStatus =
+    devSession !== null
       ? "authenticated"
-      : "anonymous"
+      : a0.isLoading
+        ? "loading"
+        : a0.isAuthenticated
+          ? "authenticated"
+          : "anonymous"
 
   return useMemo(
     () => ({
       status,
       user,
       loginWithProvider,
+      loginAsDevUser,
       logout,
       getAccessToken,
       applyLocalUser,
     }),
-    [status, user, loginWithProvider, logout, getAccessToken, applyLocalUser],
+    [
+      status,
+      user,
+      loginWithProvider,
+      loginAsDevUser,
+      logout,
+      getAccessToken,
+      applyLocalUser,
+    ],
   )
 }
 

@@ -28,6 +28,14 @@ class Settings(BaseSettings):
     # access token. Configured in the Auth0 Dashboard under "APIs".
     auth0_audience: str = Field(default="")
 
+    # Local-only "dev user" backdoor for testing without a real Auth0 tenant.
+    # When ``dev_user_enabled`` is true, the backend accepts the literal
+    # ``dev_user_token`` string in the Authorization header and resolves it
+    # to the row whose id is ``dev_user_id``. NEVER enable in production.
+    dev_user_enabled: bool = Field(default=True)
+    dev_user_id: str = Field(default="dev")
+    dev_user_token: str = Field(default="dev-token-please-rotate")
+
     @property
     def auth0_issuer(self) -> str:
         return f"https://{self.auth0_domain}/"

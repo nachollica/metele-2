@@ -65,6 +65,20 @@ export const es = {
     secondsSuffix: "s",
     minutesSuffix: "m",
     start: "Empezar a escribir",
+    customModesLabel: "Modos personalizados",
+    customModesDescription: "Tus presets guardados. Haz clic para aplicar.",
+    customModesTooltip: "Edita o elimina tus modos personalizados desde tu perfil.",
+    backToPresetsLabel: "Volver a los presets originales",
+    backToPresetsDescription: "Mostrar los modos predeterminados.",
+    createPresetLabel: "Guardar configuración actual",
+    createPresetTooltip: "Guarda los ajustes de arriba como un modo personalizado.",
+    customNamePlaceholder: "Nombre del modo",
+    customNameSave: "Guardar",
+    customNameCancel: "Cancelar",
+    customLimitReached: "Puedes tener como máximo {max} modos personalizados.",
+    customEmptySlot: "Hueco vacío",
+    customSaveFailed: "No se pudo guardar el modo personalizado.",
+    signInForCustomModes: "Inicia sesión para guardar modos personalizados.",
   },
 
   presets: {
@@ -87,10 +101,6 @@ export const es = {
     marathon: {
       name: "Maratón",
       description: "25 minutos de presión constante.",
-    },
-    chaos: {
-      name: "Caos",
-      description: "Inactividad brutal y palabras sin parar. Sobrevive si puedes.",
     },
   },
 
@@ -125,6 +135,17 @@ export const es = {
     saved: "Guardado.",
     saveFailed: "No se pudieron guardar los cambios.",
     menuItem: "Perfil",
+    customPresetsTitle: "Modos personalizados",
+    customPresetsDescription:
+      "Modos de juego que has guardado desde la pantalla de ajustes. Renómbralos o elimínalos aquí.",
+    customPresetsEmpty: "Aún no has guardado ningún modo personalizado.",
+    customPresetEdit: "Renombrar",
+    customPresetDelete: "Eliminar",
+    customPresetSave: "Guardar",
+    customPresetCancel: "Cancelar",
+    customPresetDeleteConfirm: "¿Eliminar este modo personalizado?",
+    customPresetDeleteFailed: "No se pudo eliminar el modo personalizado.",
+    customPresetRenameFailed: "No se pudo renombrar el modo personalizado.",
   },
 
   results: {
@@ -176,5 +197,7 @@ export const es = {
     welcomeBack: "Bienvenido de vuelta, {name}",
     accountMenuLabel: "Menú de cuenta",
     profileEmail: "Correo",
+    devUser: "Usuario DEV",
+    devLoginFailed: "Falló el login de desarrollo. Asegúrate de que el backend esté corriendo y el usuario dev creado.",
   },
 } as const

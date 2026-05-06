@@ -66,6 +66,20 @@ export const en = {
     secondsSuffix: "s",
     minutesSuffix: "m",
     start: "Start writing",
+    customModesLabel: "Custom game modes",
+    customModesDescription: "Your saved presets. Click to apply.",
+    customModesTooltip: "Edit or delete your custom modes from your profile.",
+    backToPresetsLabel: "Back to original presets",
+    backToPresetsDescription: "Show the built-in game modes.",
+    createPresetLabel: "Save current settings",
+    createPresetTooltip: "Save the settings above as a new custom mode.",
+    customNamePlaceholder: "Mode name",
+    customNameSave: "Save",
+    customNameCancel: "Cancel",
+    customLimitReached: "You can have at most {max} custom modes.",
+    customEmptySlot: "Empty slot",
+    customSaveFailed: "Couldn't save your custom mode.",
+    signInForCustomModes: "Sign in to save custom modes.",
   },
 
   presets: {
@@ -88,10 +102,6 @@ export const en = {
     marathon: {
       name: "Marathon",
       description: "25 minutes of steady writing pressure.",
-    },
-    chaos: {
-      name: "Chaos mode",
-      description: "Brutal idle, words raining down. Survive if you can.",
     },
   },
 
@@ -126,6 +136,17 @@ export const en = {
     saved: "Saved.",
     saveFailed: "Couldn't save your changes.",
     menuItem: "Profile",
+    customPresetsTitle: "Custom game modes",
+    customPresetsDescription:
+      "Game modes you've saved from the settings screen. Rename or delete them here.",
+    customPresetsEmpty: "You haven't saved any custom modes yet.",
+    customPresetEdit: "Rename",
+    customPresetDelete: "Delete",
+    customPresetSave: "Save",
+    customPresetCancel: "Cancel",
+    customPresetDeleteConfirm: "Delete this custom mode?",
+    customPresetDeleteFailed: "Couldn't delete that custom mode.",
+    customPresetRenameFailed: "Couldn't rename that custom mode.",
   },
 
   results: {
@@ -177,6 +198,8 @@ export const en = {
     welcomeBack: "Welcome back, {name}",
     accountMenuLabel: "Account menu",
     profileEmail: "Email",
+    devUser: "DEV user",
+    devLoginFailed: "Dev login failed. Make sure the backend is running and the dev user is seeded.",
   },
 } as const
 

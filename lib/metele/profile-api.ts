@@ -13,12 +13,7 @@ export type ProfileUpdate = {
   picture?: string | null
 }
 
-type AuthUserWire = {
-  id: string
-  email: string | null
-  name: string
-  avatarUrl: string | null
-}
+type AuthUserWire = AuthUser
 
 export async function updateProfile(
   token: string,

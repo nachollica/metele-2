@@ -12,6 +12,7 @@ const baseUser: AuthUser = {
   email: "x@example.com",
   name: "Original Name",
   avatarUrl: null,
+  customPresets: [],
 }
 
 const authState: { current: AuthContextValue } = {
@@ -23,6 +24,7 @@ function makeAuth(overrides: Partial<AuthContextValue> = {}): AuthContextValue {
     status: "authenticated",
     user: baseUser,
     loginWithProvider: vi.fn().mockResolvedValue(undefined),
+    loginAsDevUser: vi.fn().mockResolvedValue(true),
     logout: vi.fn(),
     getAccessToken: vi.fn().mockResolvedValue("tok"),
     applyLocalUser: vi.fn(),

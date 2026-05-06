@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { LogIn, LogOut, User, UserCog } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -31,8 +31,17 @@ export function AuthButton({ onOpenProfile }: Props = {}) {
   const t = useTranslations()
   const { status, user, logout } = useAuth()
   const [loginOpen, setLoginOpen] = useState(false)
+  // The Auth0 SDK + the dev session both depend on localStorage, which
+  // doesn't exist during SSR. Defer the auth-aware render to a post-mount
+  // effect so the server-rendered HTML always matches the first client
+  // tick (skeleton). Avoids the hydration mismatch when the user lands
+  // already-authenticated.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
-  if (status === "loading") {
+  if (!mounted || status === "loading") {
     return <div className="bg-muted h-9 w-24 animate-pulse rounded-md" aria-hidden />
   }
 
