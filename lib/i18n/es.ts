@@ -7,11 +7,18 @@ export const es = {
   },
 
   welcome: {
-    title: "Bienvenido a METELE",
-    description: "Reglas rápidas antes de empezar.",
     dontShowAgain: "No mostrar de nuevo",
     start: "Entendido",
+    next: "Siguiente",
+    back: "Atrás",
+    skipTutorial: "Saltar tutorial",
+    stepLabel: "Paso {current} de {total}",
+    goToStep: "Ir al paso {n}",
     items: {
+      intro: {
+        title: "Bienvenido a METELE",
+        body: "Un juego de escritura donde tus manos no paran. Reglas rápidas antes de empezar.",
+      },
       pickVelocity: {
         title: "Elige tu velocidad",
         body: "Elige un preset o ajusta los temporizadores en la próxima pantalla.",
@@ -23,10 +30,6 @@ export const es = {
       requiredWords: {
         title: "Palabras requeridas",
         body: "Aparecen palabras mientras escribes. Úsalas o déjalas desaparecer. Activa el plazo para penalizar las no usadas.",
-      },
-      noMistakes: {
-        title: "No te frenes por las erratas",
-        body: "Avanza durante la sesión. Al terminar podrás pulir la historia.",
       },
       shareSave: {
         title: "Revisa y pule",

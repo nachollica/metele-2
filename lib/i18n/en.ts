@@ -8,11 +8,18 @@ export const en = {
   },
 
   welcome: {
-    title: "Welcome to METELE",
-    description: "Quick rules before you start.",
     dontShowAgain: "Don't show this again",
     start: "Got it",
+    next: "Next",
+    back: "Back",
+    skipTutorial: "Skip tutorial",
+    stepLabel: "Step {current} of {total}",
+    goToStep: "Go to step {n}",
     items: {
+      intro: {
+        title: "Welcome to METELE",
+        body: "A writing game where your hands keep moving. Quick rules before you start.",
+      },
       pickVelocity: {
         title: "Pick your velocity",
         body: "Pick a preset or tune the timers on the next screen.",
@@ -24,10 +31,6 @@ export const en = {
       requiredWords: {
         title: "Required words",
         body: "Words pop up while you write. Use them or let them fade. Enable the deadline rule to penalize unused words.",
-      },
-      noMistakes: {
-        title: "Don't stop for typos",
-        body: "Push forward while the session runs. Polish the story afterward.",
       },
       shareSave: {
         title: "Review and refine",
