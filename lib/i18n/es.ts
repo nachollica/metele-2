@@ -103,7 +103,10 @@ export const es = {
     characters: "caracteres",
     placeholder: "Empieza tu historia. No dejes de escribir…",
     pause: "Abandonar",
+    quit: "Salir de sesión",
     startAgain: "Empezar de nuevo",
+    closeStory: "Cerrar historia",
+    viewingStory: "Viendo una historia anterior (solo lectura).",
   },
 
   results: {
@@ -122,6 +125,16 @@ export const es = {
   units: {
     seconds: "s",
     minutes: "m",
+  },
+
+  sidebar: {
+    title: "Historias recientes",
+    subtitle: "Tus últimas sesiones de escritura",
+    empty: "Aún no hay historias — termina una sesión para verla aquí.",
+    error: "No se pudieron cargar las historias.",
+    toggle: "Abrir historias recientes",
+    toggleShort: "Historias",
+    durationLabel: "Duración de la sesión",
   },
 
   auth: {

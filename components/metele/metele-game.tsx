@@ -1,16 +1,19 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react"
-import { Loader2 } from "lucide-react"
+import { Loader2, Pencil, RotateCcw, X } from "lucide-react"
 
+import { AppHeader, PrimaryActionButton } from "./app-header"
+import { AppShell } from "./app-shell"
 import { GameHud } from "./game-hud"
 import { ResultsModal } from "./results-modal"
-import { SettingsModal } from "./settings-modal"
+import { SettingsPanel } from "./settings-panel"
 import { WelcomeModal } from "./welcome-modal"
 import { WritingArea } from "./writing-area"
 
 import { pickRequiredWord, matchesWord, normalizeForMatch } from "@/lib/metele/words"
 import { fetchRelatedWords, parseCategoriesInput } from "@/lib/metele/words-api"
+import { createStory, type Story } from "@/lib/metele/stories-api"
 import { useLocale, useTranslations } from "@/lib/i18n"
 import { playBell, primeAudio } from "@/lib/metele/sound"
 import { randomIntervalMs } from "@/lib/metele/random"
@@ -22,7 +25,7 @@ import {
   type MatchedRange,
 } from "@/lib/metele/types"
 
-type GameState = "welcome" | "settings" | "loading" | "playing" | "ended"
+type GameState = "welcome" | "settings" | "loading" | "playing" | "ended" | "viewing"
 
 // Max time we'll block the user on the categories backend call. After this
 // the game starts with the hardcoded fallback pool while the request (if it
@@ -62,6 +65,8 @@ export function MeteleGame() {
   // first real text modification, so the player isn't penalized for the time
   // between clicking Start and beginning to type.
   const [armed, setArmed] = useState(false)
+  // Bumped after a successful POST so the sidebar refetches.
+  const [storiesRefreshKey, setStoriesRefreshKey] = useState(0)
 
   // Skip the welcome modal if the user previously opted out.
   useEffect(() => {
@@ -197,9 +202,55 @@ export function MeteleGame() {
     setResultsModalOpen(false)
   }, [])
 
-  // Return to the settings screen to start a new session.
+  // Return to the settings screen to start a new session. Persists the just-
+  // finished session to the backend (anonymous for now) so it shows up in the
+  // sidebar. The POST is fire-and-forget — sidebar refetches once it resolves.
   const startAgain = useCallback(() => {
+    const finalText = textRef.current.trim()
+    if (finalText.length > 0 && result !== null) {
+      const payload = {
+        text: textRef.current,
+        lang: locale,
+        settings: settingsRef.current as unknown as Record<string, unknown>,
+        stats: {
+          reason: result.reason,
+          durationMs: result.durationMs,
+          characters: result.characters,
+          words: result.words,
+          requiredWordsUsed: result.requiredWordsUsed,
+        } as Record<string, unknown>,
+      }
+      createStory(payload).then((created) => {
+        if (created !== null) {
+          setStoriesRefreshKey((k) => k + 1)
+        }
+      })
+    }
     setResultsModalOpen(false)
+    setGameState("settings")
+  }, [locale, result])
+
+  // Load a story from the sidebar into the main pane in read-only viewing
+  // mode. Tears down any timers (in case the user clicked while the game was
+  // running) and shows just the text — no HUD, no settings, no stats modal.
+  const viewStory = useCallback(
+    (story: Story) => {
+      clearAllTimers()
+      setResultsModalOpen(false)
+      setMatches([])
+      setCurrentRequiredWord(null)
+      currentWordRef.current = null
+      setText(story.text)
+      textRef.current = story.text
+      setGameState("viewing")
+    },
+    [clearAllTimers],
+  )
+
+  // Exit the read-only story view back to settings.
+  const closeStoryView = useCallback(() => {
+    setText("")
+    textRef.current = ""
     setGameState("settings")
   }, [])
 
@@ -522,11 +573,46 @@ export function MeteleGame() {
   ])
 
   // ---- Render ------------------------------------------------------------
-  return (
-    <div className="bg-background text-foreground min-h-dvh">
-      <WelcomeModal open={gameState === "welcome"} onContinue={dismissWelcome} />
+  // Primary action button shown in the AppHeader varies by state. Settings ↔
+  // game ↔ ended all use the same slot so the button stays anchored.
+  let primaryAction: React.ReactNode = null
+  if (gameState === "welcome" || gameState === "settings") {
+    primaryAction = (
+      <PrimaryActionButton
+        icon={<Pencil className="size-4" aria-hidden />}
+        label={t.settings.start}
+        onClick={() => startGame(settings)}
+      />
+    )
+  } else if (gameState === "playing") {
+    primaryAction = (
+      <PrimaryActionButton
+        icon={<X className="size-4" aria-hidden />}
+        label={t.game.quit}
+        onClick={() => endGame("manual")}
+      />
+    )
+  } else if (gameState === "ended") {
+    primaryAction = (
+      <PrimaryActionButton
+        icon={<RotateCcw className="size-4" aria-hidden />}
+        label={t.game.startAgain}
+        onClick={startAgain}
+      />
+    )
+  } else if (gameState === "viewing") {
+    primaryAction = (
+      <PrimaryActionButton
+        icon={<X className="size-4" aria-hidden />}
+        label={t.game.closeStory}
+        onClick={closeStoryView}
+      />
+    )
+  }
 
-      <SettingsModal open={gameState === "settings"} initial={settings} onStart={startGame} />
+  return (
+    <AppShell storiesRefreshKey={storiesRefreshKey} onStorySelect={viewStory}>
+      <WelcomeModal open={gameState === "welcome"} onContinue={dismissWelcome} />
 
       <ResultsModal
         open={gameState === "ended" && resultsModalOpen}
@@ -538,47 +624,70 @@ export function MeteleGame() {
         <div
           role="status"
           aria-live="polite"
-          className="flex h-dvh flex-col items-center justify-center gap-4"
+          className="flex flex-1 flex-col items-center justify-center gap-4"
         >
           <Loader2 className="text-primary size-10 animate-spin" aria-hidden />
           <span className="text-muted-foreground text-sm">
             {t.settings.categoryWordsLoading}
           </span>
         </div>
-      ) : null}
+      ) : (
+        <main className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col gap-4 p-4 sm:p-6">
+          <AppHeader action={primaryAction} />
 
-      {gameState === "playing" || gameState === "ended" ? (
-        <main className="mx-auto flex h-dvh max-w-5xl flex-col gap-4 p-4 sm:p-6">
-          <GameHud
-            idleSecondsLeft={idleSecondsLeft}
-            idleSecondsTotal={settings.mainTimerSeconds}
-            globalSecondsLeft={globalSecondsLeft}
-            globalSecondsTotal={settings.globalTimerSeconds}
-            characters={text.length}
-            paused={gameState === "ended"}
-            onGiveUp={() => endGame("manual")}
-            onStartAgain={startAgain}
-            requiredWordsEnabled={settings.requiredWordIntervalEnabled}
-            requiredWord={currentRequiredWord}
-            useWordIn={useWordIn !== null ? Math.ceil(useWordIn) : null}
-            useWordTotal={
-              settings.requiredWordUseTimerEnabled
-                ? settings.requiredWordUseTimerSeconds
-                : null
-            }
-          />
+          {gameState === "welcome" || gameState === "settings" ? (
+            <SettingsPanel settings={settings} onChange={setSettings} />
+          ) : null}
 
-          {/* Writing area takes the entire remaining space. */}
-          <div className="flex min-h-0 flex-1">
-            <WritingArea
-              ref={textareaRef}
-              value={text}
-              onChange={handleChange}
-              matches={matches}
-            />
-          </div>
+          {gameState === "viewing" ? (
+            <>
+              <p
+                role="status"
+                className="text-muted-foreground text-xs italic"
+              >
+                {t.game.viewingStory}
+              </p>
+              <div className="flex min-h-0 flex-1">
+                <WritingArea
+                  value={text}
+                  onChange={() => {}}
+                  matches={[]}
+                  readOnly
+                />
+              </div>
+            </>
+          ) : null}
+
+          {gameState === "playing" || gameState === "ended" ? (
+            <>
+              <GameHud
+                idleSecondsLeft={idleSecondsLeft}
+                idleSecondsTotal={settings.mainTimerSeconds}
+                globalSecondsLeft={globalSecondsLeft}
+                globalSecondsTotal={settings.globalTimerSeconds}
+                requiredWordsEnabled={settings.requiredWordIntervalEnabled}
+                requiredWord={currentRequiredWord}
+                useWordIn={useWordIn !== null ? Math.ceil(useWordIn) : null}
+                useWordTotal={
+                  settings.requiredWordUseTimerEnabled
+                    ? settings.requiredWordUseTimerSeconds
+                    : null
+                }
+              />
+
+              {/* Writing area takes the entire remaining space. */}
+              <div className="flex min-h-0 flex-1">
+                <WritingArea
+                  ref={textareaRef}
+                  value={text}
+                  onChange={handleChange}
+                  matches={matches}
+                />
+              </div>
+            </>
+          ) : null}
         </main>
-      ) : null}
-    </div>
+      )}
+    </AppShell>
   )
 }

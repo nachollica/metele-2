@@ -15,6 +15,7 @@ type Props = {
   // visual highlight has been disabled — see commented block below.
   matches: MatchedRange[]
   disabled?: boolean
+  readOnly?: boolean
 }
 
 // Shared typography classes for the textarea (and the commented-out backdrop).
@@ -38,7 +39,14 @@ const SHARED_TEXT_CLASSES = cn(
  * `matches` prop is still accepted (the game logic still tracks ranges) but
  * not rendered. The original backdrop block is preserved commented out.
  */
-export function WritingArea({ ref, value, onChange, matches: _matches, disabled }: Props) {
+export function WritingArea({
+  ref,
+  value,
+  onChange,
+  matches: _matches,
+  disabled,
+  readOnly,
+}: Props) {
   const t = useTranslations()
 
   // ---------------------------------------------------------------------
@@ -186,8 +194,9 @@ export function WritingArea({ ref, value, onChange, matches: _matches, disabled 
         value={value}
         onChange={onChange}
         disabled={disabled}
+        readOnly={readOnly}
         spellCheck={false}
-        autoFocus
+        autoFocus={!readOnly}
         placeholder={t.game.placeholder}
         className={cn(
           "text-card-foreground placeholder:text-muted-foreground/60 relative h-full w-full resize-none bg-transparent outline-none",

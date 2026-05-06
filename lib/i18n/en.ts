@@ -104,7 +104,10 @@ export const en = {
     characters: "characters",
     placeholder: "Begin your story. Don't stop typing…",
     pause: "Give up",
+    quit: "Quit session",
     startAgain: "Start again",
+    closeStory: "Close story",
+    viewingStory: "Viewing a previous story (read-only).",
   },
 
   results: {
@@ -123,6 +126,16 @@ export const en = {
   units: {
     seconds: "s",
     minutes: "m",
+  },
+
+  sidebar: {
+    title: "Recent stories",
+    subtitle: "Your latest writing sessions",
+    empty: "No stories yet — finish a session to see it here.",
+    error: "Couldn't load stories.",
+    toggle: "Open recent stories",
+    toggleShort: "Stories",
+    durationLabel: "Session length",
   },
 
   auth: {

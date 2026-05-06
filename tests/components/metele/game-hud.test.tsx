@@ -1,9 +1,7 @@
 import { screen } from "@testing-library/react"
-import userEvent from "@testing-library/user-event"
-import { describe, expect, it, vi } from "vitest"
+import { describe, expect, it } from "vitest"
 
 import { GameHud } from "@/components/metele/game-hud"
-import { AuthProvider } from "@/lib/auth"
 
 import { renderWithLocale } from "@/tests/utils"
 
@@ -14,10 +12,6 @@ const baseProps: Props = {
   idleSecondsTotal: 7,
   globalSecondsLeft: 60,
   globalSecondsTotal: 60,
-  characters: 0,
-  paused: false,
-  onGiveUp: () => {},
-  onStartAgain: () => {},
   requiredWordsEnabled: true,
   requiredWord: null,
   useWordIn: null,
@@ -25,11 +19,7 @@ const baseProps: Props = {
 }
 
 function renderHud(props: Partial<Props> = {}) {
-  return renderWithLocale(
-    <AuthProvider>
-      <GameHud {...baseProps} {...props} />
-    </AuthProvider>,
-  )
+  return renderWithLocale(<GameHud {...baseProps} {...props} />)
 }
 
 describe("GameHud", () => {
@@ -52,25 +42,8 @@ describe("GameHud", () => {
     expect(screen.queryByText("anything")).not.toBeInTheDocument()
   })
 
-  it("calls onGiveUp when the give-up button is clicked", async () => {
-    const onGiveUp = vi.fn()
-    renderHud({ onGiveUp })
-    const user = userEvent.setup()
-    await user.click(screen.getByRole("button", { name: /give up/i }))
-    expect(onGiveUp).toHaveBeenCalledOnce()
-  })
-
-  it("swaps the give-up button for a start-again button when paused", async () => {
-    const onStartAgain = vi.fn()
-    renderHud({ paused: true, onStartAgain })
-    expect(screen.queryByRole("button", { name: /give up/i })).not.toBeInTheDocument()
-    const user = userEvent.setup()
-    await user.click(screen.getByRole("button", { name: /start again/i }))
-    expect(onStartAgain).toHaveBeenCalledOnce()
-  })
-
-  it("keeps the required-word panel and the active word visible when paused", () => {
-    renderHud({ paused: true, requiredWord: "ghost" })
+  it("renders the active required word", () => {
+    renderHud({ requiredWord: "ghost" })
     expect(screen.getByText("ghost")).toBeInTheDocument()
   })
 })
