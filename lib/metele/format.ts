@@ -13,3 +13,12 @@ export function formatSeconds(totalSeconds: number, units: Units): string {
   const rem = s % 60
   return rem === 0 ? `${m}${units.minutes}` : `${m}${units.minutes} ${rem}${units.seconds}`
 }
+
+// "MM:SS" stopwatch-style duration. Used for already-finished sessions where
+// minute/second framing is the natural read (results modal, sidebar metadata).
+export function formatDurationMs(ms: number): string {
+  const total = Math.max(0, Math.round(ms / 1000))
+  const m = Math.floor(total / 60)
+  const s = total % 60
+  return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
+}

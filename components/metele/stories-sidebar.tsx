@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 
 import { useTranslations } from "@/lib/i18n"
+import { formatDurationMs } from "@/lib/metele/format"
 import { fetchStories, type Story } from "@/lib/metele/stories-api"
 
 // First-character preview cap. Long stories show the head + ellipsis so the
@@ -105,7 +106,7 @@ function StoryRow({ story, onSelect }: RowProps) {
   // Pull duration out of the JSON stats blob — written there by the
   // frontend's `GameResult` payload at end of session.
   const durationMs = readNumber(story.stats, "durationMs")
-  const durationLabel = durationMs !== null ? formatDuration(durationMs) : null
+  const durationLabel = durationMs !== null ? formatDurationMs(durationMs) : null
 
   const interactive = onSelect !== undefined
   const Tag = interactive ? "button" : "div"
@@ -160,13 +161,6 @@ function formatDate(d: Date): string {
     hour: "2-digit",
     minute: "2-digit",
   })
-}
-
-function formatDuration(ms: number): string {
-  const total = Math.max(0, Math.round(ms / 1000))
-  const m = Math.floor(total / 60)
-  const s = total % 60
-  return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
 }
 
 function readNumber(obj: Record<string, unknown>, key: string): number | null {

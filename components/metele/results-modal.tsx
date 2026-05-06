@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button"
 
 import { useTranslations } from "@/lib/i18n"
+import { formatDurationMs } from "@/lib/metele/format"
 import type { GameResult } from "@/lib/metele/types"
 
 type Props = {
@@ -31,7 +32,7 @@ export function ResultsModal({ open, result, onClose }: Props) {
         onInteractOutside={(e) => e.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle className="font-serif text-2xl">{t.results.title}</DialogTitle>
+          <DialogTitle className="text-2xl">{t.results.title}</DialogTitle>
           <DialogDescription>
             {result ? reasonText(result.reason, t) : ""}
           </DialogDescription>
@@ -39,7 +40,7 @@ export function ResultsModal({ open, result, onClose }: Props) {
         {result ? (
           <>
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-              <Stat label={t.results.duration} value={formatDuration(result.durationMs)} />
+              <Stat label={t.results.duration} value={formatDurationMs(result.durationMs)} />
               <Stat label={t.results.characters} value={result.characters.toString()} />
               <Stat label={t.results.words} value={result.words.toString()} />
               <Stat
@@ -80,11 +81,4 @@ function Stat({ label, value }: { label: string; value: string }) {
       <span className="font-mono text-lg font-semibold tabular-nums">{value}</span>
     </div>
   )
-}
-
-function formatDuration(ms: number): string {
-  const totalSeconds = Math.round(ms / 1000)
-  const m = Math.floor(totalSeconds / 60)
-  const s = totalSeconds % 60
-  return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
 }

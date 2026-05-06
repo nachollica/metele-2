@@ -5,13 +5,12 @@ import { type ReactNode } from "react"
 import { AuthButton } from "@/components/auth/auth-button"
 import { Button } from "@/components/ui/button"
 import { useTranslations } from "@/lib/i18n"
-import { cn } from "@/lib/utils"
 
 // Fixed width chosen so the longest localized label ("Empezar a escribir",
 // "Salir de sesión", "Empezar de nuevo") fits with its icon without wrapping.
 // Shared across every screen so the action slot doesn't shift between settings
 // and the game area.
-export const PRIMARY_ACTION_CLASS = "w-44 justify-center"
+const PRIMARY_ACTION_CLASS = "w-44 justify-center"
 
 type Props = {
   /** Primary action for the current screen (Start / Quit / Start again). */
@@ -28,7 +27,7 @@ export function AppHeader({ action }: Props) {
   const t = useTranslations()
   return (
     <header className="bg-card text-card-foreground flex items-center justify-between gap-3 rounded-lg border p-4 shadow-sm">
-      <h1 className="font-serif text-xl font-semibold tracking-tight">
+      <h1 className="text-xl font-semibold tracking-tight">
         {t.app.title}
       </h1>
       <div className="flex items-center gap-2">
@@ -52,7 +51,7 @@ type ActionProps = {
  */
 export function PrimaryActionButton({ icon, label, onClick }: ActionProps) {
   return (
-    <Button onClick={onClick} size="sm" className={cn(PRIMARY_ACTION_CLASS)}>
+    <Button onClick={onClick} size="sm" className={PRIMARY_ACTION_CLASS}>
       {icon}
       {label}
     </Button>

@@ -44,7 +44,7 @@ export function LoginModal({ open, onOpenChange, showMock = true }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="font-serif text-2xl">{t.auth.title}</DialogTitle>
+          <DialogTitle className="text-2xl">{t.auth.title}</DialogTitle>
           <DialogDescription>{t.auth.description}</DialogDescription>
         </DialogHeader>
 

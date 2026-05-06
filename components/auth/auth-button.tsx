@@ -75,7 +75,7 @@ export function AuthButton() {
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel>
           <div className="flex flex-col gap-0.5">
-            <span className="font-serif text-sm font-semibold">{user.name}</span>
+            <span className="text-sm font-semibold">{user.name}</span>
             {user.email ? (
               <span className="text-muted-foreground truncate text-xs">{user.email}</span>
             ) : null}

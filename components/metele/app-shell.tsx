@@ -19,7 +19,6 @@ import { StoriesSidebar } from "./stories-sidebar"
 import type { Story } from "@/lib/metele/stories-api"
 
 const SIDEBAR_WIDTH_DESKTOP = "w-72"
-const TOGGLE_BUTTON_LABEL_KEY = "open" // see translations
 
 type Props = {
   children: ReactNode

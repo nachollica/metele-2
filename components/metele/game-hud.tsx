@@ -2,7 +2,7 @@
 
 import { Timer, Clock } from "lucide-react"
 
-import { cn } from "@/lib/utils"
+import { cn, clamp01 } from "@/lib/utils"
 import { useTranslations } from "@/lib/i18n"
 import { formatSeconds } from "@/lib/metele/format"
 import { RequiredWordPanel } from "./required-word-panel"
@@ -153,7 +153,3 @@ function TimerBar({
   )
 }
 
-function clamp01(n: number): number {
-  if (!Number.isFinite(n)) return 0
-  return Math.max(0, Math.min(1, n))
-}

@@ -3,6 +3,7 @@ node_modules/
 *.db
 
 tsconfig.tsbuildinfo
+pnpm-workspace.yaml
 out/
 *.gz
 
@@ -11,3 +12,6 @@ out/
 !.gitignore
 !.gitkeep
 !.dockerignore
+
+/Caddyfile
+/public/

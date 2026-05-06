@@ -2,7 +2,7 @@
 
 import { Sparkles } from "lucide-react"
 
-import { cn } from "@/lib/utils"
+import { cn, clamp01 } from "@/lib/utils"
 import { useTranslations } from "@/lib/i18n"
 import { formatSeconds } from "@/lib/metele/format"
 
@@ -17,7 +17,7 @@ type Props = {
 
 /**
  * Compact required-word display intended to live alongside the HUD timer
- * bars. The word stays large (font-serif text-2xl/3xl) so it remains easy to
+ * bars. The word stays large (text-2xl/3xl) so it remains easy to
  * read at a glance, while the surrounding chrome is kept slim.
  */
 export function RequiredWordPanel({ word, useWordIn, useWordTotal }: Props) {
@@ -59,12 +59,12 @@ export function RequiredWordPanel({ word, useWordIn, useWordTotal }: Props) {
         {word ? (
           <span
             key={word}
-            className="animate-in fade-in zoom-in-95 text-foreground truncate font-serif text-2xl font-semibold tracking-tight duration-300 sm:text-3xl"
+            className="animate-in fade-in zoom-in-95 text-foreground truncate text-2xl font-semibold tracking-tight duration-300 sm:text-3xl"
           >
             {word}
           </span>
         ) : (
-          <span className="text-muted-foreground truncate font-serif text-base italic">
+          <span className="text-muted-foreground truncate text-base italic">
             {t.game.noRequiredWord}
           </span>
         )}
@@ -118,7 +118,3 @@ function ProgressRing({ progress, urgent }: { progress: number; urgent: boolean 
   )
 }
 
-function clamp01(n: number): number {
-  if (!Number.isFinite(n)) return 0
-  return Math.max(0, Math.min(1, n))
-}

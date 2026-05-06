@@ -53,7 +53,7 @@ export function SettingsPanel({ settings, onChange }: Props) {
       className="bg-card text-card-foreground flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto rounded-lg border p-4 shadow-sm sm:p-6"
     >
       <div className="flex flex-col gap-1.5">
-        <h2 id="settings-title" className="font-serif text-2xl font-semibold">
+        <h2 id="settings-title" className="text-2xl font-semibold">
           {t.settings.title}
         </h2>
         <p className="text-muted-foreground text-sm">{t.settings.description}</p>
@@ -82,7 +82,7 @@ export function SettingsPanel({ settings, onChange }: Props) {
                     : "border-border bg-card",
                 )}
               >
-                <span className="text-foreground font-serif text-sm font-semibold">
+                <span className="text-foreground text-sm font-semibold">
                   {meta.name}
                 </span>
                 <span className="text-muted-foreground text-xs leading-snug">
