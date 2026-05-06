@@ -13,26 +13,32 @@ import { useTranslations } from "@/lib/i18n"
 const PRIMARY_ACTION_CLASS = "w-44 justify-center"
 
 type Props = {
-  /** Primary action for the current screen (Start / Quit / Start again). */
+  /** Primary action for the current screen (Start / Quit / Start again / Go back). */
   action?: ReactNode
+  /** Forwarded to the AuthButton's avatar dropdown. */
+  onOpenProfile?: () => void
 }
 
 /**
  * Top-of-screen card rendered identically on every screen of the app. Holds
- * the app title on the left and the primary action + auth control on the
- * right. By using one component everywhere, the auth button stays anchored to
- * the same pixel as the user moves between screens.
+ * the app title on the left (hidden on mobile to leave room for the action +
+ * auth control) and the primary action + auth control on the right. By using
+ * one component everywhere, the auth button stays anchored to the same pixel
+ * as the user moves between screens.
  */
-export function AppHeader({ action }: Props) {
+export function AppHeader({ action, onOpenProfile }: Props) {
   const t = useTranslations()
   return (
     <header className="bg-card text-card-foreground flex items-center justify-between gap-3 rounded-lg border p-4 shadow-sm">
-      <h1 className="text-xl font-semibold tracking-tight">
+      {/* Hide the title on small screens so the action + auth controls have
+          breathing room on narrow viewports. The flex layout still lets the
+          right-side group stay anchored to the right edge. */}
+      <h1 className="hidden text-xl font-semibold tracking-tight sm:block">
         {t.app.title}
       </h1>
-      <div className="flex items-center gap-2">
+      <div className="ml-auto flex items-center gap-2">
         {action}
-        <AuthButton />
+        <AuthButton onOpenProfile={onOpenProfile} />
       </div>
     </header>
   )

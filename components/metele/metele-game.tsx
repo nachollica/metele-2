@@ -1,11 +1,12 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react"
-import { Loader2, Pencil, RotateCcw, X } from "lucide-react"
+import { ArrowLeft, Loader2, Pencil, RotateCcw, X } from "lucide-react"
 
 import { AppHeader, PrimaryActionButton } from "./app-header"
 import { AppShell } from "./app-shell"
 import { GameHud } from "./game-hud"
+import { ProfilePanel } from "./profile-panel"
 import { ResultsModal } from "./results-modal"
 import { SettingsPanel } from "./settings-panel"
 import { WelcomeModal } from "./welcome-modal"
@@ -14,6 +15,7 @@ import { WritingArea } from "./writing-area"
 import { pickRequiredWord, matchesWord, normalizeForMatch } from "@/lib/metele/words"
 import { fetchRelatedWords, parseCategoriesInput } from "@/lib/metele/words-api"
 import { createStory, type Story } from "@/lib/metele/stories-api"
+import { useAuth } from "@/lib/auth"
 import { useLocale, useTranslations } from "@/lib/i18n"
 import { playBell, primeAudio } from "@/lib/metele/sound"
 import { randomIntervalMs } from "@/lib/metele/random"
@@ -25,7 +27,14 @@ import {
   type MatchedRange,
 } from "@/lib/metele/types"
 
-type GameState = "welcome" | "settings" | "loading" | "playing" | "ended" | "viewing"
+type GameState =
+  | "welcome"
+  | "settings"
+  | "loading"
+  | "playing"
+  | "ended"
+  | "viewing"
+  | "profile"
 
 // Max time we'll block the user on the categories backend call. After this
 // the game starts with the hardcoded fallback pool while the request (if it
@@ -52,6 +61,7 @@ const WORD_AUTO_DISMISS_MS = 7_000
 export function MeteleGame() {
   const locale = useLocale()
   const t = useTranslations()
+  const { getAccessToken, status: authStatus } = useAuth()
 
   // ---- High-level game state ---------------------------------------------
   const [gameState, setGameState] = useState<GameState>("welcome")
@@ -67,18 +77,35 @@ export function MeteleGame() {
   const [armed, setArmed] = useState(false)
   // Bumped after a successful POST so the sidebar refetches.
   const [storiesRefreshKey, setStoriesRefreshKey] = useState(0)
+  // When the user opens the profile screen we stash the screen they were on
+  // here so "Go back" can restore it. `null` means we're not currently
+  // showing the profile.
+  const previousStateRef = useRef<GameState | null>(null)
+  // Wall-clock at which the profile screen was opened from "playing". On
+  // resume we shift `startedAtRef` and `lastInputAtRef` by the elapsed pause
+  // so countdowns pick up from the same remaining time the player saw when
+  // they left.
+  const pausedAtRef = useRef<number | null>(null)
 
-  // Skip the welcome modal if the user previously opted out.
+  // Skip the welcome modal if the user previously opted out, or is logged in.
+  // The auth check waits for `authStatus` to resolve so we don't flash the
+  // modal while Auth0 is still rehydrating the session on page load.
   useEffect(() => {
-    if (typeof window === "undefined") return
-    try {
-      if (window.localStorage.getItem(WELCOME_STORAGE_KEY) === "1") {
-        setGameState("settings")
+    setGameState((current) => {
+      if (current !== "welcome") return current
+      if (authStatus === "authenticated") return "settings"
+      if (typeof window !== "undefined") {
+        try {
+          if (window.localStorage.getItem(WELCOME_STORAGE_KEY) === "1") {
+            return "settings"
+          }
+        } catch {
+          // localStorage unavailable; fall through to keep the welcome modal.
+        }
       }
-    } catch {
-      // localStorage unavailable; show the welcome modal as default.
-    }
-  }, [])
+      return current
+    })
+  }, [authStatus])
 
   function dismissWelcome(dontShowAgain: boolean) {
     if (dontShowAgain && typeof window !== "undefined") {
@@ -203,8 +230,9 @@ export function MeteleGame() {
   }, [])
 
   // Return to the settings screen to start a new session. Persists the just-
-  // finished session to the backend (anonymous for now) so it shows up in the
-  // sidebar. The POST is fire-and-forget — sidebar refetches once it resolves.
+  // finished session to the backend so it shows up in the sidebar. The POST
+  // is fire-and-forget — sidebar refetches once it resolves. Anonymous users
+  // (no access token) silently skip the POST since `/stories` requires auth.
   const startAgain = useCallback(() => {
     const finalText = textRef.current.trim()
     if (finalText.length > 0 && result !== null) {
@@ -220,15 +248,18 @@ export function MeteleGame() {
           requiredWordsUsed: result.requiredWordsUsed,
         } as Record<string, unknown>,
       }
-      createStory(payload).then((created) => {
-        if (created !== null) {
-          setStoriesRefreshKey((k) => k + 1)
-        }
+      void getAccessToken().then((token) => {
+        if (token === null) return
+        return createStory(token, payload).then((created) => {
+          if (created !== null) {
+            setStoriesRefreshKey((k) => k + 1)
+          }
+        })
       })
     }
     setResultsModalOpen(false)
     setGameState("settings")
-  }, [locale, result])
+  }, [getAccessToken, locale, result])
 
   // Load a story from the sidebar into the main pane in read-only viewing
   // mode. Tears down any timers (in case the user clicked while the game was
@@ -253,6 +284,94 @@ export function MeteleGame() {
     textRef.current = ""
     setGameState("settings")
   }, [])
+
+  // ---- Profile screen ----------------------------------------------------
+  // Open the profile pane, remembering the screen we came from so "Go back"
+  // can restore it. When the user is in the middle of an active session we
+  // pause: timers are cleared and the wall-clock is captured so the same
+  // remaining time can be restored on resume. Any other prior state (welcome
+  // / settings / ended / viewing) just sets the breadcrumb — no clocks are
+  // running.
+  const openProfile = useCallback(() => {
+    if (previousStateRef.current !== null) return
+    previousStateRef.current = gameState
+    if (gameState === "playing") {
+      pausedAtRef.current = Date.now()
+      clearAllTimers()
+    }
+    setGameState("profile")
+  }, [clearAllTimers, gameState])
+
+  // Re-arm the timers that were running before the profile was opened so a
+  // resumed session picks up where it left off. Mirrors `armTimers` but
+  // bases each schedule on remaining time computed from `lastInputAtRef` /
+  // `startedAtRef`, not on wall-clock now.
+  const resumePlaying = useCallback(() => {
+    const currentSettings = settingsRef.current
+
+    const idleRemainingMs = Math.max(
+      0,
+      currentSettings.mainTimerSeconds * 1000 -
+        (Date.now() - lastInputAtRef.current),
+    )
+    if (idleRemainingMs <= 0) {
+      endGame("idle")
+      return
+    }
+    idleTimeoutRef.current = window.setTimeout(() => {
+      endGame("idle")
+    }, idleRemainingMs)
+
+    if (currentSettings.globalTimerEnabled) {
+      const globalRemainingMs = Math.max(
+        0,
+        currentSettings.globalTimerSeconds * 1000 -
+          (Date.now() - startedAtRef.current),
+      )
+      if (globalRemainingMs <= 0) {
+        endGame("global")
+        return
+      }
+      globalTimeoutRef.current = window.setTimeout(() => {
+        endGame("global")
+      }, globalRemainingMs)
+    }
+
+    if (currentSettings.requiredWordIntervalEnabled) {
+      // Spawn-cycle resumes from a fresh interval — preserving the exact
+      // unspent fraction of an exponential interval gains nothing UX-wise
+      // and complicates the model. Use the ref instead of the closure-bound
+      // `armSpawnTimer` to keep the deps array on this callback small.
+      armSpawnTimerRef.current()
+    }
+
+    uiTickRef.current = window.setInterval(() => {
+      setNow(Date.now())
+    }, UI_TICK_MS)
+  }, [endGame])
+
+  const goBackFromProfile = useCallback(() => {
+    const previous = previousStateRef.current ?? "settings"
+    previousStateRef.current = null
+    if (previous === "playing") {
+      // Shift the timer reference points forward by the wall-clock time
+      // spent in the profile screen so the remaining countdown values are
+      // the same as when the player left.
+      const pausedAt = pausedAtRef.current ?? Date.now()
+      const elapsedPausedMs = Date.now() - pausedAt
+      pausedAtRef.current = null
+      lastInputAtRef.current += elapsedPausedMs
+      startedAtRef.current += elapsedPausedMs
+      if (wordSpawnedAtRef.current !== null) {
+        wordSpawnedAtRef.current += elapsedPausedMs
+      }
+      setGameState("playing")
+      resumePlaying()
+      window.setTimeout(() => textareaRef.current?.focus(), 0)
+      return
+    }
+    setGameState(previous)
+  }, [resumePlaying])
 
   // ---- Required word lifecycle ------------------------------------------
   // Spawning ONLY happens via this function. It selects a new word and arms
@@ -404,18 +523,23 @@ export function MeteleGame() {
       const timeout = new Promise<null>((resolve) =>
         window.setTimeout(() => resolve(null), CATEGORIES_FETCH_TIMEOUT_MS),
       )
-      Promise.race([fetchRelatedWords(seeds, locale), timeout]).then((pool) => {
+      const fetchPool = (async (): Promise<string[] | null> => {
+        const token = await getAccessToken()
+        if (token === null) return null
+        return fetchRelatedWords(token, seeds, locale)
+      })()
+      Promise.race([fetchPool, timeout]).then((pool) => {
         if (resolved) return
         resolved = true
         if (pool === null) {
           console.log(
-            "[metele] no custom word pool (timeout or backend unreachable); using hardcoded pool",
+            "[metele] no custom word pool (anonymous, timeout, or backend unreachable); using hardcoded pool",
           )
         }
         beginPlaying(newSettings, pool)
       })
     },
-    [beginPlaying, locale],
+    [beginPlaying, getAccessToken, locale],
   )
 
   // Start all timers. Called on first real text modification after `startGame`.
@@ -608,11 +732,22 @@ export function MeteleGame() {
         onClick={closeStoryView}
       />
     )
+  } else if (gameState === "profile") {
+    primaryAction = (
+      <PrimaryActionButton
+        icon={<ArrowLeft className="size-4" aria-hidden />}
+        label={t.game.goBack}
+        onClick={goBackFromProfile}
+      />
+    )
   }
 
   return (
     <AppShell storiesRefreshKey={storiesRefreshKey} onStorySelect={viewStory}>
-      <WelcomeModal open={gameState === "welcome"} onContinue={dismissWelcome} />
+      <WelcomeModal
+        open={gameState === "welcome" && authStatus !== "loading"}
+        onContinue={dismissWelcome}
+      />
 
       <ResultsModal
         open={gameState === "ended" && resultsModalOpen}
@@ -633,10 +768,16 @@ export function MeteleGame() {
         </div>
       ) : (
         <main className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col gap-4 p-4 sm:p-6">
-          <AppHeader action={primaryAction} />
+          <AppHeader action={primaryAction} onOpenProfile={openProfile} />
 
           {gameState === "welcome" || gameState === "settings" ? (
             <SettingsPanel settings={settings} onChange={setSettings} />
+          ) : null}
+
+          {gameState === "profile" ? (
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <ProfilePanel />
+            </div>
           ) : null}
 
           {gameState === "viewing" ? (

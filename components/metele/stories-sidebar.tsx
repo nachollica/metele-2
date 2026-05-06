@@ -7,6 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 
+import { useAuth } from "@/lib/auth"
 import { useTranslations } from "@/lib/i18n"
 import { formatDurationMs } from "@/lib/metele/format"
 import { fetchStories, type Story } from "@/lib/metele/stories-api"
@@ -28,13 +29,29 @@ type Props = {
 
 export function StoriesSidebar({ refreshKey = 0, onSelect }: Props) {
   const t = useTranslations()
+  const { status, getAccessToken } = useAuth()
   const [items, setItems] = useState<Story[] | null>(null)
   const [error, setError] = useState(false)
 
   useEffect(() => {
+    if (status === "loading") return
+    if (status === "anonymous") {
+      setItems([])
+      setError(false)
+      return
+    }
     let cancelled = false
     setError(false)
-    fetchStories({ limit: PAGE_SIZE, offset: 0 }).then((res) => {
+    setItems(null)
+    void (async () => {
+      const token = await getAccessToken()
+      if (cancelled) return
+      if (token === null) {
+        setError(true)
+        setItems([])
+        return
+      }
+      const res = await fetchStories(token, { limit: PAGE_SIZE, offset: 0 })
       if (cancelled) return
       if (res === null) {
         setError(true)
@@ -42,11 +59,11 @@ export function StoriesSidebar({ refreshKey = 0, onSelect }: Props) {
         return
       }
       setItems(res.items)
-    })
+    })()
     return () => {
       cancelled = true
     }
-  }, [refreshKey])
+  }, [getAccessToken, refreshKey, status])
 
   return (
     <div className="flex h-full min-h-0 flex-col">

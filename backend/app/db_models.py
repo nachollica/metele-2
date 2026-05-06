@@ -20,25 +20,42 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
-class Story(SQLModel, table=True):
-    """A finished writing session.
+class User(SQLModel, table=True):
+    """Authenticated user.
 
-    ``user_id`` is nullable: anonymous sessions are persisted with NULL until
-    the auth-aware POST flow lands. ``settings`` is a snapshot of the
-    ``GameSettings`` object the frontend used; ``stats`` mirrors the
-    ``GameResult`` object the frontend computed at end-of-session. Both are
-    stored as JSON so we can evolve the shapes on either side without DB
-    migrations.
+    ``id`` is the Auth0 ``sub`` claim (e.g. ``google-oauth2|abc123``). We use
+    it directly as the primary key so every place that holds a user reference
+    can stick to a single, stable string. Profile fields are populated from
+    Auth0's ``/userinfo`` endpoint on first sign-in and refreshed on later
+    logins.
     """
+
+    __tablename__ = "users"
+
+    id: str = Field(primary_key=True)
+
+    email: str | None = Field(default=None, index=True)
+    name: str
+    picture: str | None = None
+
+    created_at: datetime = Field(
+        default_factory=_utcnow,
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )
+    updated_at: datetime = Field(
+        default_factory=_utcnow,
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )
+
+
+class Story(SQLModel, table=True):
+    """A finished writing session."""
 
     __tablename__ = "stories"
 
     id: int | None = Field(default=None, primary_key=True)
 
-    # Story body — the literal text the player typed (post-edits).
     text: str
-
-    # Frontend locale used for the session (matches the URL segment: en/es/...).
     lang: str = Field(index=True)
 
     created_at: datetime = Field(
@@ -46,9 +63,9 @@ class Story(SQLModel, table=True):
         sa_column=Column(DateTime(timezone=True), nullable=False, index=True),
     )
 
-    # Composite "<provider>:<provider_user_id>" — same key as ``AuthUser.id``.
-    # Indexed for the future "list MY stories" query path.
-    user_id: str | None = Field(default=None, index=True)
+    # Owner. Nullable so legacy anonymous rows persist; new rows always carry
+    # the authenticated caller's id.
+    user_id: str | None = Field(default=None, foreign_key="users.id", index=True)
 
     settings: dict[str, Any] = Field(
         default_factory=dict,

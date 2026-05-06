@@ -1,9 +1,7 @@
 """Stories endpoints.
 
-For now both list (GET) and create (POST) are unauthenticated and operate on
-records with ``user_id = NULL``. Once the frontend's auth flow is wired
-through, this module will switch to the standard ``Depends(get_current_user)``
-pattern and write/read the caller's records.
+All routes require an authenticated user. Reads are scoped to the caller's
+own stories; creates always set ``user_id`` to the caller.
 """
 
 from __future__ import annotations
@@ -15,8 +13,9 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlmodel import Session, desc, func, select
 
+from ..auth import get_current_user
 from ..db import get_db
-from ..db_models import Story
+from ..db_models import Story, User
 
 
 router = APIRouter(prefix="/stories", tags=["stories"])
@@ -26,8 +25,7 @@ router = APIRouter(prefix="/stories", tags=["stories"])
 
 
 class StoryRead(BaseModel):
-    """Public-facing story record. Mirrors the SQLModel row but is decoupled
-    so we can shape the wire format independently of the table."""
+    """Public-facing story record."""
 
     id: int
     text: str
@@ -54,27 +52,33 @@ class StoryListResponse(BaseModel):
     offset: int
 
 
+class StoryCount(BaseModel):
+    count: int
+
+
 # ---- List -----------------------------------------------------------------
 
 
-# TODO(auth): once we want per-user filtering, add
-#   ``user: AuthUser = Depends(get_current_user)`` and
-#   ``stmt = stmt.where(Story.user_id == user.id)``.
 @router.get(
     "",
     response_model=StoryListResponse,
-    summary="List recent stories (newest first), paginated.",
+    summary="List the caller's recent stories (newest first), paginated.",
 )
 def list_stories(
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ) -> StoryListResponse:
-    total_stmt = select(func.count()).select_from(Story)
+    total_stmt = select(func.count()).select_from(Story).where(Story.user_id == user.id)
     total = db.exec(total_stmt).one()
 
     items_stmt = (
-        select(Story).order_by(desc(Story.created_at), desc(Story.id)).offset(offset).limit(limit)
+        select(Story)
+        .where(Story.user_id == user.id)
+        .order_by(desc(Story.created_at), desc(Story.id))
+        .offset(offset)
+        .limit(limit)
     )
     rows = db.exec(items_stmt).all()
     return StoryListResponse(
@@ -85,17 +89,39 @@ def list_stories(
     )
 
 
+# ---- Count ----------------------------------------------------------------
+
+
+@router.get(
+    "/count",
+    response_model=StoryCount,
+    summary="Total number of stories owned by the caller.",
+)
+def count_stories(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> StoryCount:
+    stmt = select(func.count()).select_from(Story).where(Story.user_id == user.id)
+    return StoryCount(count=int(db.exec(stmt).one()))
+
+
 # ---- Detail ---------------------------------------------------------------
 
 
 @router.get(
     "/{story_id}",
     response_model=StoryRead,
-    summary="Fetch a single story by id.",
+    summary="Fetch one of the caller's stories by id.",
 )
-def get_story(story_id: int, db: Session = Depends(get_db)) -> StoryRead:
+def get_story(
+    story_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> StoryRead:
     row = db.get(Story, story_id)
-    if row is None:
+    if row is None or row.user_id != user.id:
+        # 404 (not 403) on cross-owner access — don't leak existence of
+        # other users' rows.
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Story {story_id} not found.",
@@ -106,21 +132,23 @@ def get_story(story_id: int, db: Session = Depends(get_db)) -> StoryRead:
 # ---- Create ---------------------------------------------------------------
 
 
-# TODO(auth): once auth is mandatory here, take ``user: AuthUser = Depends(...)``
-# and persist ``user_id=user.id``. Today every record lands with NULL owner.
 @router.post(
     "",
     response_model=StoryRead,
     status_code=status.HTTP_201_CREATED,
-    summary="Create a new story (anonymous for now — owner=NULL).",
+    summary="Create a new story owned by the caller.",
 )
-def create_story(payload: StoryCreate, db: Session = Depends(get_db)) -> StoryRead:
+def create_story(
+    payload: StoryCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> StoryRead:
     row = Story(
         text=payload.text,
         lang=payload.lang,
         settings=payload.settings,
         stats=payload.stats,
-        user_id=None,
+        user_id=user.id,
     )
     db.add(row)
     db.commit()

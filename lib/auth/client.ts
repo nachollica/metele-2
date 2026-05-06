@@ -2,87 +2,82 @@
 
 import type { AuthProvider, AuthUser } from "./types"
 
-// Backend base URL. Configurable via NEXT_PUBLIC_AUTH_API_URL so production can
-// point at the deployed FastAPI host while local dev uses the uvicorn default.
+// Backend base URL (FastAPI). Configurable via NEXT_PUBLIC_API_URL so
+// production can point at the deployed host while local dev uses the
+// uvicorn default.
 const API_URL =
-  (typeof process !== "undefined" && process.env?.NEXT_PUBLIC_AUTH_API_URL) ||
+  (typeof process !== "undefined" && process.env?.NEXT_PUBLIC_API_URL) ||
   "http://localhost:8000"
 
-export const TOKEN_STORAGE_KEY = "metele.auth.token"
-
-export function authApiUrl(path: string): string {
+export function apiUrl(path: string): string {
   return `${API_URL.replace(/\/+$/, "")}${path.startsWith("/") ? path : `/${path}`}`
 }
 
-export function readStoredToken(): string | null {
-  if (typeof window === "undefined") return null
-  try {
-    return window.localStorage.getItem(TOKEN_STORAGE_KEY)
-  } catch {
-    return null
-  }
+// ---- Auth0 SPA configuration ---------------------------------------------
+
+export type Auth0Config = {
+  domain: string
+  clientId: string
+  audience: string
 }
 
-export function persistToken(token: string | null): void {
-  if (typeof window === "undefined") return
-  try {
-    if (token === null) {
-      window.localStorage.removeItem(TOKEN_STORAGE_KEY)
-    } else {
-      window.localStorage.setItem(TOKEN_STORAGE_KEY, token)
-    }
-  } catch {
-    // ignore — incognito/private modes may block storage
-  }
+// Returns the Auth0 SPA config when all three vars are set. We refuse to
+// render the Auth0Provider with placeholders so misconfigurations fail
+// loudly rather than dumping the user into a broken login flow.
+export function readAuth0Config(): Auth0Config | null {
+  if (typeof process === "undefined") return null
+  const domain = process.env.NEXT_PUBLIC_AUTH0_DOMAIN
+  const clientId = process.env.NEXT_PUBLIC_AUTH0_CLIENT_ID
+  const audience = process.env.NEXT_PUBLIC_AUTH0_AUDIENCE
+  if (!domain || !clientId || !audience) return null
+  return { domain, clientId, audience }
 }
 
-// Build the absolute URL the OAuth callback should redirect to once the
-// backend has minted a session token. The token is appended as a URL fragment
-// so it is never sent to the static-host's access logs.
-export function buildCallbackReturnUrl(locale: string): string {
+// Map our internal provider id (used in URLs and i18n keys) to the Auth0
+// social connection name that gets passed via `loginWithRedirect`.
+export const AUTH0_CONNECTION: Record<AuthProvider, string> = {
+  google: "google-oauth2",
+  facebook: "facebook",
+  twitter: "twitter",
+}
+
+// The redirect URL Auth0 should send the user back to after consent. Must
+// match an Allowed Callback URL configured on the Auth0 application.
+export function buildRedirectUri(locale: string): string {
   if (typeof window === "undefined") return ""
-  const base = `${window.location.origin}/${locale}/auth/callback`
-  return base
+  return `${window.location.origin}/${locale}/auth/callback`
 }
 
-// Kick off the OAuth flow by navigating away to the backend's login endpoint.
-// `mock` selects the mocked variant the backend exposes for end-to-end testing
-// without real provider credentials.
-export function startProviderLogin(
-  provider: AuthProvider,
-  locale: string,
-  options: { mock?: boolean } = {},
-): void {
-  if (typeof window === "undefined") return
-  const returnUrl = buildCallbackReturnUrl(locale)
-  const path = options.mock
-    ? `/auth/mock/${provider}/login`
-    : `/auth/${provider}/login`
-  const url = new URL(authApiUrl(path))
-  url.searchParams.set("return_to", returnUrl)
-  window.location.assign(url.toString())
+// ---- Authenticated fetch helpers ----------------------------------------
+
+export type TokenGetter = () => Promise<string | null>
+
+async function authedFetch(
+  token: string,
+  input: string,
+  init: RequestInit = {},
+): Promise<Response> {
+  const headers = new Headers(init.headers)
+  headers.set("Authorization", `Bearer ${token}`)
+  return fetch(input, { ...init, headers })
 }
 
 export async function fetchMe(token: string): Promise<AuthUser | null> {
   try {
-    const res = await fetch(authApiUrl("/auth/me"), {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    const res = await authedFetch(token, apiUrl("/auth/me"))
     if (!res.ok) return null
-    const data = (await res.json()) as AuthUser
-    return data
+    return (await res.json()) as AuthUser
   } catch {
     return null
   }
 }
 
-export async function logoutRequest(token: string): Promise<void> {
-  try {
-    await fetch(authApiUrl("/auth/logout"), {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-    })
-  } catch {
-    // logout is fire-and-forget; the client wipes its own token regardless
-  }
+// Generic helper used by the stories/words clients so they don't have to
+// duplicate the bearer-injection boilerplate.
+export async function apiFetch(
+  token: string,
+  path: string,
+  init: RequestInit = {},
+): Promise<Response> {
+  return authedFetch(token, apiUrl(path), init)
 }

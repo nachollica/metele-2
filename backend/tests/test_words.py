@@ -114,8 +114,15 @@ class TestExpandRelated:
 class TestRelatedWordsRoute:
     URL = "/words/related"
 
-    def test_explicit_language_wins_over_header(self, client) -> None:
+    def test_requires_auth(self, client) -> None:
         r = client.post(
+            self.URL,
+            json={"words": ["animal"], "language": "en"},
+        )
+        assert r.status_code == 401
+
+    def test_explicit_language_wins_over_header(self, auth_client) -> None:
+        r = auth_client.post(
             self.URL,
             json={"words": ["animal"], "language": "es", "depth": 1, "limit": 5},
             headers={"Accept-Language": "en"},
@@ -125,8 +132,8 @@ class TestRelatedWordsRoute:
         assert body["language"] == "es"
         assert body["words"], "expansion should be non-empty"
 
-    def test_header_language_used_when_body_missing(self, client) -> None:
-        r = client.post(
+    def test_header_language_used_when_body_missing(self, auth_client) -> None:
+        r = auth_client.post(
             self.URL,
             json={"words": ["dog"], "depth": 1, "limit": 5},
             headers={"Accept-Language": "es-AR,es;q=0.9,en;q=0.5"},
@@ -134,32 +141,32 @@ class TestRelatedWordsRoute:
         assert r.status_code == 200
         assert r.json()["language"] == "es"
 
-    def test_missing_language_returns_400(self, client) -> None:
-        r = client.post(self.URL, json={"words": ["dog"]})
+    def test_missing_language_returns_400(self, auth_client) -> None:
+        r = auth_client.post(self.URL, json={"words": ["dog"]})
         assert r.status_code == 400
         assert "language" in r.json()["detail"].lower()
 
-    def test_unsupported_header_language_returns_400(self, client) -> None:
-        r = client.post(
+    def test_unsupported_header_language_returns_400(self, auth_client) -> None:
+        r = auth_client.post(
             self.URL,
             json={"words": ["dog"]},
             headers={"Accept-Language": "fr,de;q=0.8"},
         )
         assert r.status_code == 400
 
-    def test_empty_words_list_is_rejected(self, client) -> None:
-        r = client.post(self.URL, json={"words": [], "language": "en"})
+    def test_empty_words_list_is_rejected(self, auth_client) -> None:
+        r = auth_client.post(self.URL, json={"words": [], "language": "en"})
         assert r.status_code == 422
 
     @pytest.mark.parametrize("field,value", [("depth", 0), ("depth", 99), ("limit", 0)])
-    def test_validation_bounds(self, client, field: str, value: int) -> None:
+    def test_validation_bounds(self, auth_client, field: str, value: int) -> None:
         body: dict[str, object] = {"words": ["dog"], "language": "en"}
         body[field] = value
-        r = client.post(self.URL, json=body)
+        r = auth_client.post(self.URL, json=body)
         assert r.status_code == 422
 
-    def test_response_shape_matches_schema(self, client) -> None:
-        r = client.post(
+    def test_response_shape_matches_schema(self, auth_client) -> None:
+        r = auth_client.post(
             self.URL,
             json={"words": ["fruit"], "language": "en", "depth": 2, "limit": 8},
         )

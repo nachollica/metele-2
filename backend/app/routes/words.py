@@ -23,8 +23,11 @@ import re
 import threading
 from enum import Enum
 
-from fastapi import APIRouter, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel, Field
+
+from ..auth import get_current_user
+from ..db_models import User
 
 router = APIRouter(prefix="/words", tags=["words"])
 
@@ -216,10 +219,6 @@ class RelatedWordsResponse(BaseModel):
 # ---- Route -------------------------------------------------------------
 
 
-# TODO(auth): require an authenticated user once the auth flow is in place.
-# Left intentionally open for now so end-to-end testing of the categories
-# feature can run without a session token. To enable, add
-# ``user: AuthUser = Depends(get_current_user)`` to the signature below.
 @router.post(
     "/related",
     response_model=RelatedWordsResponse,
@@ -228,6 +227,7 @@ class RelatedWordsResponse(BaseModel):
 def related_words(
     payload: RelatedWordsRequest,
     accept_language: str | None = Header(default=None),
+    _user: User = Depends(get_current_user),
 ) -> RelatedWordsResponse:
     language = payload.language or parse_accept_language(accept_language)
     if language is None:

@@ -1,10 +1,10 @@
 // Client for the backend `/stories` endpoints.
 //
-// Auth-free for now: every record is anonymous on the backend until the auth
-// flow is wired through. The list call is plain GET; the POST runs at end of
-// session to persist whatever the player wrote.
+// Every call requires a bearer access token issued by Auth0; callers obtain
+// one via `useAuth().getAccessToken()`. A null token means the user is
+// anonymous — callers should skip the request rather than calling here.
 
-import { authApiUrl } from "@/lib/auth/client"
+import { apiFetch } from "@/lib/auth/client"
 
 export type Story = {
   id: number
@@ -47,13 +47,15 @@ function fromWire(s: StoryWire): Story {
 }
 
 export async function fetchStories(
+  token: string,
   options: { limit?: number; offset?: number } = {},
 ): Promise<StoryListResponse | null> {
-  const url = new URL(authApiUrl("/stories"))
-  if (options.limit !== undefined) url.searchParams.set("limit", String(options.limit))
-  if (options.offset !== undefined) url.searchParams.set("offset", String(options.offset))
+  const params = new URLSearchParams()
+  if (options.limit !== undefined) params.set("limit", String(options.limit))
+  if (options.offset !== undefined) params.set("offset", String(options.offset))
+  const path = params.size > 0 ? `/stories?${params.toString()}` : "/stories"
   try {
-    const res = await fetch(url.toString())
+    const res = await apiFetch(token, path)
     if (!res.ok) {
       console.log(`[stories-api] list failed ${res.status}`)
       return null
@@ -78,9 +80,12 @@ export type CreateStoryInput = {
   stats: Record<string, unknown>
 }
 
-export async function createStory(input: CreateStoryInput): Promise<Story | null> {
+export async function createStory(
+  token: string,
+  input: CreateStoryInput,
+): Promise<Story | null> {
   try {
-    const res = await fetch(authApiUrl("/stories"), {
+    const res = await apiFetch(token, "/stories", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(input),

@@ -1,48 +1,49 @@
-import { screen, waitFor } from "@testing-library/react"
+import { screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { AuthButton } from "@/components/auth/auth-button"
-import { AuthProvider, type AuthUser } from "@/lib/auth"
-import { TOKEN_STORAGE_KEY } from "@/lib/auth/client"
+import type { AuthContextValue } from "@/lib/auth"
 
 import { renderWithLocale } from "@/tests/utils"
 
-const mockUser: AuthUser = {
-  id: "google:1",
-  provider: "google",
-  email: "x@example.com",
-  name: "Jane Doe",
-  avatarUrl: null,
+const authState: { current: AuthContextValue } = {
+  current: makeAnonymous(),
 }
 
-function renderInAuth(locale: "en" | "es" = "en") {
-  return renderWithLocale(
-    <AuthProvider>
-      <AuthButton />
-    </AuthProvider>,
-    { locale },
-  )
+function makeAnonymous(): AuthContextValue {
+  return {
+    status: "anonymous",
+    user: null,
+    loginWithProvider: vi.fn().mockResolvedValue(undefined),
+    logout: vi.fn(),
+    getAccessToken: vi.fn().mockResolvedValue(null),
+    applyLocalUser: vi.fn(),
+  }
 }
+
+vi.mock("@/lib/auth", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/auth")>("@/lib/auth")
+  return {
+    ...actual,
+    useAuth: () => authState.current,
+  }
+})
 
 describe("AuthButton", () => {
   beforeEach(() => {
-    window.localStorage.clear()
-  })
-
-  afterEach(() => {
-    vi.restoreAllMocks()
+    authState.current = makeAnonymous()
   })
 
   it("renders a 'Log in' button when anonymous", async () => {
-    renderInAuth()
+    renderWithLocale(<AuthButton />)
     expect(
       await screen.findByRole("button", { name: /log in/i }),
     ).toBeInTheDocument()
   })
 
   it("opens the login modal when clicked while anonymous", async () => {
-    renderInAuth()
+    renderWithLocale(<AuthButton />)
     const user = userEvent.setup()
     await user.click(await screen.findByRole("button", { name: /log in/i }))
     expect(
@@ -50,48 +51,48 @@ describe("AuthButton", () => {
     ).toBeInTheDocument()
   })
 
-  it("renders the user's name and account menu when authenticated", async () => {
-    window.localStorage.setItem(TOKEN_STORAGE_KEY, "tok")
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({ ok: true, json: async () => mockUser }),
-    )
-    renderInAuth()
+  it("renders the user's name and account menu when authenticated", () => {
+    authState.current = {
+      ...makeAnonymous(),
+      status: "authenticated",
+      user: {
+        id: "google-oauth2|abc",
+        email: "x@example.com",
+        name: "Jane Doe",
+        avatarUrl: null,
+      },
+    }
+    renderWithLocale(<AuthButton />)
 
-    await waitFor(() =>
-      expect(screen.getByText("Jane Doe")).toBeInTheDocument(),
-    )
+    expect(screen.getByText("Jane Doe")).toBeInTheDocument()
     expect(
       screen.getByRole("button", { name: /account menu/i }),
     ).toBeInTheDocument()
   })
 
-  it("logs the user out when the menu's 'Log out' is clicked", async () => {
-    window.localStorage.setItem(TOKEN_STORAGE_KEY, "tok")
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce({ ok: true, json: async () => mockUser }) // /auth/me
-      .mockResolvedValueOnce({ ok: true }) // /auth/logout
-    vi.stubGlobal("fetch", fetchMock)
-
-    renderInAuth()
+  it("calls logout when the menu's 'Log out' is clicked", async () => {
+    const logout = vi.fn()
+    authState.current = {
+      ...makeAnonymous(),
+      status: "authenticated",
+      user: {
+        id: "google-oauth2|abc",
+        email: null,
+        name: "Jane Doe",
+        avatarUrl: null,
+      },
+      logout,
+    }
+    renderWithLocale(<AuthButton />)
     const user = userEvent.setup()
 
-    await user.click(
-      await screen.findByRole("button", { name: /account menu/i }),
-    )
+    await user.click(screen.getByRole("button", { name: /account menu/i }))
     await user.click(await screen.findByRole("menuitem", { name: /log out/i }))
-
-    await waitFor(() =>
-      expect(
-        screen.getByRole("button", { name: /log in/i }),
-      ).toBeInTheDocument(),
-    )
-    expect(window.localStorage.getItem(TOKEN_STORAGE_KEY)).toBeNull()
+    expect(logout).toHaveBeenCalledOnce()
   })
 
   it("uses Spanish translations under the 'es' locale", async () => {
-    renderInAuth("es")
+    renderWithLocale(<AuthButton />, { locale: "es" })
     expect(
       await screen.findByRole("button", { name: /iniciar sesi[oó]n/i }),
     ).toBeInTheDocument()

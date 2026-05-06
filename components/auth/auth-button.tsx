@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { LogIn, LogOut, User } from "lucide-react"
+import { LogIn, LogOut, User, UserCog } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -19,9 +19,15 @@ import { useTranslations } from "@/lib/i18n"
 
 import { LoginModal } from "./login-modal"
 
+type Props = {
+  /** Optional handler invoked when the user picks "Profile" in the avatar
+   *  dropdown. When omitted, the dropdown only shows logout. */
+  onOpenProfile?: () => void
+}
+
 // Single header-bar control. While loading we render a placeholder skeleton
 // so the row doesn't layout-shift once the AuthContext settles.
-export function AuthButton() {
+export function AuthButton({ onOpenProfile }: Props = {}) {
   const t = useTranslations()
   const { status, user, logout } = useAuth()
   const [loginOpen, setLoginOpen] = useState(false)
@@ -79,12 +85,15 @@ export function AuthButton() {
             {user.email ? (
               <span className="text-muted-foreground truncate text-xs">{user.email}</span>
             ) : null}
-            <span className="text-muted-foreground text-xs">
-              {t.auth.profileProvider.replace("{provider}", t.auth[user.provider])}
-            </span>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        {onOpenProfile ? (
+          <DropdownMenuItem onClick={onOpenProfile}>
+            <UserCog className="size-4" aria-hidden />
+            {t.profile.menuItem}
+          </DropdownMenuItem>
+        ) : null}
         <DropdownMenuItem onClick={() => void logout()}>
           <LogOut className="size-4" aria-hidden />
           {t.auth.logOut}

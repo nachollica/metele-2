@@ -1,64 +1,71 @@
 import { screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { LoginModal } from "@/components/auth/login-modal"
 
 import { renderWithLocale } from "@/tests/utils"
 
-const startProviderLogin = vi.fn()
+const loginWithProvider = vi.fn().mockResolvedValue(undefined)
 
 vi.mock("@/lib/auth", async () => {
   const actual = await vi.importActual<typeof import("@/lib/auth")>("@/lib/auth")
   return {
     ...actual,
-    startProviderLogin: (...args: Parameters<typeof actual.startProviderLogin>) =>
-      startProviderLogin(...args),
+    useAuth: () => ({
+      status: "anonymous",
+      user: null,
+      loginWithProvider,
+      logout: vi.fn(),
+      getAccessToken: vi.fn().mockResolvedValue(null),
+    }),
   }
 })
 
 describe("LoginModal", () => {
   beforeEach(() => {
-    startProviderLogin.mockReset()
+    loginWithProvider.mockReset().mockResolvedValue(undefined)
   })
 
-  afterEach(() => {
-    vi.restoreAllMocks()
-  })
-
-  it("renders one button per provider plus a mock shortcut by default", () => {
+  it("renders one button per supported provider", () => {
     renderWithLocale(<LoginModal open onOpenChange={() => {}} />)
-    expect(screen.getByRole("button", { name: /continue with google/i })).toBeInTheDocument()
     expect(
-      screen.getByRole("button", { name: /continue with instagram/i }),
+      screen.getByRole("button", { name: /continue with google/i }),
     ).toBeInTheDocument()
     expect(
       screen.getByRole("button", { name: /continue with facebook/i }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole("button", { name: /try mock account/i }),
+      screen.getByRole("button", { name: /continue with x \(twitter\)/i }),
     ).toBeInTheDocument()
   })
 
-  it("hides the mock shortcut when showMock=false", () => {
-    renderWithLocale(<LoginModal open onOpenChange={() => {}} showMock={false} />)
+  it("does not render Instagram or a mock-account shortcut", () => {
+    renderWithLocale(<LoginModal open onOpenChange={() => {}} />)
     expect(
-      screen.queryByRole("button", { name: /try mock account/i }),
+      screen.queryByRole("button", { name: /instagram/i }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole("button", { name: /mock account/i }),
     ).not.toBeInTheDocument()
   })
 
-  it("dispatches the real provider flow when a provider button is clicked", async () => {
+  it("kicks off the Auth0 redirect flow when a provider button is clicked", async () => {
     renderWithLocale(<LoginModal open onOpenChange={() => {}} />, { locale: "en" })
     const user = userEvent.setup()
-    await user.click(screen.getByRole("button", { name: /continue with google/i }))
-    expect(startProviderLogin).toHaveBeenCalledWith("google", "en", { mock: false })
+    await user.click(
+      screen.getByRole("button", { name: /continue with google/i }),
+    )
+    expect(loginWithProvider).toHaveBeenCalledWith("google")
   })
 
-  it("dispatches the mock flow when the mock shortcut is clicked", async () => {
-    renderWithLocale(<LoginModal open onOpenChange={() => {}} />, { locale: "es" })
+  it("kicks off the Auth0 redirect flow for the Twitter button", async () => {
+    renderWithLocale(<LoginModal open onOpenChange={() => {}} />, { locale: "en" })
     const user = userEvent.setup()
-    await user.click(screen.getByRole("button", { name: /probar cuenta de prueba/i }))
-    expect(startProviderLogin).toHaveBeenCalledWith("google", "es", { mock: true })
+    await user.click(
+      screen.getByRole("button", { name: /continue with x \(twitter\)/i }),
+    )
+    expect(loginWithProvider).toHaveBeenCalledWith("twitter")
   })
 
   it("calls onOpenChange(false) when the cancel button is clicked", async () => {

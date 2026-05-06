@@ -107,7 +107,25 @@ export const en = {
     quit: "Quit session",
     startAgain: "Start again",
     closeStory: "Close story",
+    goBack: "Go back",
     viewingStory: "Viewing a previous story (read-only).",
+  },
+
+  profile: {
+    title: "Your profile",
+    description: "Edit how your name, email and avatar appear in the app.",
+    nameLabel: "Display name",
+    emailLabel: "Email",
+    uploadPicture: "Upload picture",
+    removePicture: "Remove picture",
+    pictureTooLarge: "Pick an image smaller than 256 KB.",
+    pictureReadFailed: "Couldn't read that file.",
+    storyCountLabel: "Stories written",
+    save: "Save changes",
+    saving: "Saving…",
+    saved: "Saved.",
+    saveFailed: "Couldn't save your changes.",
+    menuItem: "Profile",
   },
 
   results: {
@@ -149,10 +167,8 @@ export const en = {
       "You can play without an account. Sign in to unlock saved stories and leaderboards (coming soon).",
     continueWith: "Continue with {provider}",
     google: "Google",
-    instagram: "Instagram",
     facebook: "Facebook",
-    or: "or",
-    tryMock: "Try mock account (dev)",
+    twitter: "X (Twitter)",
     cancel: "Maybe later",
     finishingSignIn: "Finishing sign-in…",
     signInFailed: "Sign-in failed.",
@@ -161,7 +177,6 @@ export const en = {
     welcomeBack: "Welcome back, {name}",
     accountMenuLabel: "Account menu",
     profileEmail: "Email",
-    profileProvider: "Signed in with {provider}",
   },
 } as const
 

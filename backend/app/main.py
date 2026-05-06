@@ -17,9 +17,9 @@ def create_app() -> FastAPI:
     init_db()
     app = FastAPI(title="METELE backend", version="0.1.0")
 
-    # The frontend is on a different origin (static export served by nginx,
-    # backend on its own host). The auth flow itself uses redirects, but
-    # `/auth/me` and `/auth/logout` are XHR/fetch — those need CORS.
+    # The frontend is served as static assets on a different origin and
+    # talks to the API as XHR/fetch with a Bearer token. Allow Authorization
+    # in preflight responses; credentials stay off (no cookies).
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[settings.frontend_origin],
