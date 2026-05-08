@@ -37,8 +37,8 @@ export function AppHeader({ action, onOpenProfile }: Props) {
         {t.app.title}
       </h1>
       <div className="ml-auto flex items-center gap-2">
-        {action}
         <AuthButton onOpenProfile={onOpenProfile} />
+        {action}
       </div>
     </header>
   )

@@ -24,12 +24,9 @@ describe("AUTH0_CONNECTION", () => {
 })
 
 describe("buildRedirectUri", () => {
-  it("uses the current origin and the requested locale", () => {
-    expect(buildRedirectUri("en")).toBe(
-      `${window.location.origin}/en/auth/callback`,
-    )
-    expect(buildRedirectUri("es")).toBe(
-      `${window.location.origin}/es/auth/callback`,
+  it("uses the current origin", () => {
+    expect(buildRedirectUri()).toBe(
+      `${window.location.origin}/auth/callback`,
     )
   })
 })

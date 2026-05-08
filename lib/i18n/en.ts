@@ -177,6 +177,19 @@ export const en = {
     durationLabel: "Session length",
   },
 
+  theme: {
+    switchToDark: "Switch to dark mode",
+    switchToLight: "Switch to light mode",
+  },
+
+  prefs: {
+    sectionLabel: "Preferences",
+    modeLabel: "Mode",
+    modeLight: "Light",
+    modeDark: "Dark",
+    languageLabel: "Language",
+  },
+
   auth: {
     signedOut: "Sign in",
     signedIn: "Account",

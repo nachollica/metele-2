@@ -15,8 +15,6 @@ import {
   type AppState,
 } from "@auth0/auth0-react"
 
-import { useLocale } from "@/lib/i18n"
-
 import {
   AUTH0_CONNECTION,
   buildRedirectUri,
@@ -66,10 +64,6 @@ const LocalAuthContext = createContext<LocalAuthState | null>(null)
 
 // ---- Provider ------------------------------------------------------------
 
-// `AuthProvider` is mounted inside `app/[lang]/layout.tsx`. We can't read
-// the locale from context at module load time, so the inner provider reads
-// it from `useLocale` and the outer wrapper just forwards children when
-// Auth0 isn't configured.
 export function AuthProvider({ children }: { children: ReactNode }) {
   const config = readAuth0Config()
   if (!config) {
@@ -106,20 +100,15 @@ function ConfiguredAuthProvider({
   config: { domain: string; clientId: string; audience: string }
   children: ReactNode
 }) {
-  const locale = useLocale()
-  const redirectUri = buildRedirectUri(locale)
+  const redirectUri = buildRedirectUri()
 
   // After the SDK exchanges the code on the callback page, bounce the user
-  // to the home route for their locale (or wherever they came from).
-  const onRedirectCallback = useCallback(
-    (appState?: AppState) => {
-      if (typeof window === "undefined") return
-      const target =
-        (appState?.returnTo as string | undefined) ?? `/${locale}`
-      window.location.replace(target)
-    },
-    [locale],
-  )
+  // back to the home route (or wherever they came from).
+  const onRedirectCallback = useCallback((appState?: AppState) => {
+    if (typeof window === "undefined") return
+    const target = (appState?.returnTo as string | undefined) ?? "/"
+    window.location.replace(target)
+  }, [])
 
   return (
     <Auth0SDKProvider
@@ -180,7 +169,6 @@ function AuthBootstrap() {
 // Adapter shape that hides @auth0/auth0-react behind our project's API.
 // Components only ever import `useAuth` from `@/lib/auth`.
 export function useAuth(): AuthContextValue {
-  const locale = useLocale()
   const a0 = useAuth0()
   const local = useContext(LocalAuthContext)
   const devSession = local?.dev ?? null
@@ -190,12 +178,12 @@ export function useAuth(): AuthContextValue {
       await a0.loginWithRedirect({
         authorizationParams: {
           connection: AUTH0_CONNECTION[provider],
-          redirect_uri: buildRedirectUri(locale),
+          redirect_uri: buildRedirectUri(),
         },
-        appState: { returnTo: `/${locale}` },
+        appState: { returnTo: "/" },
       })
     },
-    [a0, locale],
+    [a0],
   )
 
   const loginAsDevUser = useCallback(async (): Promise<boolean> => {
@@ -217,10 +205,10 @@ export function useAuth(): AuthContextValue {
     a0.logout({
       logoutParams: {
         returnTo:
-          typeof window === "undefined" ? "" : `${window.location.origin}/${locale}`,
+          typeof window === "undefined" ? "" : `${window.location.origin}/`,
       },
     })
-  }, [a0, devSession, local, locale])
+  }, [a0, devSession, local])
 
   const getAccessToken = useCallback(async (): Promise<string | null> => {
     if (devSession !== null) return devSession.token

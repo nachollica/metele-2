@@ -176,6 +176,19 @@ export const es = {
     durationLabel: "Duración de la sesión",
   },
 
+  theme: {
+    switchToDark: "Cambiar a modo oscuro",
+    switchToLight: "Cambiar a modo claro",
+  },
+
+  prefs: {
+    sectionLabel: "Preferencias",
+    modeLabel: "Modo",
+    modeLight: "Claro",
+    modeDark: "Oscuro",
+    languageLabel: "Idioma",
+  },
+
   auth: {
     signedOut: "Iniciar sesión",
     signedIn: "Cuenta",

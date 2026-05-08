@@ -15,12 +15,24 @@ export type { Locale, Translations } from "./config"
 
 export const LocaleContext = createContext<Locale>(DEFAULT_LOCALE)
 
+// Setter exposed by `LocaleProvider` so other providers (e.g. the
+// per-user preferences store) can drive the active locale without each
+// consumer wiring its own state.
+export const SetLocaleContext = createContext<(locale: Locale) => void>(
+  () => {},
+)
+
 /**
  * Read the current locale from context, typically provided by the
  * `[lang]/layout.tsx` locale provider.
  */
 export function useLocale(): Locale {
   return useContext(LocaleContext)
+}
+
+/** Setter counterpart to `useLocale`. */
+export function useSetLocale(): (locale: Locale) => void {
+  return useContext(SetLocaleContext)
 }
 
 /**

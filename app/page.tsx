@@ -1,21 +1,9 @@
-import { DEFAULT_LOCALE } from "@/lib/i18n/config"
+import { MeteleGameClient } from "@/components/metele/metele-game-client"
 
-const TARGET = `/${DEFAULT_LOCALE}`
-
-// Static-export root: redirect to the default locale. Inline script runs
-// before paint so the user lands on /<lang> without waiting on a meta
-// refresh. The game is JS-only, so a noscript fallback link is enough.
-export default function RootPage() {
-  return (
-    <>
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `location.replace(${JSON.stringify(TARGET)})`,
-        }}
-      />
-      <noscript>
-        Redirecting to <a href={TARGET}>{TARGET}</a>…
-      </noscript>
-    </>
-  )
+// All gameplay logic lives in the client `MeteleGame` component so the
+// entire app can be served as static assets. The wrapper dynamic-imports
+// it with `ssr: false` so auth state (read from localStorage post-mount)
+// can't desync between server HTML and the first client render.
+export default function Page() {
+  return <MeteleGameClient />
 }

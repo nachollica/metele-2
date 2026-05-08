@@ -17,6 +17,7 @@ import { fetchRelatedWords, parseCategoriesInput } from "@/lib/metele/words-api"
 import { createStory, type Story } from "@/lib/metele/stories-api"
 import { useAuth } from "@/lib/auth"
 import { useLocale, useTranslations } from "@/lib/i18n"
+import { usePreferences } from "@/lib/preferences"
 import { playBell, primeAudio } from "@/lib/metele/sound"
 import { randomIntervalMs } from "@/lib/metele/random"
 import {
@@ -62,6 +63,7 @@ export function MeteleGame() {
   const locale = useLocale()
   const t = useTranslations()
   const { getAccessToken, status: authStatus } = useAuth()
+  const { bellEnabled: bellPref, setBellEnabled: setBellPref } = usePreferences()
 
   // ---- High-level game state ---------------------------------------------
   const [gameState, setGameState] = useState<GameState>("welcome")
@@ -138,6 +140,25 @@ export function MeteleGame() {
   // Cache the active settings so timer callbacks don't depend on the closure
   // captured at start time and stay correct across replays.
   const settingsRef = useRef<GameSettings>(DEFAULT_SETTINGS)
+
+  // Bell is persisted per-user in localStorage (via PreferencesProvider).
+  // When the stored pref hydrates, mirror it into the active settings.
+  // Writes go the other direction through `handleSettingsChange`.
+  useEffect(() => {
+    if (bellPref === null) return
+    setSettings((s) =>
+      s.bellEnabled === bellPref ? s : { ...s, bellEnabled: bellPref },
+    )
+    settingsRef.current = { ...settingsRef.current, bellEnabled: bellPref }
+  }, [bellPref])
+
+  const handleSettingsChange = useCallback(
+    (next: GameSettings) => {
+      setSettings(next)
+      if (next.bellEnabled !== bellPref) setBellPref(next.bellEnabled)
+    },
+    [bellPref, setBellPref],
+  )
 
   // Active custom word pool fetched from the backend at game start. Null
   // means "use the hardcoded per-locale pool" (categories disabled, no input,
@@ -793,7 +814,7 @@ export function MeteleGame() {
           <AppHeader action={primaryAction} onOpenProfile={openProfile} />
 
           {gameState === "welcome" || gameState === "settings" ? (
-            <SettingsPanel settings={settings} onChange={setSettings} />
+            <SettingsPanel settings={settings} onChange={handleSettingsChange} />
           ) : null}
 
           {gameState === "profile" ? (

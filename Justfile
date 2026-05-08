@@ -9,6 +9,10 @@ help:
 init:
     @pnpm i
 
+[doc("Compile frontend static assets.")]
+build:
+    pnpm build
+
 [doc("Start local dev server.")]
 [group("development")]
 dev:
@@ -40,8 +44,7 @@ cc: lint-fix tsc test
 
 [doc("Build assets and deploy to SSH server.")]
 [group("deploy")]
-deploy: cc
-    pnpm build
+deploy: cc build
     tar zcf metele.gz out
     scp metele.gz ash:.0/code/metele
     ssh ash 'rm -rf .0/code/metele/out/'

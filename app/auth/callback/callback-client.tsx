@@ -1,10 +1,11 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
 import { Loader2, AlertTriangle } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { useLocale, useTranslations } from "@/lib/i18n"
+import { useTranslations } from "@/lib/i18n"
 
 // Auth0Provider's `onRedirectCallback` runs as soon as the SDK finishes the
 // code+state exchange and pushes the user back to the configured returnTo
@@ -13,7 +14,6 @@ import { useLocale, useTranslations } from "@/lib/i18n"
 // instead of leaving the user staring at the spinner forever.
 export function CallbackClient() {
   const t = useTranslations()
-  const locale = useLocale()
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -37,7 +37,7 @@ export function CallbackClient() {
             <p className="font-serif text-lg font-semibold">{t.auth.signInFailed}</p>
             <p className="text-muted-foreground text-sm">{error}</p>
             <Button asChild variant="outline" size="sm">
-              <a href={`/${locale}`}>{t.auth.backToGame}</a>
+              <Link href="/">{t.auth.backToGame}</Link>
             </Button>
           </>
         )}

@@ -1,7 +1,7 @@
 import { screen } from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { CallbackClient } from "@/app/[lang]/auth/callback/callback-client"
+import { CallbackClient } from "@/app/auth/callback/callback-client"
 
 import { renderWithLocale } from "@/tests/utils"
 
@@ -11,7 +11,7 @@ function setLocation(search: string) {
     value: {
       ...window.location,
       origin: "http://localhost:3000",
-      pathname: "/en/auth/callback",
+      pathname: "/auth/callback",
       search,
       hash: "",
     },

@@ -43,9 +43,9 @@ export const AUTH0_CONNECTION: Record<AuthProvider, string> = {
 
 // The redirect URL Auth0 should send the user back to after consent. Must
 // match an Allowed Callback URL configured on the Auth0 application.
-export function buildRedirectUri(locale: string): string {
+export function buildRedirectUri(): string {
   if (typeof window === "undefined") return ""
-  return `${window.location.origin}/${locale}/auth/callback`
+  return `${window.location.origin}/auth/callback`
 }
 
 // ---- Authenticated fetch helpers ----------------------------------------

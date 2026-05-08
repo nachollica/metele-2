@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/auth"
 import { useTranslations } from "@/lib/i18n"
 import { formatDurationMs } from "@/lib/metele/format"
 import { fetchStories, type Story } from "@/lib/metele/stories-api"
+import { SidebarPrefs } from "./sidebar-prefs"
 
 // First-character preview cap. Long stories show the head + ellipsis so the
 // sidebar list rows stay one consistent height.
@@ -67,6 +68,7 @@ export function StoriesSidebar({ refreshKey = 0, onSelect }: Props) {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
+      <SidebarPrefs />
       <header className="border-b p-4">
         <div className="flex items-center gap-2">
           <History className="text-muted-foreground size-4" aria-hidden />
