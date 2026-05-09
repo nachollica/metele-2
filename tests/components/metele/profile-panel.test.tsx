@@ -104,7 +104,7 @@ describe("ProfilePanel", () => {
     })
 
     const patchCall = fetchMock.mock.calls[1]
-    expect(patchCall?.[0]).toBe("http://localhost:8000/auth/me")
+    expect(patchCall?.[0]).toBe("http://localhost:8000/api/auth/me")
     expect((patchCall?.[1] as RequestInit).method).toBe("PATCH")
   })
 })

@@ -11,8 +11,8 @@ import {
 
 describe("apiUrl", () => {
   it("joins paths to the configured backend host", () => {
-    expect(apiUrl("/auth/me")).toBe("http://localhost:8000/auth/me")
-    expect(apiUrl("auth/me")).toBe("http://localhost:8000/auth/me")
+    expect(apiUrl("/auth/me")).toBe("http://localhost:8000/api/auth/me")
+    expect(apiUrl("auth/me")).toBe("http://localhost:8000/api/auth/me")
   })
 })
 
@@ -60,7 +60,7 @@ describe("fetchMe", () => {
     const result = await fetchMe("token")
     expect(result).toEqual(user)
     expect(fetchMock).toHaveBeenCalledWith(
-      "http://localhost:8000/auth/me",
+      "http://localhost:8000/api/auth/me",
       expect.objectContaining({
         headers: expect.any(Headers),
       }),
@@ -91,7 +91,7 @@ describe("apiFetch", () => {
     await apiFetch("tok", "/stories", { method: "GET" })
 
     const [calledUrl, calledInit] = fetchMock.mock.calls[0] ?? []
-    expect(calledUrl).toBe("http://localhost:8000/stories")
+    expect(calledUrl).toBe("http://localhost:8000/api/stories")
     const headers = (calledInit as RequestInit).headers as Headers
     expect(headers.get("Authorization")).toBe("Bearer tok")
   })

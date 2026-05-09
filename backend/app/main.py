@@ -15,11 +15,16 @@ from .settings import get_settings
 def create_app() -> FastAPI:
     settings = get_settings()
     init_db()
-    app = FastAPI(title="METELE backend", version="0.1.0")
+    app = FastAPI(
+        title="METELE backend",
+        # lifespan=lifespan,
+        # version=settings.environment,
+        # description="",
+        version="0.1.0",
+        root_path="/api",
+    )
 
-    # The frontend is served as static assets on a different origin and
-    # talks to the API as XHR/fetch with a Bearer token. Allow Authorization
-    # in preflight responses; credentials stay off (no cookies).
+    # if settings.environment == "LOCAL":
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[settings.frontend_origin],

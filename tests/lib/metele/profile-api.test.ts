@@ -23,7 +23,7 @@ describe("updateProfile", () => {
     expect(result?.name).toBe("Renamed")
 
     const [calledUrl, init] = fetchMock.mock.calls[0] ?? []
-    expect(calledUrl).toBe("http://localhost:8000/auth/me")
+    expect(calledUrl).toBe("http://localhost:8000/api/auth/me")
     expect((init as RequestInit).method).toBe("PATCH")
     expect((init as RequestInit).body).toBe(JSON.stringify({ name: "Renamed" }))
     const headers = (init as RequestInit).headers as Headers

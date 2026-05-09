@@ -10,7 +10,7 @@ const API_URL =
   "http://localhost:8000"
 
 export function apiUrl(path: string): string {
-  return `${API_URL.replace(/\/+$/, "")}${path.startsWith("/") ? path : `/${path}`}`
+  return `${API_URL.replace(/\/+$/, "")}/api${path.startsWith("/") ? path : `/${path}`}`
 }
 
 // ---- Auth0 SPA configuration ---------------------------------------------
