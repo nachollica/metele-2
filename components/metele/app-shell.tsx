@@ -25,6 +25,10 @@ type Props = {
   /** Bumped after a successful POST to refresh the story list. */
   storiesRefreshKey: number
   onStorySelect?: (story: Story) => void
+  /** While true, sidebar story rows and the mobile sheet trigger are
+   *  non-interactive. Driven by the active gameState in MeteleGame so the
+   *  player can't navigate away from a running session. */
+  isPlaying?: boolean
 }
 
 /**
@@ -35,10 +39,19 @@ type Props = {
  *
  * The mobile overlay is intentionally screen-wide (not a peek) per the spec.
  */
-export function AppShell({ children, storiesRefreshKey, onStorySelect }: Props) {
+export function AppShell({
+  children,
+  storiesRefreshKey,
+  onStorySelect,
+  isPlaying = false,
+}: Props) {
   const t = useTranslations()
   const isMobile = useIsMobile()
   const [sheetOpen, setSheetOpen] = useState(false)
+  // While playing, sidebar rows must be visually present but not clickable.
+  // Suppress the click handler entirely so StoriesSidebar renders rows as
+  // plain <div>s (see `interactive` flag inside).
+  const sidebarSelect = isPlaying ? undefined : onStorySelect
 
   return (
     <div className="bg-background text-foreground flex h-dvh">
@@ -50,7 +63,7 @@ export function AppShell({ children, storiesRefreshKey, onStorySelect }: Props) 
         )}
         aria-label={t.sidebar.title}
       >
-        <StoriesSidebar refreshKey={storiesRefreshKey} onSelect={onStorySelect} />
+        <StoriesSidebar refreshKey={storiesRefreshKey} onSelect={sidebarSelect} />
       </aside>
 
       {/* Mobile sidebar — sheet that covers the game. */}
@@ -64,10 +77,10 @@ export function AppShell({ children, storiesRefreshKey, onStorySelect }: Props) 
             <StoriesSidebar
               refreshKey={storiesRefreshKey}
               onSelect={
-                onStorySelect
+                sidebarSelect
                   ? (story) => {
                       setSheetOpen(false)
-                      onStorySelect(story)
+                      sidebarSelect(story)
                     }
                   : undefined
               }
@@ -86,6 +99,7 @@ export function AppShell({ children, storiesRefreshKey, onStorySelect }: Props) 
               size="sm"
               variant="outline"
               onClick={() => setSheetOpen(true)}
+              disabled={isPlaying}
               aria-label={t.sidebar.toggle}
               className="gap-2"
             >

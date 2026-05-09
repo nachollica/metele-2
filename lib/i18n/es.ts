@@ -114,9 +114,7 @@ export const es = {
     placeholder: "Empieza tu historia. No dejes de escribir…",
     pause: "Abandonar",
     quit: "Salir de sesión",
-    startAgain: "Empezar de nuevo",
-    closeStory: "Cerrar historia",
-    goBack: "Volver",
+    createStory: "Crear una historia",
     viewingStory: "Viendo una historia anterior (solo lectura).",
   },
 
@@ -170,6 +168,7 @@ export const es = {
     title: "Historias recientes",
     subtitle: "Tus últimas sesiones de escritura",
     empty: "Aún no hay historias — termina una sesión para verla aquí.",
+    signUpPrompt: "Regístrate para ver tus historias guardadas aquí.",
     error: "No se pudieron cargar las historias.",
     toggle: "Abrir historias recientes",
     toggleShort: "Historias",

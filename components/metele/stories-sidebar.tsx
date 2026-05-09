@@ -85,7 +85,11 @@ export function StoriesSidebar({ refreshKey = 0, onSelect }: Props) {
             <SkeletonRows />
           ) : items.length === 0 ? (
             <li className="text-muted-foreground p-4 text-center text-xs">
-              {error ? t.sidebar.error : t.sidebar.empty}
+              {error
+                ? t.sidebar.error
+                : status === "anonymous"
+                  ? t.sidebar.signUpPrompt
+                  : t.sidebar.empty}
             </li>
           ) : (
             items.map((story) => (

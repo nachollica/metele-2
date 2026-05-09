@@ -23,11 +23,14 @@ type Props = {
   /** Optional handler invoked when the user picks "Profile" in the avatar
    *  dropdown. When omitted, the dropdown only shows logout. */
   onOpenProfile?: () => void
+  /** When true, both the anonymous "Log in" CTA and the authenticated avatar
+   *  dropdown are disabled. Used to lock UI during an active session. */
+  disabled?: boolean
 }
 
 // Single header-bar control. While loading we render a placeholder skeleton
 // so the row doesn't layout-shift once the AuthContext settles.
-export function AuthButton({ onOpenProfile }: Props = {}) {
+export function AuthButton({ onOpenProfile, disabled = false }: Props = {}) {
   const t = useTranslations()
   const { status, user, logout } = useAuth()
   const [loginOpen, setLoginOpen] = useState(false)
@@ -48,7 +51,12 @@ export function AuthButton({ onOpenProfile }: Props = {}) {
   if (status === "anonymous" || !user) {
     return (
       <>
-        <Button variant="default" size="sm" onClick={() => setLoginOpen(true)}>
+        <Button
+          variant="default"
+          size="sm"
+          onClick={() => setLoginOpen(true)}
+          disabled={disabled}
+        >
           <LogIn className="size-4" aria-hidden />
           {t.auth.logIn}
         </Button>
@@ -67,12 +75,13 @@ export function AuthButton({ onOpenProfile }: Props = {}) {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
+      <DropdownMenuTrigger asChild disabled={disabled}>
         <Button
           variant="ghost"
           size="sm"
           className="gap-2 px-2"
           aria-label={t.auth.accountMenuLabel}
+          disabled={disabled}
         >
           <Avatar className="size-7">
             {user.avatarUrl ? (

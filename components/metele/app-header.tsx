@@ -13,10 +13,13 @@ import { useTranslations } from "@/lib/i18n"
 const PRIMARY_ACTION_CLASS = "w-44 justify-center"
 
 type Props = {
-  /** Primary action for the current screen (Start / Quit / Start again / Go back). */
+  /** Primary action for the current screen (Start / Quit / Create a story). */
   action?: ReactNode
   /** Forwarded to the AuthButton's avatar dropdown. */
   onOpenProfile?: () => void
+  /** When true, the auth control's dropdown trigger is disabled so the player
+   *  can't navigate away mid-session. */
+  disableAccountMenu?: boolean
 }
 
 /**
@@ -26,7 +29,7 @@ type Props = {
  * one component everywhere, the auth button stays anchored to the same pixel
  * as the user moves between screens.
  */
-export function AppHeader({ action, onOpenProfile }: Props) {
+export function AppHeader({ action, onOpenProfile, disableAccountMenu }: Props) {
   const t = useTranslations()
   return (
     <header className="bg-card text-card-foreground flex items-center justify-between gap-3 rounded-lg border p-4 shadow-sm">
@@ -37,7 +40,7 @@ export function AppHeader({ action, onOpenProfile }: Props) {
         {t.app.title}
       </h1>
       <div className="ml-auto flex items-center gap-2">
-        <AuthButton onOpenProfile={onOpenProfile} />
+        <AuthButton onOpenProfile={onOpenProfile} disabled={disableAccountMenu} />
         {action}
       </div>
     </header>

@@ -115,9 +115,7 @@ export const en = {
     placeholder: "Begin your story. Don't stop typing…",
     pause: "Give up",
     quit: "Quit session",
-    startAgain: "Start again",
-    closeStory: "Close story",
-    goBack: "Go back",
+    createStory: "Create a story",
     viewingStory: "Viewing a previous story (read-only).",
   },
 
@@ -171,6 +169,7 @@ export const en = {
     title: "Recent stories",
     subtitle: "Your latest writing sessions",
     empty: "No stories yet — finish a session to see it here.",
+    signUpPrompt: "Sign up to see your saved stories here.",
     error: "Couldn't load stories.",
     toggle: "Open recent stories",
     toggleShort: "Stories",

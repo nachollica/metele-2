@@ -5,10 +5,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Gauge,
+  ListChecks,
+  NotebookPen,
   PartyPopper,
-  PenLine,
-  Share2,
-  Sparkles,
+  WandSparkles,
 } from "lucide-react"
 
 import {
@@ -37,9 +37,9 @@ export function WelcomeModal({ open, onContinue }: Props) {
   const items = [
     { icon: PartyPopper, ...t.welcome.items.intro },
     { icon: Gauge, ...t.welcome.items.pickVelocity },
-    { icon: PenLine, ...t.welcome.items.createStory },
-    { icon: Sparkles, ...t.welcome.items.requiredWords },
-    { icon: Share2, ...t.welcome.items.shareSave },
+    { icon: NotebookPen, ...t.welcome.items.createStory },
+    { icon: WandSparkles, ...t.welcome.items.requiredWords },
+    { icon: ListChecks, ...t.welcome.items.shareSave },
   ]
 
   const total = items.length
