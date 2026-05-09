@@ -9,7 +9,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field
 from sqlmodel import Session, desc, func, select
 
@@ -154,3 +154,27 @@ def create_story(
     db.commit()
     db.refresh(row)
     return StoryRead.model_validate(row)
+
+
+# ---- Delete ---------------------------------------------------------------
+
+
+@router.delete(
+    "/{story_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Hard-delete one of the caller's stories.",
+)
+def delete_story(
+    story_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> Response:
+    row = db.get(Story, story_id)
+    if row is None or row.user_id != user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Story {story_id} not found.",
+        )
+    db.delete(row)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -135,7 +135,7 @@ export const es = {
     menuItem: "Perfil",
     customPresetsTitle: "Modos personalizados",
     customPresetsDescription:
-      "Modos de juego que has guardado desde la pantalla de ajustes. Renómbralos o elimínalos aquí.",
+      "Modos de juego que has guardado desde la pantalla de ajustes.",
     customPresetsEmpty: "Aún no has guardado ningún modo personalizado.",
     customPresetEdit: "Renombrar",
     customPresetDelete: "Eliminar",
@@ -173,6 +173,14 @@ export const es = {
     toggle: "Abrir historias recientes",
     toggleShort: "Historias",
     durationLabel: "Duración de la sesión",
+    rowMenuLabel: "Opciones de la historia",
+    deleteStory: "Eliminar",
+    deleteStoryConfirmTitle: "¿Eliminar esta historia?",
+    deleteStoryConfirmDescription:
+      "Esto elimina la historia permanentemente. Esta acción no se puede deshacer.",
+    deleteStoryConfirm: "Eliminar",
+    deleteStoryCancel: "Cancelar",
+    deleteStoryFailed: "No se pudo eliminar la historia.",
   },
 
   theme: {

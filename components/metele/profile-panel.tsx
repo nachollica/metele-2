@@ -6,17 +6,8 @@ import {
   useRef,
   useState,
   type ChangeEvent,
-  type KeyboardEvent,
 } from "react"
-import {
-  BookOpen,
-  Loader2,
-  Pencil,
-  Trash2,
-  Upload,
-  User as UserIcon,
-  X,
-} from "lucide-react"
+import { BookOpen, Loader2, Upload, User as UserIcon } from "lucide-react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -26,10 +17,6 @@ import { Label } from "@/components/ui/label"
 import { useAuth, type CustomPreset } from "@/lib/auth"
 import { useTranslations } from "@/lib/i18n"
 import { fetchStoryCount, updateProfile } from "@/lib/metele/profile-api"
-import {
-  deleteCustomPreset,
-  updateCustomPreset,
-} from "@/lib/metele/presets-api"
 
 // Cap on the picture file size we'll accept, in bytes. Pictures end up as a
 // data: URL stored verbatim in the users table (`picture` column), so the
@@ -276,78 +263,8 @@ export function ProfilePanel({ onProfileUpdated }: Props) {
 
 function CustomPresetsSection() {
   const t = useTranslations()
-  const { user, getAccessToken, applyLocalUser } = useAuth()
+  const { user } = useAuth()
   const presets: CustomPreset[] = user?.customPresets ?? []
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [draftName, setDraftName] = useState("")
-  const [error, setError] = useState<string | null>(null)
-  // Disabled state per-row while a network call is in flight.
-  const [busyId, setBusyId] = useState<string | null>(null)
-
-  function startEdit(p: CustomPreset) {
-    setEditingId(p.id)
-    setDraftName(p.name)
-    setError(null)
-  }
-
-  function cancelEdit() {
-    setEditingId(null)
-    setDraftName("")
-    setError(null)
-  }
-
-  async function saveRename(id: string) {
-    const name = draftName.trim()
-    if (name.length === 0) return
-    setBusyId(id)
-    setError(null)
-    const token = await getAccessToken()
-    if (token === null) {
-      setBusyId(null)
-      setError(t.profile.customPresetRenameFailed)
-      return
-    }
-    const result = await updateCustomPreset(token, id, { name })
-    setBusyId(null)
-    if (!result.ok) {
-      setError(t.profile.customPresetRenameFailed)
-      return
-    }
-    applyLocalUser(result.user)
-    cancelEdit()
-  }
-
-  async function handleDelete(id: string) {
-    if (typeof window !== "undefined") {
-      if (!window.confirm(t.profile.customPresetDeleteConfirm)) return
-    }
-    setBusyId(id)
-    setError(null)
-    const token = await getAccessToken()
-    if (token === null) {
-      setBusyId(null)
-      setError(t.profile.customPresetDeleteFailed)
-      return
-    }
-    const result = await deleteCustomPreset(token, id)
-    setBusyId(null)
-    if (!result.ok) {
-      setError(t.profile.customPresetDeleteFailed)
-      return
-    }
-    applyLocalUser(result.user)
-    if (editingId === id) cancelEdit()
-  }
-
-  function handleRenameKey(e: KeyboardEvent<HTMLInputElement>, id: string) {
-    if (e.key === "Enter") {
-      e.preventDefault()
-      void saveRename(id)
-    } else if (e.key === "Escape") {
-      e.preventDefault()
-      cancelEdit()
-    }
-  }
 
   return (
     <section
@@ -372,89 +289,16 @@ function CustomPresetsSection() {
         </p>
       ) : (
         <ul className="flex flex-col gap-2">
-          {presets.map((p) => {
-            const editing = editingId === p.id
-            const busy = busyId === p.id
-            return (
-              <li
-                key={p.id}
-                className="bg-muted/40 flex items-center gap-2 rounded-md border p-2.5 text-sm"
-              >
-                {editing ? (
-                  <>
-                    <Input
-                      value={draftName}
-                      onChange={(e) => setDraftName(e.target.value)}
-                      onKeyDown={(e) => handleRenameKey(e, p.id)}
-                      maxLength={40}
-                      autoFocus
-                      aria-label={t.profile.customPresetEdit}
-                      className="h-8 text-sm"
-                      disabled={busy}
-                    />
-                    <Button
-                      type="button"
-                      size="sm"
-                      onClick={() => void saveRename(p.id)}
-                      disabled={busy || draftName.trim().length === 0}
-                    >
-                      {busy ? (
-                        <Loader2 className="size-3.5 animate-spin" aria-hidden />
-                      ) : null}
-                      {t.profile.customPresetSave}
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      onClick={cancelEdit}
-                      aria-label={t.profile.customPresetCancel}
-                      disabled={busy}
-                    >
-                      <X className="size-4" aria-hidden />
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <span className="flex-1 truncate font-medium">{p.name}</span>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => startEdit(p)}
-                      aria-label={t.profile.customPresetEdit}
-                      disabled={busy}
-                    >
-                      <Pencil className="size-4" aria-hidden />
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => void handleDelete(p.id)}
-                      aria-label={t.profile.customPresetDelete}
-                      disabled={busy}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      {busy ? (
-                        <Loader2 className="size-4 animate-spin" aria-hidden />
-                      ) : (
-                        <Trash2 className="size-4" aria-hidden />
-                      )}
-                    </Button>
-                  </>
-                )}
-              </li>
-            )
-          })}
+          {presets.map((p) => (
+            <li
+              key={p.id}
+              className="bg-muted/40 flex items-center gap-2 rounded-md border p-2.5 text-sm"
+            >
+              <span className="flex-1 truncate font-medium">{p.name}</span>
+            </li>
+          ))}
         </ul>
       )}
-
-      {error ? (
-        <p className="text-destructive text-xs" role="alert">
-          {error}
-        </p>
-      ) : null}
     </section>
   )
 }

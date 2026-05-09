@@ -101,3 +101,17 @@ export async function createStory(
     return null
   }
 }
+
+export async function deleteStory(token: string, id: number): Promise<boolean> {
+  try {
+    const res = await apiFetch(token, `/stories/${id}`, { method: "DELETE" })
+    if (!res.ok) {
+      console.log(`[stories-api] delete failed ${res.status}`)
+      return false
+    }
+    return true
+  } catch (err) {
+    console.log("[stories-api] delete unreachable", err)
+    return false
+  }
+}

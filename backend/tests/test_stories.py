@@ -156,3 +156,37 @@ def test_count_zero_when_user_has_no_stories(auth_client) -> None:
     res = auth_client.get(f"{URL}/count")
     assert res.status_code == 200
     assert res.json() == {"count": 0}
+
+
+# ---- Delete --------------------------------------------------------------
+
+
+def test_delete_requires_auth(client) -> None:
+    assert client.delete(f"{URL}/1").status_code == 401
+
+
+def test_delete_removes_callers_story(auth_client, db_engine, test_user) -> None:
+    sid = _seed_story(db_engine, test_user.id, text="bye")
+    res = auth_client.delete(f"{URL}/{sid}")
+    assert res.status_code == 204
+    # Row gone — detail now 404s.
+    assert auth_client.get(f"{URL}/{sid}").status_code == 404
+    with Session(db_engine) as s:
+        assert s.get(Story, sid) is None
+
+
+def test_delete_404s_on_other_users_story(auth_client, db_engine) -> None:
+    other = User(id="auth0|other", email=None, name="Other", picture=None)
+    with Session(db_engine) as s:
+        s.add(other)
+        s.commit()
+    sid = _seed_story(db_engine, "auth0|other")
+    res = auth_client.delete(f"{URL}/{sid}")
+    assert res.status_code == 404
+    # Row still present.
+    with Session(db_engine) as s:
+        assert s.get(Story, sid) is not None
+
+
+def test_delete_404s_on_unknown_id(auth_client) -> None:
+    assert auth_client.delete(f"{URL}/9999").status_code == 404

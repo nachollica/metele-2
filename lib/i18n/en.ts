@@ -136,7 +136,7 @@ export const en = {
     menuItem: "Profile",
     customPresetsTitle: "Custom game modes",
     customPresetsDescription:
-      "Game modes you've saved from the settings screen. Rename or delete them here.",
+      "Game modes you've saved from the settings screen.",
     customPresetsEmpty: "You haven't saved any custom modes yet.",
     customPresetEdit: "Rename",
     customPresetDelete: "Delete",
@@ -174,6 +174,14 @@ export const en = {
     toggle: "Open recent stories",
     toggleShort: "Stories",
     durationLabel: "Session length",
+    rowMenuLabel: "Story options",
+    deleteStory: "Delete",
+    deleteStoryConfirmTitle: "Delete this story?",
+    deleteStoryConfirmDescription:
+      "This permanently removes the story. This action cannot be undone.",
+    deleteStoryConfirm: "Delete",
+    deleteStoryCancel: "Cancel",
+    deleteStoryFailed: "Couldn't delete that story.",
   },
 
   theme: {
