@@ -58,10 +58,17 @@ class CustomPresetUpdate(BaseModel):
     model_config = {"extra": "forbid"}
 
 
+class DevLoginRequest(BaseModel):
+    username: str = Field(min_length=1, max_length=120)
+
+    model_config = {"extra": "forbid"}
+
+
 class DevLoginResponse(BaseModel):
     """Token issued by the dev-user backdoor. Frontend treats it like an
     Auth0 access token (carries it as a Bearer header for every API call)
-    even though server-side it's a hardcoded shared secret, not a JWT."""
+    even though server-side it's a shared-secret prefix plus username, not
+    a JWT."""
 
     token: str
     user: AuthUser
@@ -71,9 +78,10 @@ class DevLoginResponse(BaseModel):
     "/dev-login",
     response_model=DevLoginResponse,
     response_model_by_alias=True,
-    summary="Issue the hardcoded dev-user token. Disabled in production.",
+    summary="Issue a dev-user token for the requested username. Disabled in production.",
 )
 def dev_login(
+    payload: DevLoginRequest,
     settings: Settings = Depends(get_settings),
     db: Session = Depends(get_db),
 ) -> DevLoginResponse:
@@ -82,17 +90,14 @@ def dev_login(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Dev login is disabled.",
         )
-    user = db.get(User, settings.dev_user_id)
+    user = db.get(User, payload.username)
     if user is None:
         raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=(
-                "Dev user not seeded. Run "
-                "`python -m app.scripts.seed_dev_user`."
-            ),
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Dev user '{payload.username}' does not exist.",
         )
     return DevLoginResponse(
-        token=settings.dev_user_token,
+        token=f"{settings.dev_user_token}:{user.id}",
         user=AuthUser.model_validate(user),
     )
 

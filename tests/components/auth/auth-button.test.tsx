@@ -19,7 +19,9 @@ function makeAnonymous(): AuthContextValue {
     logout: vi.fn(),
     getAccessToken: vi.fn().mockResolvedValue(null),
     applyLocalUser: vi.fn(),
-    loginAsDevUser: vi.fn().mockResolvedValue(true),
+    loginAsDevUser: vi
+      .fn()
+      .mockResolvedValue({ ok: false, reason: "error" as const }),
   }
 }
 

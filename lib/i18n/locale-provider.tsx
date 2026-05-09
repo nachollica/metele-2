@@ -6,7 +6,7 @@ import { DEFAULT_LOCALE, SUPPORTED_LOCALES, type Locale } from "./config"
 
 // Try to match a `navigator.language` style tag (e.g. "es-AR", "en-US") to a
 // supported locale. Falls back to the default when nothing matches.
-function detectLocale(): Locale {
+export function detectLocale(): Locale {
   if (typeof navigator === "undefined") return DEFAULT_LOCALE
   const candidates = navigator.languages?.length
     ? navigator.languages

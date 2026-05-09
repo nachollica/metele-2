@@ -25,6 +25,7 @@ import {
   clearDevSession,
   loginDev,
   readDevSession,
+  type DevLoginResult,
   type DevSession,
 } from "./dev"
 import type { AuthProvider as AuthProviderId, AuthUser } from "./types"
@@ -37,9 +38,10 @@ export type AuthContextValue = {
   // Kicks off a redirect-based login against Auth0 for the chosen social
   // connection. Returns the user to the configured callback URL.
   loginWithProvider: (provider: AuthProviderId) => Promise<void>
-  // Local-dev backdoor: hits `POST /auth/dev-login` and stores the
-  // returned hardcoded token. Returns true on success.
-  loginAsDevUser: () => Promise<boolean>
+  // Local-dev backdoor: hits `POST /auth/dev-login` for the given username
+  // and stores the returned token. Returns a discriminated result so the
+  // caller can distinguish "user not in DB" (403) from network errors.
+  loginAsDevUser: (username: string) => Promise<DevLoginResult>
   logout: () => void
   // Resolves to a fresh API access token, or null if the user is anonymous
   // / Auth0 is unreachable. Used by the stories/words clients.
@@ -186,12 +188,16 @@ export function useAuth(): AuthContextValue {
     [a0],
   )
 
-  const loginAsDevUser = useCallback(async (): Promise<boolean> => {
-    const session = await loginDev()
-    if (session === null) return false
-    local?.setDev(session)
-    return true
-  }, [local])
+  const loginAsDevUser = useCallback(
+    async (username: string): Promise<DevLoginResult> => {
+      const result = await loginDev(username)
+      if (result.ok) {
+        local?.setDev(result.session)
+      }
+      return result
+    },
+    [local],
+  )
 
   const logout = useCallback(() => {
     if (devSession !== null) {

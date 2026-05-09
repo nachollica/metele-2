@@ -24,7 +24,9 @@ function makeAuth(overrides: Partial<AuthContextValue> = {}): AuthContextValue {
     status: "authenticated",
     user: baseUser,
     loginWithProvider: vi.fn().mockResolvedValue(undefined),
-    loginAsDevUser: vi.fn().mockResolvedValue(true),
+    loginAsDevUser: vi
+      .fn()
+      .mockResolvedValue({ ok: false, reason: "error" as const }),
     logout: vi.fn(),
     getAccessToken: vi.fn().mockResolvedValue("tok"),
     applyLocalUser: vi.fn(),

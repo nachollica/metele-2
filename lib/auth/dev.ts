@@ -1,6 +1,7 @@
 // Local-dev backdoor that mirrors `lib/auth/context.tsx` for the special
-// "dev user" case: a hardcoded Bearer token issued by `POST /auth/dev-login`,
-// validated server-side against a shared secret instead of an Auth0 JWKS.
+// "dev user" case: a per-username token issued by `POST /auth/dev-login`,
+// validated server-side against a shared-secret prefix instead of an Auth0
+// JWKS.
 //
 // This is intentionally a thin shell around localStorage + a fetch call so
 // it can be ripped out when no longer needed without unwinding the real
@@ -16,6 +17,10 @@ export type DevSession = {
   token: string
   user: AuthUser
 }
+
+export type DevLoginResult =
+  | { ok: true; session: DevSession }
+  | { ok: false; reason: "not_found" | "error" }
 
 export function readDevSession(): DevSession | null {
   if (typeof window === "undefined") return null
@@ -42,18 +47,25 @@ export function clearDevSession(): void {
   window.localStorage.removeItem(USER_KEY)
 }
 
-export async function loginDev(): Promise<DevSession | null> {
+export async function loginDev(username: string): Promise<DevLoginResult> {
   try {
-    const res = await fetch(apiUrl("/auth/dev-login"), { method: "POST" })
+    const res = await fetch(apiUrl("/auth/dev-login"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username }),
+    })
+    if (res.status === 403) {
+      return { ok: false, reason: "not_found" }
+    }
     if (!res.ok) {
       console.log(`[auth-dev] login failed ${res.status}`)
-      return null
+      return { ok: false, reason: "error" }
     }
-    const data = (await res.json()) as DevSession
-    writeDevSession(data)
-    return data
+    const session = (await res.json()) as DevSession
+    writeDevSession(session)
+    return { ok: true, session }
   } catch (err) {
     console.log("[auth-dev] login unreachable", err)
-    return null
+    return { ok: false, reason: "error" }
   }
 }

@@ -18,6 +18,7 @@ import {
   useSetLocale,
   type Locale,
 } from "@/lib/i18n"
+import { detectLocale } from "@/lib/i18n/locale-provider"
 
 export type ThemeMode = "light" | "dark"
 
@@ -110,8 +111,12 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
   // user's saved choices.
   useEffect(() => {
     const stored = readPrefs(userId)
-    if (stored.theme) setNextTheme(stored.theme)
-    if (stored.locale) setCtxLocale(stored.locale)
+    // Falling back to browser defaults (system theme, navigator-detected
+    // locale) on every user change ensures that signing out doesn't leave
+    // the previous user's theme/locale stuck in place when the anonymous
+    // bucket has nothing stored.
+    setNextTheme(stored.theme ?? "system")
+    setCtxLocale(stored.locale ?? detectLocale())
     setBellEnabledState(stored.bellEnabled ?? null)
   }, [userId, setNextTheme, setCtxLocale])
 

@@ -7,11 +7,16 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
+import { Input } from "@/components/ui/input"
 
 import { useTranslations } from "@/lib/i18n"
 import { AUTH_PROVIDERS, useAuth, type AuthProviderId } from "@/lib/auth"
@@ -39,6 +44,8 @@ export function LoginModal({ open, onOpenChange }: Props) {
   const [pending, setPending] = useState<AuthProviderId | typeof DEV_PENDING | null>(
     null,
   )
+  const [devOpen, setDevOpen] = useState(false)
+  const [devUsername, setDevUsername] = useState("")
   const [devError, setDevError] = useState<string | null>(null)
 
   async function handleProvider(provider: AuthProviderId) {
@@ -51,16 +58,24 @@ export function LoginModal({ open, onOpenChange }: Props) {
   }
 
   async function handleDevLogin() {
+    const username = devUsername.trim()
+    if (!username) return
     setPending(DEV_PENDING)
     setDevError(null)
-    const ok = await loginAsDevUser()
-    if (!ok) {
-      setDevError(t.auth.devLoginFailed)
+    const result = await loginAsDevUser(username)
+    if (!result.ok) {
+      setDevError(
+        result.reason === "not_found"
+          ? t.auth.devUserNotFound
+          : t.auth.devLoginFailed,
+      )
       setPending(null)
       return
     }
     onOpenChange(false)
     setPending(null)
+    setDevUsername("")
+    setDevOpen(false)
   }
 
   return (
@@ -90,34 +105,55 @@ export function LoginModal({ open, onOpenChange }: Props) {
             )
           })}
 
-          <Button
-            variant="outline"
-            size="lg"
-            className="w-full justify-start gap-3 border-dashed"
-            onClick={() => void handleDevLogin()}
-            disabled={pending !== null}
-          >
-            <TerminalSquare className="size-5" aria-hidden />
-            <span className="flex-1 text-left">
-              {t.auth.continueWith.replace("{provider}", t.auth.devUser)}
-            </span>
-          </Button>
-          {devError ? (
-            <p className="text-destructive text-xs" role="alert">
-              {devError}
-            </p>
-          ) : null}
+          <Collapsible open={devOpen} onOpenChange={setDevOpen}>
+            <CollapsibleTrigger asChild>
+              <Button
+                variant="outline"
+                size="lg"
+                className="w-full justify-start gap-3 border-dashed"
+                disabled={pending !== null}
+                aria-expanded={devOpen}
+                aria-controls="dev-login-fields"
+              >
+                <TerminalSquare className="size-5" aria-hidden />
+                <span className="flex-1 text-left">
+                  {t.auth.continueWith.replace("{provider}", t.auth.devUser)}
+                </span>
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent id="dev-login-fields" className="pt-2">
+              <form
+                className="flex gap-2"
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  void handleDevLogin()
+                }}
+              >
+                <Input
+                  type="text"
+                  autoComplete="off"
+                  placeholder={t.auth.devUsernamePlaceholder}
+                  aria-label={t.auth.devUsernameLabel}
+                  value={devUsername}
+                  onChange={(e) => setDevUsername(e.target.value)}
+                  disabled={pending !== null}
+                />
+                <Button
+                  type="submit"
+                  variant="default"
+                  disabled={pending !== null || devUsername.trim() === ""}
+                >
+                  {t.auth.devLoginSubmit}
+                </Button>
+              </form>
+              {devError ? (
+                <p className="text-destructive mt-2 text-xs" role="alert">
+                  {devError}
+                </p>
+              ) : null}
+            </CollapsibleContent>
+          </Collapsible>
         </div>
-
-        <DialogFooter>
-          <Button
-            variant="ghost"
-            onClick={() => onOpenChange(false)}
-            disabled={pending !== null}
-          >
-            {t.auth.cancel}
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

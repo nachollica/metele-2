@@ -105,17 +105,21 @@ def get_current_user(
     token = _extract_token(authorization)
 
     # Local-dev backdoor. When the dev user is enabled and the caller
-    # presents the configured shared-secret string (NOT a JWT), look up the
-    # pre-seeded dev row directly and skip the JWKS verification path.
-    if settings.dev_user_enabled and token == settings.dev_user_token:
-        dev = db.get(User, settings.dev_user_id)
+    # presents a token of the form ``<shared-secret>:<username>``, look up
+    # that pre-seeded row directly and skip the JWKS verification path.
+    dev_prefix = f"{settings.dev_user_token}:"
+    if settings.dev_user_enabled and token.startswith(dev_prefix):
+        username = token[len(dev_prefix) :]
+        if not username:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Dev token missing username.",
+            )
+        dev = db.get(User, username)
         if dev is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=(
-                    "Dev user not seeded. Run "
-                    "`python -m app.scripts.seed_dev_user`."
-                ),
+                detail=f"Dev user '{username}' not seeded.",
             )
         return dev
 

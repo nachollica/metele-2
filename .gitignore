@@ -13,5 +13,6 @@ out/
 !.gitkeep
 !.dockerignore
 
-/Caddyfile
-/public/
+Caddyfile
+docker-compose.yaml
+public/

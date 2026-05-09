@@ -13,7 +13,7 @@ import {
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 
 import { SUPPORTED_LOCALES, useTranslations, type Locale } from "@/lib/i18n"
-import { usePreferences, type ThemeMode } from "@/lib/preferences"
+import { usePreferences } from "@/lib/preferences"
 
 const LOCALE_LABELS: Record<Locale, string> = {
   en: "English",
@@ -46,8 +46,9 @@ export function SidebarPrefs() {
           variant="outline"
           size="sm"
           value={mounted ? theme : ""}
-          onValueChange={(v) => {
-            if (v) setTheme(v as ThemeMode)
+          onValueChange={() => {
+            if (!mounted) return
+            setTheme(theme === "dark" ? "light" : "dark")
           }}
           aria-label={t.prefs.modeLabel}
           className={CONTROL_CLASS}

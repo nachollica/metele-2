@@ -29,11 +29,12 @@ class Settings(BaseSettings):
     auth0_audience: str = Field(default="")
 
     # Local-only "dev user" backdoor for testing without a real Auth0 tenant.
-    # When ``dev_user_enabled`` is true, the backend accepts the literal
-    # ``dev_user_token`` string in the Authorization header and resolves it
-    # to the row whose id is ``dev_user_id``. NEVER enable in production.
+    # When ``dev_user_enabled`` is true, ``POST /auth/dev-login`` accepts a
+    # username body and, if a row with that id exists, mints a token of the
+    # form ``<dev_user_token>:<username>``. The auth dep recognises tokens
+    # with that prefix and resolves them to the matching User row, skipping
+    # JWKS verification. NEVER enable in production.
     dev_user_enabled: bool = Field(default=True)
-    dev_user_id: str = Field(default="dev")
     dev_user_token: str = Field(default="dev-token-please-rotate")
 
     @property

@@ -1,8 +1,9 @@
-"""Tests for the dev-user backdoor: a hardcoded shared-secret bypass that
-lets us exercise authenticated endpoints without spinning up Auth0.
+"""Tests for the dev-user backdoor: a shared-secret-prefix bypass that lets
+us exercise authenticated endpoints without spinning up Auth0.
 
-The dep is exercised end-to-end against the real ``get_current_user``
-(no override) so we cover both the bypass branch and its 401 paths.
+Each dev row is keyed by username. The minted token format is
+``<dev_user_token>:<username>`` and the auth dep is exercised end-to-end
+against the real ``get_current_user``.
 """
 
 from __future__ import annotations
@@ -17,11 +18,11 @@ from app.settings import Settings
 
 @pytest.fixture
 def dev_user(db_engine, settings: Settings) -> User:
-    """Pre-seed the dev row the same way `seed_dev_user` would."""
+    """Pre-seed one dev row the same way `seed_dev_users` would."""
     user = User(
-        id=settings.dev_user_id,
-        email="dev@metele.local",
-        name="Dev User",
+        id="alice",
+        email="alice@metele.local",
+        name="Alice",
         picture=None,
     )
     with Session(db_engine) as session:
@@ -32,17 +33,22 @@ def dev_user(db_engine, settings: Settings) -> User:
 
 
 def test_dev_login_returns_token_and_user(client, settings, dev_user) -> None:
-    res = client.post("/auth/dev-login")
+    res = client.post("/auth/dev-login", json={"username": dev_user.id})
     assert res.status_code == 200, res.text
     body = res.json()
-    assert body["token"] == settings.dev_user_token
-    assert body["user"]["id"] == settings.dev_user_id
+    assert body["token"] == f"{settings.dev_user_token}:{dev_user.id}"
+    assert body["user"]["id"] == dev_user.id
     assert body["user"]["customPresets"] == []
 
 
-def test_dev_login_503_when_not_seeded(client, settings) -> None:
-    res = client.post("/auth/dev-login")
-    assert res.status_code == 503
+def test_dev_login_403_when_username_unknown(client, settings) -> None:
+    res = client.post("/auth/dev-login", json={"username": "ghost"})
+    assert res.status_code == 403
+
+
+def test_dev_login_422_when_username_missing(client) -> None:
+    res = client.post("/auth/dev-login", json={})
+    assert res.status_code == 422
 
 
 def test_dev_login_404_when_disabled(db_engine) -> None:
@@ -65,22 +71,26 @@ def test_dev_login_404_when_disabled(db_engine) -> None:
     app.dependency_overrides[get_db] = _get_db_override
 
     with TestClient(app, follow_redirects=False) as c:
-        res = c.post("/auth/dev-login")
+        res = c.post("/auth/dev-login", json={"username": "alice"})
         assert res.status_code == 404
 
 
 def test_dev_token_authenticates_protected_endpoint(client, settings, dev_user) -> None:
     res = client.get(
         "/auth/me",
-        headers={"Authorization": f"Bearer {settings.dev_user_token}"},
+        headers={
+            "Authorization": f"Bearer {settings.dev_user_token}:{dev_user.id}",
+        },
     )
     assert res.status_code == 200
-    assert res.json()["id"] == settings.dev_user_id
+    assert res.json()["id"] == dev_user.id
 
 
 def test_dev_token_works_for_preset_crud(client, settings, dev_user) -> None:
     """Smoke test that the bypass plays nicely with the preset endpoints."""
-    headers = {"Authorization": f"Bearer {settings.dev_user_token}"}
+    headers = {
+        "Authorization": f"Bearer {settings.dev_user_token}:{dev_user.id}",
+    }
     payload = {
         "name": "DevPreset",
         "settings": {
@@ -98,12 +108,22 @@ def test_dev_token_works_for_preset_crud(client, settings, dev_user) -> None:
     assert len(res.json()["customPresets"]) == 1
 
 
+def test_dev_token_for_unseeded_username_is_401(client, settings) -> None:
+    """Bypass branch fires on prefix match but rejects unknown usernames."""
+    res = client.get(
+        "/auth/me",
+        headers={
+            "Authorization": f"Bearer {settings.dev_user_token}:ghost",
+        },
+    )
+    assert res.status_code == 401
+
+
 def test_unknown_token_with_dev_enabled_falls_through_to_jwks_401(
     client, settings, dev_user
 ) -> None:
-    """Dev bypass must only fire on the exact configured string. Anything
-    else still hits the Auth0 path — which is unconfigured here, so it
-    raises a 401."""
+    """Tokens without the dev prefix still hit the Auth0 path — which is
+    unconfigured here, so it raises a 401."""
     res = client.get(
         "/auth/me",
         headers={"Authorization": "Bearer not-the-dev-token"},
@@ -112,7 +132,7 @@ def test_unknown_token_with_dev_enabled_falls_through_to_jwks_401(
 
 
 def test_dev_token_rejected_when_dev_disabled(db_engine) -> None:
-    """Even with the right string, the bypass must not fire when disabled."""
+    """Even with the right prefix, the bypass must not fire when disabled."""
     from app.db import get_db
     from app.main import create_app
     from app.settings import get_settings
@@ -124,7 +144,7 @@ def test_dev_token_rejected_when_dev_disabled(db_engine) -> None:
         dev_user_enabled=False,
         dev_user_token="dev-test-token",
     )
-    user = User(id="dev", email=None, name="Dev User")
+    user = User(id="alice", email=None, name="Alice")
     with Session(db_engine) as session:
         session.add(user)
         session.commit()
@@ -140,6 +160,6 @@ def test_dev_token_rejected_when_dev_disabled(db_engine) -> None:
     with TestClient(app, follow_redirects=False) as c:
         res = c.get(
             "/auth/me",
-            headers={"Authorization": "Bearer dev-test-token"},
+            headers={"Authorization": "Bearer dev-test-token:alice"},
         )
         assert res.status_code == 401

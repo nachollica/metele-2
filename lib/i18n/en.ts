@@ -202,7 +202,6 @@ export const en = {
     google: "Google",
     facebook: "Facebook",
     twitter: "X (Twitter)",
-    cancel: "Maybe later",
     finishingSignIn: "Finishing sign-in…",
     signInFailed: "Sign-in failed.",
     signInFailedRetry: "Try again",
@@ -211,7 +210,11 @@ export const en = {
     accountMenuLabel: "Account menu",
     profileEmail: "Email",
     devUser: "DEV user",
-    devLoginFailed: "Dev login failed. Make sure the backend is running and the dev user is seeded.",
+    devUsernameLabel: "Dev username",
+    devUsernamePlaceholder: "username",
+    devLoginSubmit: "Log in as dev user",
+    devUserNotFound: "No dev user with that username. Seed it first.",
+    devLoginFailed: "Dev login failed. Make sure the backend is running.",
   },
 } as const
 
