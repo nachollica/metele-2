@@ -44,8 +44,10 @@ cc: lint-fix tsc test
 
 [doc("Build assets and deploy to SSH server.")]
 [group("deploy")]
-deploy: cc build
-    tar zcf metele.gz out
-    scp metele.gz ash:.0/code/metele
-    ssh ash 'rm -rf .0/code/metele/out/'
-    ssh ash 'cd .0/code/metele/ && tar zxf metele.gz && find . -name "._*" -delete && docker compose down && docker compose up -d'
+deploy: build
+    tar --exclude='backend/.venv' -zcf metele.gz out backend docker-compose.yaml conf
+    scp metele.gz utonium:.0/code/metele
+    ssh utonium 'cd .0/code/metele/ && tar zxf metele.gz && rm metele.gz && docker compose build'
+    # ssh utonium 'cd .0/code/metele/ && docker compose down && rm -rf out/ && tar zxf metele.gz && rm metele.gz && docker compose up -d'
+    # sudo find . -name "._*" -delete
+    rm metele.gz

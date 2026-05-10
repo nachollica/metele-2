@@ -1,8 +1,12 @@
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { fetchStoryCount, updateProfile } from "@/lib/metele/profile-api"
 
 describe("updateProfile", () => {
+  beforeEach(() => {
+    vi.spyOn(console, "error").mockImplementation(() => {})
+  })
+
   afterEach(() => {
     vi.restoreAllMocks()
   })
@@ -43,6 +47,10 @@ describe("updateProfile", () => {
 })
 
 describe("fetchStoryCount", () => {
+  beforeEach(() => {
+    vi.spyOn(console, "error").mockImplementation(() => {})
+  })
+
   afterEach(() => {
     vi.restoreAllMocks()
   })

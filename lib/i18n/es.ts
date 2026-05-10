@@ -98,9 +98,9 @@ export const es = {
       name: "Demasiado creativo",
       description: "Las palabras requeridas llegan sin parar. Mantente ágil.",
     },
-    marathon: {
-      name: "Maratón",
-      description: "25 minutos de presión constante.",
+    nolimit: {
+      name: "Sin Límite",
+      description: "Sin temporizador global, palabras lentas, juega cuanto quieras.",
     },
   },
 

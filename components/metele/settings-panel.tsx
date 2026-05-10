@@ -302,6 +302,7 @@ export function SettingsPanel({ settings, onChange }: Props) {
             id="global-timer"
             label={t.settings.globalTimerLabel}
             description={t.settings.globalTimerHelp}
+            toggleId="global-timer-toggle"
             toggle={
               <Switch
                 id="global-timer-toggle"
@@ -315,7 +316,7 @@ export function SettingsPanel({ settings, onChange }: Props) {
                 id="global-timer"
                 value={Math.round(settings.globalTimerSeconds / 60)}
                 min={1}
-                max={60}
+                max={30}
                 disabled={!settings.globalTimerEnabled}
                 onChange={(v) => update("globalTimerSeconds", v * 60)}
                 format={fmtMinutes}
@@ -327,6 +328,7 @@ export function SettingsPanel({ settings, onChange }: Props) {
             id="word-interval"
             label={t.settings.requiredWordIntervalLabel}
             description={t.settings.requiredWordIntervalHelp}
+            toggleId="word-interval-toggle"
             toggle={
               <Switch
                 id="word-interval-toggle"
@@ -340,7 +342,7 @@ export function SettingsPanel({ settings, onChange }: Props) {
                 id="word-interval"
                 value={settings.requiredWordIntervalSeconds}
                 min={5}
-                max={300}
+                max={120}
                 disabled={!requiredWordsOn}
                 onChange={(v) => update("requiredWordIntervalSeconds", v)}
                 format={fmtSeconds}
@@ -356,6 +358,7 @@ export function SettingsPanel({ settings, onChange }: Props) {
                 id="use-timer"
                 label={t.settings.requiredWordUseTimerLabel}
                 description={t.settings.requiredWordUseTimerHelp}
+                toggleId="use-toggle"
                 toggle={
                   <Switch
                     id="use-toggle"
@@ -369,7 +372,7 @@ export function SettingsPanel({ settings, onChange }: Props) {
                     id="use-timer"
                     value={settings.requiredWordUseTimerSeconds}
                     min={5}
-                    max={300}
+                    max={120}
                     disabled={!settings.requiredWordUseTimerEnabled}
                     onChange={(v) => update("requiredWordUseTimerSeconds", v)}
                     format={fmtSeconds}
@@ -386,6 +389,7 @@ export function SettingsPanel({ settings, onChange }: Props) {
                   </span>
                 }
                 description={t.settings.categoryWordsHelp}
+                toggleId="category-words-toggle"
                 toggle={
                   <Switch
                     id="category-words-toggle"
@@ -416,6 +420,7 @@ export function SettingsPanel({ settings, onChange }: Props) {
                     {t.settings.bellLabel}
                   </span>
                 }
+                toggleId="bell-toggle"
                 toggle={
                   <Switch
                     id="bell-toggle"
@@ -629,18 +634,18 @@ function PresetButton({
       aria-pressed={active}
       className={cn(
         CARD_SIZE,
-        "flex flex-col items-start gap-1 overflow-hidden rounded-md border p-3 text-left transition-colors",
+        "flex flex-col items-center justify-center gap-1 overflow-hidden rounded-md border p-3 text-center transition-colors",
         "hover:bg-accent/30 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
         active
           ? "border-primary bg-primary/5 ring-primary/30 ring-1"
           : "border-border bg-card",
       )}
     >
-      <span className="text-foreground line-clamp-1 text-sm font-semibold">
+      <span className="text-foreground line-clamp-1 w-full text-center text-sm font-semibold">
         {title}
       </span>
       {subtitle ? (
-        <span className="text-muted-foreground line-clamp-2 text-xs leading-snug">
+        <span className="text-muted-foreground line-clamp-2 w-full text-center text-xs leading-snug">
           {subtitle}
         </span>
       ) : null}
@@ -667,17 +672,17 @@ function ToggleSlotButton({
       aria-disabled={disabled}
       className={cn(
         CARD_SIZE,
-        "border-border bg-card flex flex-col items-start gap-1 overflow-hidden rounded-md border border-dashed p-3 text-left transition-colors",
+        "border-border bg-card flex flex-col items-center justify-center gap-1 overflow-hidden rounded-md border border-dashed p-3 text-center transition-colors",
         "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
         disabled
           ? "cursor-not-allowed opacity-60"
           : "hover:bg-accent/30",
       )}
     >
-      <span className="text-foreground line-clamp-1 text-sm font-semibold">
+      <span className="text-foreground line-clamp-1 w-full text-center text-sm font-semibold">
         {title}
       </span>
-      <span className="text-muted-foreground line-clamp-2 text-xs leading-snug">
+      <span className="text-muted-foreground line-clamp-2 w-full text-center text-xs leading-snug">
         {subtitle}
       </span>
     </button>
@@ -782,14 +787,14 @@ function CustomPresetCard({
       aria-pressed={active}
       className={cn(
         CARD_SIZE,
-        "group relative flex cursor-pointer flex-col items-start gap-1 overflow-hidden rounded-md border p-3 text-left transition-colors",
+        "group relative flex cursor-pointer flex-col items-center justify-center gap-1 overflow-hidden rounded-md border p-3 text-center transition-colors",
         "hover:bg-accent/30 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
         active
           ? "border-primary bg-primary/5 ring-primary/30 ring-1"
           : "border-border bg-card",
       )}
     >
-      <span className="text-foreground line-clamp-2 pr-12 text-sm font-semibold">
+      <span className="text-foreground line-clamp-2 w-full text-center text-sm font-semibold">
         {preset.name}
       </span>
       {/* Action chips. Visible on hover/focus-within so the unhovered card
@@ -836,36 +841,51 @@ function EmptySlot() {
   )
 }
 
-const TOGGLE_COL = "w-11 shrink-0"
-const SLIDER_COL = "w-44 shrink-0"
-
 function SettingRow({
   id,
   label,
   description,
   toggle,
+  toggleId,
   control,
 }: {
   id: string
   label: ReactNode
   description?: ReactNode
   toggle?: ReactNode
+  toggleId?: string
   control?: ReactNode
 }) {
   return (
-    <div className="flex items-center gap-4 py-3">
-      <div className={cn(TOGGLE_COL, "flex items-center justify-start")}>{toggle}</div>
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <Label htmlFor={id} className="text-foreground text-sm font-semibold">
-          {label}
-        </Label>
-        {description ? (
-          <span className="text-muted-foreground hidden text-xs leading-snug sm:inline">
-            {description}
-          </span>
-        ) : null}
+    <div className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:gap-4">
+      {/* Top row for toggle+name on small screens, left half on wide screens */}
+      <div className="flex w-full items-center gap-3 sm:w-1/2">
+        <label
+          htmlFor={toggleId}
+          className={cn(
+            "flex size-11 shrink-0 cursor-pointer items-center justify-center",
+            !toggle && "cursor-default",
+          )}
+        >
+          {toggle}
+        </label>
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <Label htmlFor={id} className="text-foreground text-sm font-semibold">
+            {label}
+          </Label>
+          {description ? (
+            <span className="text-muted-foreground hidden text-xs leading-snug sm:inline">
+              {description}
+            </span>
+          ) : null}
+        </div>
       </div>
-      {control ? <div className={SLIDER_COL}>{control}</div> : null}
+      {/* Bottom row for input/slider on small screens, right half on wide screens */}
+      {control ? (
+        <div className="w-full pl-14 sm:w-1/2 sm:pl-0">
+          {control}
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -890,10 +910,13 @@ function ValueSlider({
   return (
     <div
       className={cn(
-        "flex items-center gap-3 transition-opacity",
+        "flex items-center gap-3 py-2 transition-opacity",
         disabled && "opacity-50",
       )}
     >
+      <span className="text-muted-foreground w-16 shrink-0 text-left font-mono text-sm tabular-nums">
+        {format(value)}
+      </span>
       <Slider
         id={id}
         min={min}
@@ -903,11 +926,8 @@ function ValueSlider({
         value={[value]}
         onValueChange={(v) => onChange(v[0] ?? min)}
         aria-label={id}
-        className="flex-1"
+        className="flex-1 py-2"
       />
-      <span className="text-muted-foreground w-16 shrink-0 text-right font-mono text-sm tabular-nums">
-        {format(value)}
-      </span>
     </div>
   )
 }

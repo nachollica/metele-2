@@ -99,9 +99,9 @@ export const en = {
       name: "Too creative",
       description: "Required words come constantly. Stay agile.",
     },
-    marathon: {
-      name: "Marathon",
-      description: "25 minutes of steady writing pressure.",
+    nolimit: {
+      name: "No Limit",
+      description: "No global timer, slower words, play as long as you want.",
     },
   },
 

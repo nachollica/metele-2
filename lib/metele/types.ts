@@ -48,13 +48,13 @@ export type MatchedRange = {
 }
 
 export const DEFAULT_SETTINGS: GameSettings = {
-  mainTimerSeconds: 7,
+  mainTimerSeconds: 15,
   globalTimerEnabled: true,
-  globalTimerSeconds: 300,
+  globalTimerSeconds: 600,
   requiredWordIntervalEnabled: true,
   requiredWordIntervalSeconds: 30,
-  requiredWordUseTimerEnabled: true,
-  requiredWordUseTimerSeconds: 25,
+  requiredWordUseTimerEnabled: false,
+  requiredWordUseTimerSeconds: 20,
   bellEnabled: true,
   categoryWordsEnabled: false,
   categoryWordsInput: "",
@@ -90,7 +90,7 @@ export type PresetSettings = Pick<GameSettings, PresetKey>
 
 // System presets shipped with the app. The settings screen reserves the
 // 6th slot for the "custom modes" toggle, so this list MUST stay at 5.
-export type PresetId = "classic" | "speed" | "relaxed" | "creative" | "marathon"
+export type PresetId = "classic" | "speed" | "relaxed" | "creative" | "nolimit"
 
 export type Preset = {
   id: PresetId
@@ -114,23 +114,23 @@ export const PRESETS: Preset[] = [
   {
     id: "speed",
     settings: {
-      mainTimerSeconds: 3,
+      mainTimerSeconds: 5,
       globalTimerEnabled: true,
-      globalTimerSeconds: 120,
-      requiredWordIntervalEnabled: true,
-      requiredWordIntervalSeconds: 12,
-      requiredWordUseTimerEnabled: true,
+      globalTimerSeconds: 300,
+      requiredWordIntervalEnabled: false,
+      requiredWordIntervalSeconds: 15,
+      requiredWordUseTimerEnabled: false,
       requiredWordUseTimerSeconds: 10,
     },
   },
   {
     id: "relaxed",
     settings: {
-      mainTimerSeconds: 15,
-      globalTimerEnabled: false,
-      globalTimerSeconds: 600,
+      mainTimerSeconds: 30,
+      globalTimerEnabled: true,
+      globalTimerSeconds: 1200,
       requiredWordIntervalEnabled: true,
-      requiredWordIntervalSeconds: 60,
+      requiredWordIntervalSeconds: 90,
       requiredWordUseTimerEnabled: false,
       requiredWordUseTimerSeconds: 60,
     },
@@ -138,25 +138,25 @@ export const PRESETS: Preset[] = [
   {
     id: "creative",
     settings: {
-      mainTimerSeconds: 6,
+      mainTimerSeconds: 10,
       globalTimerEnabled: true,
-      globalTimerSeconds: 240,
+      globalTimerSeconds: 600,
       requiredWordIntervalEnabled: true,
-      requiredWordIntervalSeconds: 15,
+      requiredWordIntervalSeconds: 20,
       requiredWordUseTimerEnabled: true,
-      requiredWordUseTimerSeconds: 14,
+      requiredWordUseTimerSeconds: 10,
     },
   },
   {
-    id: "marathon",
+    id: "nolimit",
     settings: {
-      mainTimerSeconds: 10,
-      globalTimerEnabled: true,
-      globalTimerSeconds: 1500,
+      mainTimerSeconds: 30,
+      globalTimerEnabled: false,
+      globalTimerSeconds: 1800,
       requiredWordIntervalEnabled: true,
-      requiredWordIntervalSeconds: 45,
-      requiredWordUseTimerEnabled: true,
-      requiredWordUseTimerSeconds: 40,
+      requiredWordIntervalSeconds: 90,
+      requiredWordUseTimerEnabled: false,
+      requiredWordUseTimerSeconds: 60,
     },
   },
 ]

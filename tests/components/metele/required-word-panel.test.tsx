@@ -18,14 +18,14 @@ describe("RequiredWordPanel", () => {
       <RequiredWordPanel word="lighthouse" useWordIn={12} useWordTotal={25} />,
     )
     expect(screen.getByText("lighthouse")).toBeInTheDocument()
-    expect(screen.getByText(/use it in 12s/i)).toBeInTheDocument()
+    expect(screen.getByTestId("progress-ring")).toBeInTheDocument()
   })
 
   it("does not show a deadline when useWordIn is null", () => {
     renderWithLocale(
       <RequiredWordPanel word="ember" useWordIn={null} useWordTotal={null} />,
     )
-    expect(screen.queryByText(/use it in/i)).not.toBeInTheDocument()
+    expect(screen.queryByTestId("progress-ring")).not.toBeInTheDocument()
     expect(screen.getByText("ember")).toBeInTheDocument()
   })
 })

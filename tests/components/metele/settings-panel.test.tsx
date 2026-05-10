@@ -68,8 +68,9 @@ describe("SettingsPanel", () => {
     authState.current = makeAuth()
     renderWithLocale(<Harness />)
     for (const preset of PRESETS) {
+      const expectedName = preset.id === "nolimit" ? "no limit" : preset.id
       const btn = screen.getByRole("button", {
-        name: new RegExp(preset.id, "i"),
+        name: new RegExp(expectedName, "i"),
       })
       expect(btn).toBeInTheDocument()
     }
@@ -86,12 +87,12 @@ describe("SettingsPanel", () => {
     renderWithLocale(<Harness initial={initial} onChange={onChange} />)
 
     const user = userEvent.setup()
-    await user.click(screen.getByRole("button", { name: /marathon/i }))
+    await user.click(screen.getByRole("button", { name: /no limit/i }))
 
-    const marathon = PRESETS.find((p) => p.id === "marathon")!
+    const nolimit = PRESETS.find((p) => p.id === "nolimit")!
     expect(onChange).toHaveBeenCalledOnce()
     const out = onChange.mock.calls[0]?.[0]
-    expect(out).toMatchObject(marathon.settings)
+    expect(out).toMatchObject(nolimit.settings)
     expect(out.bellEnabled).toBe(false)
   })
 
