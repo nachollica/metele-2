@@ -9,7 +9,7 @@ export type Locale = "en" | "es"
 
 export const SUPPORTED_LOCALES: readonly Locale[] = ["en", "es"] as const
 
-export const DEFAULT_LOCALE: Locale = "en"
+export const DEFAULT_LOCALE: Locale = "es"
 
 const dictionaries: Record<Locale, Translations> = {
   en,

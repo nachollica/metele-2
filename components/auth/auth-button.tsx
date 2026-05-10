@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { LogIn, LogOut, User } from "lucide-react"
+import { useEffect, useState } from "react"
+import { LogIn, LogOut, User, UserCog } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -19,21 +19,44 @@ import { useTranslations } from "@/lib/i18n"
 
 import { LoginModal } from "./login-modal"
 
+type Props = {
+  /** Optional handler invoked when the user picks "Profile" in the avatar
+   *  dropdown. When omitted, the dropdown only shows logout. */
+  onOpenProfile?: () => void
+  /** When true, both the anonymous "Log in" CTA and the authenticated avatar
+   *  dropdown are disabled. Used to lock UI during an active session. */
+  disabled?: boolean
+}
+
 // Single header-bar control. While loading we render a placeholder skeleton
 // so the row doesn't layout-shift once the AuthContext settles.
-export function AuthButton() {
+export function AuthButton({ onOpenProfile, disabled = false }: Props = {}) {
   const t = useTranslations()
   const { status, user, logout } = useAuth()
   const [loginOpen, setLoginOpen] = useState(false)
+  // The Auth0 SDK + the dev session both depend on localStorage, which
+  // doesn't exist during SSR. Defer the auth-aware render to a post-mount
+  // effect so the server-rendered HTML always matches the first client
+  // tick (skeleton). Avoids the hydration mismatch when the user lands
+  // already-authenticated.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
-  if (status === "loading") {
+  if (!mounted || status === "loading") {
     return <div className="bg-muted h-9 w-24 animate-pulse rounded-md" aria-hidden />
   }
 
   if (status === "anonymous" || !user) {
     return (
       <>
-        <Button variant="default" size="sm" onClick={() => setLoginOpen(true)}>
+        <Button
+          variant="default"
+          size="sm"
+          onClick={() => setLoginOpen(true)}
+          disabled={disabled}
+        >
           <LogIn className="size-4" aria-hidden />
           {t.auth.logIn}
         </Button>
@@ -52,12 +75,13 @@ export function AuthButton() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
+      <DropdownMenuTrigger asChild disabled={disabled}>
         <Button
           variant="ghost"
           size="sm"
           className="gap-2 px-2"
           aria-label={t.auth.accountMenuLabel}
+          disabled={disabled}
         >
           <Avatar className="size-7">
             {user.avatarUrl ? (
@@ -79,12 +103,15 @@ export function AuthButton() {
             {user.email ? (
               <span className="text-muted-foreground truncate text-xs">{user.email}</span>
             ) : null}
-            <span className="text-muted-foreground text-xs">
-              {t.auth.profileProvider.replace("{provider}", t.auth[user.provider])}
-            </span>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        {onOpenProfile ? (
+          <DropdownMenuItem onClick={onOpenProfile}>
+            <UserCog className="size-4" aria-hidden />
+            {t.profile.menuItem}
+          </DropdownMenuItem>
+        ) : null}
         <DropdownMenuItem onClick={() => void logout()}>
           <LogOut className="size-4" aria-hidden />
           {t.auth.logOut}

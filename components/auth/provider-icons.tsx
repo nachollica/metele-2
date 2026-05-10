@@ -28,21 +28,16 @@ export function GoogleIcon(props: IconProps) {
   )
 }
 
-export function InstagramIcon(props: IconProps) {
+// Stylized as the post-rebrand "X" mark — Auth0 still calls the connection
+// `twitter` but the public brand is X. Single-color path so the icon picks
+// up `currentColor` and stays readable on both light and dark surfaces.
+export function TwitterIcon(props: IconProps) {
   return (
     <svg viewBox="0 0 24 24" aria-hidden {...props}>
-      <defs>
-        <linearGradient id="igGrad" x1="0%" y1="100%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#FEDA75" />
-          <stop offset="25%" stopColor="#FA7E1E" />
-          <stop offset="50%" stopColor="#D62976" />
-          <stop offset="75%" stopColor="#962FBF" />
-          <stop offset="100%" stopColor="#4F5BD5" />
-        </linearGradient>
-      </defs>
-      <rect x="2" y="2" width="20" height="20" rx="5" fill="url(#igGrad)" />
-      <circle cx="12" cy="12" r="4" fill="none" stroke="white" strokeWidth="2" />
-      <circle cx="17.5" cy="6.5" r="1.2" fill="white" />
+      <path
+        fill="currentColor"
+        d="M18.244 2H21l-6.51 7.43L22 22h-6.797l-4.792-6.27L4.91 22H2.155l6.99-7.985L2 2h6.97l4.33 5.74L18.244 2zm-1.19 18h1.51L7.05 4H5.43l11.625 16z"
+      />
     </svg>
   )
 }

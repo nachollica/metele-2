@@ -1,7 +1,7 @@
 [project]
 name = "metele-backend"
 version = "0.1.0"
-description = "FastAPI backend for METELE — handles user auth via Google/Instagram/Facebook OAuth."
+description = "FastAPI backend for METELE — Auth0-backed auth, words and stories APIs."
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115",
@@ -9,9 +9,7 @@ dependencies = [
     "httpx>=0.28",
     "pydantic>=2.9",
     "pydantic-settings>=2.6",
-    "pyjwt>=2.9",
-    "itsdangerous>=2.2",
-    "python-multipart>=0.0.12",
+    "pyjwt[crypto]>=2.9",
     "nltk>=3.9",
     "sqlmodel>=0.0.22",
     "sqlalchemy>=2.0",

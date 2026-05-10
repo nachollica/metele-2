@@ -7,33 +7,25 @@ describe("randomIntervalMs", () => {
     vi.restoreAllMocks()
   })
 
-  it("clamps low samples to the 0.5s floor", () => {
-    // Math.random() near 1 yields -ln(~1)/lambda ≈ 0 → clamped to 0.5s
+  it("returns exactly min (half average) when random is 0", () => {
+    vi.spyOn(Math, "random").mockReturnValue(0)
+    expect(randomIntervalMs(30)).toBe(15_000)
+  })
+
+  it("returns exactly max (double average) when random is 0.999...", () => {
     vi.spyOn(Math, "random").mockReturnValue(0.999999)
-    expect(randomIntervalMs(30)).toBe(500)
-  })
-
-  it("clamps high samples to the 60s ceiling", () => {
-    // Math.random() near 0 → -ln(0+) = ∞ → clamped to 60s
-    vi.spyOn(Math, "random").mockReturnValue(1e-10)
-    expect(randomIntervalMs(30)).toBe(60_000)
-  })
-
-  it("returns u-derived values in between for normal samples", () => {
-    // u = e^-1 ≈ 0.3679 → -ln(u)/lambda = 1/lambda = averageSeconds
-    vi.spyOn(Math, "random").mockReturnValue(Math.exp(-1))
-    expect(randomIntervalMs(30)).toBeCloseTo(30_000, 0)
+    // 30 / 2 + 0.999999 * (60 - 15) = 15 + 44.999955 = 59.999955s
+    expect(randomIntervalMs(30)).toBeCloseTo(60_000, -1)
   })
 
   it("respects the configured average across many samples", () => {
-    // Empirical mean of ~10k draws should land near `averageSeconds`. Generous
-    // tolerance because clamping skews the tails.
     let total = 0
     const N = 5_000
-    const target = 5
+    const target = 10 // target average in seconds
     for (let i = 0; i < N; i++) total += randomIntervalMs(target)
     const meanSeconds = total / N / 1000
-    expect(meanSeconds).toBeGreaterThan(target * 0.6)
-    expect(meanSeconds).toBeLessThan(target * 1.4)
+    // With Beta(2, 4), the mean should be extremely close to the target.
+    expect(meanSeconds).toBeGreaterThan(target * 0.95)
+    expect(meanSeconds).toBeLessThan(target * 1.05)
   })
 })

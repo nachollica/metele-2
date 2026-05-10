@@ -11,6 +11,8 @@ from __future__ import annotations
 import os
 from collections.abc import Iterator
 
+from sqlalchemy import inspect, text
+
 from sqlmodel import Session, SQLModel, create_engine
 
 
@@ -33,6 +35,27 @@ def init_db() -> None:
     from . import db_models  # noqa: F401  (registers tables on SQLModel.metadata)
 
     SQLModel.metadata.create_all(engine)
+    _apply_lightweight_migrations()
+
+
+def _apply_lightweight_migrations() -> None:
+    """Add columns introduced after the initial schema. We don't yet pull in
+    Alembic — for the handful of additive columns we have, a probe-and-ALTER
+    pass on startup is sufficient and idempotent.
+    """
+    inspector = inspect(engine)
+    if "users" not in inspector.get_table_names():
+        return
+    user_cols = {c["name"] for c in inspector.get_columns("users")}
+    if "custom_presets" not in user_cols:
+        col_type = "JSONB" if engine.dialect.name == "postgresql" else "TEXT"
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    f"ALTER TABLE users ADD COLUMN custom_presets {col_type} "
+                    "NOT NULL DEFAULT '[]'"
+                )
+            )
 
 
 def get_db() -> Iterator[Session]:

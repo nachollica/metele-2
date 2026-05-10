@@ -15,16 +15,21 @@ from .settings import get_settings
 def create_app() -> FastAPI:
     settings = get_settings()
     init_db()
-    app = FastAPI(title="METELE backend", version="0.1.0")
+    app = FastAPI(
+        title="METELE backend",
+        # lifespan=lifespan,
+        # version=settings.environment,
+        # description="",
+        version="0.1.0",
+        root_path="/api",
+    )
 
-    # The frontend is on a different origin (static export served by nginx,
-    # backend on its own host). The auth flow itself uses redirects, but
-    # `/auth/me` and `/auth/logout` are XHR/fetch — those need CORS.
+    # if settings.environment == "LOCAL":
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[settings.frontend_origin],
         allow_credentials=False,
-        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type", "Accept-Language"],
     )
 

@@ -4,9 +4,45 @@ import { useState } from "react"
 import { describe, expect, it, vi } from "vitest"
 
 import { SettingsPanel } from "@/components/metele/settings-panel"
+import type { AuthContextValue, AuthUser } from "@/lib/auth"
 import { DEFAULT_SETTINGS, PRESETS, type GameSettings } from "@/lib/metele/types"
 
 import { renderWithLocale } from "@/tests/utils"
+
+const baseUser: AuthUser = {
+  id: "google-oauth2|abc",
+  email: "x@example.com",
+  name: "Tester",
+  avatarUrl: null,
+  customPresets: [],
+}
+
+const authState: { current: AuthContextValue } = {
+  current: makeAuth(),
+}
+
+function makeAuth(overrides: Partial<AuthContextValue> = {}): AuthContextValue {
+  return {
+    status: "authenticated",
+    user: baseUser,
+    loginWithProvider: vi.fn().mockResolvedValue(undefined),
+    logout: vi.fn(),
+    getAccessToken: vi.fn().mockResolvedValue("tok"),
+    applyLocalUser: vi.fn(),
+    loginAsDevUser: vi
+      .fn()
+      .mockResolvedValue({ ok: false, reason: "error" as const }),
+    ...overrides,
+  }
+}
+
+vi.mock("@/lib/auth", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/auth")>("@/lib/auth")
+  return {
+    ...actual,
+    useAuth: () => authState.current,
+  }
+})
 
 function Harness({
   initial = DEFAULT_SETTINGS,
@@ -29,10 +65,12 @@ function Harness({
 
 describe("SettingsPanel", () => {
   it("renders one button per preset and marks the matching one active", () => {
+    authState.current = makeAuth()
     renderWithLocale(<Harness />)
     for (const preset of PRESETS) {
+      const expectedName = preset.id === "nolimit" ? "no limit" : preset.id
       const btn = screen.getByRole("button", {
-        name: new RegExp(preset.id, "i"),
+        name: new RegExp(expectedName, "i"),
       })
       expect(btn).toBeInTheDocument()
     }
@@ -42,22 +80,24 @@ describe("SettingsPanel", () => {
   })
 
   it("emits a preset-merged settings object without touching personal settings", async () => {
+    authState.current = makeAuth()
     const onChange = vi.fn()
     // Personal setting (bellEnabled=false) must survive the preset application.
     const initial = { ...DEFAULT_SETTINGS, bellEnabled: false }
     renderWithLocale(<Harness initial={initial} onChange={onChange} />)
 
     const user = userEvent.setup()
-    await user.click(screen.getByRole("button", { name: /chaos/i }))
+    await user.click(screen.getByRole("button", { name: /no limit/i }))
 
-    const chaos = PRESETS.find((p) => p.id === "chaos")!
+    const nolimit = PRESETS.find((p) => p.id === "nolimit")!
     expect(onChange).toHaveBeenCalledOnce()
     const out = onChange.mock.calls[0]?.[0]
-    expect(out).toMatchObject(chaos.settings)
+    expect(out).toMatchObject(nolimit.settings)
     expect(out.bellEnabled).toBe(false)
   })
 
   it("hides the required-word sub-settings when the interval toggle is off", () => {
+    authState.current = makeAuth()
     renderWithLocale(
       <Harness initial={{ ...DEFAULT_SETTINGS, requiredWordIntervalEnabled: false }} />,
     )

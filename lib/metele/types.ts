@@ -48,13 +48,13 @@ export type MatchedRange = {
 }
 
 export const DEFAULT_SETTINGS: GameSettings = {
-  mainTimerSeconds: 7,
+  mainTimerSeconds: 15,
   globalTimerEnabled: true,
-  globalTimerSeconds: 300,
+  globalTimerSeconds: 600,
   requiredWordIntervalEnabled: true,
   requiredWordIntervalSeconds: 30,
-  requiredWordUseTimerEnabled: true,
-  requiredWordUseTimerSeconds: 25,
+  requiredWordUseTimerEnabled: false,
+  requiredWordUseTimerSeconds: 20,
   bellEnabled: true,
   categoryWordsEnabled: false,
   categoryWordsInput: "",
@@ -88,7 +88,9 @@ export const PRESET_KEYS = [
 export type PresetKey = (typeof PRESET_KEYS)[number]
 export type PresetSettings = Pick<GameSettings, PresetKey>
 
-export type PresetId = "classic" | "speed" | "relaxed" | "creative" | "marathon" | "chaos"
+// System presets shipped with the app. The settings screen reserves the
+// 6th slot for the "custom modes" toggle, so this list MUST stay at 5.
+export type PresetId = "classic" | "speed" | "relaxed" | "creative" | "nolimit"
 
 export type Preset = {
   id: PresetId
@@ -112,23 +114,23 @@ export const PRESETS: Preset[] = [
   {
     id: "speed",
     settings: {
-      mainTimerSeconds: 3,
+      mainTimerSeconds: 5,
       globalTimerEnabled: true,
-      globalTimerSeconds: 120,
-      requiredWordIntervalEnabled: true,
-      requiredWordIntervalSeconds: 12,
-      requiredWordUseTimerEnabled: true,
+      globalTimerSeconds: 300,
+      requiredWordIntervalEnabled: false,
+      requiredWordIntervalSeconds: 15,
+      requiredWordUseTimerEnabled: false,
       requiredWordUseTimerSeconds: 10,
     },
   },
   {
     id: "relaxed",
     settings: {
-      mainTimerSeconds: 15,
-      globalTimerEnabled: false,
-      globalTimerSeconds: 600,
+      mainTimerSeconds: 30,
+      globalTimerEnabled: true,
+      globalTimerSeconds: 1200,
       requiredWordIntervalEnabled: true,
-      requiredWordIntervalSeconds: 60,
+      requiredWordIntervalSeconds: 90,
       requiredWordUseTimerEnabled: false,
       requiredWordUseTimerSeconds: 60,
     },
@@ -136,44 +138,58 @@ export const PRESETS: Preset[] = [
   {
     id: "creative",
     settings: {
-      mainTimerSeconds: 6,
-      globalTimerEnabled: true,
-      globalTimerSeconds: 240,
-      requiredWordIntervalEnabled: true,
-      requiredWordIntervalSeconds: 15,
-      requiredWordUseTimerEnabled: true,
-      requiredWordUseTimerSeconds: 14,
-    },
-  },
-  {
-    id: "marathon",
-    settings: {
       mainTimerSeconds: 10,
       globalTimerEnabled: true,
-      globalTimerSeconds: 1500,
+      globalTimerSeconds: 600,
       requiredWordIntervalEnabled: true,
-      requiredWordIntervalSeconds: 45,
+      requiredWordIntervalSeconds: 20,
       requiredWordUseTimerEnabled: true,
-      requiredWordUseTimerSeconds: 40,
+      requiredWordUseTimerSeconds: 10,
     },
   },
   {
-    id: "chaos",
+    id: "nolimit",
     settings: {
-      mainTimerSeconds: 2,
-      globalTimerEnabled: true,
-      globalTimerSeconds: 180,
+      mainTimerSeconds: 30,
+      globalTimerEnabled: false,
+      globalTimerSeconds: 1800,
       requiredWordIntervalEnabled: true,
-      requiredWordIntervalSeconds: 8,
-      requiredWordUseTimerEnabled: true,
-      requiredWordUseTimerSeconds: 7,
+      requiredWordIntervalSeconds: 90,
+      requiredWordUseTimerEnabled: false,
+      requiredWordUseTimerSeconds: 60,
     },
   },
 ]
 
+/** Build a PresetSettings (the preset-covered subset) from a full GameSettings.
+ *  Used when saving the settings panel's current state as a custom preset. */
+export function extractPresetSettings(s: GameSettings): PresetSettings {
+  return {
+    mainTimerSeconds: s.mainTimerSeconds,
+    globalTimerEnabled: s.globalTimerEnabled,
+    globalTimerSeconds: s.globalTimerSeconds,
+    requiredWordIntervalEnabled: s.requiredWordIntervalEnabled,
+    requiredWordIntervalSeconds: s.requiredWordIntervalSeconds,
+    requiredWordUseTimerEnabled: s.requiredWordUseTimerEnabled,
+    requiredWordUseTimerSeconds: s.requiredWordUseTimerSeconds,
+  }
+}
+
 /** Find which preset (if any) matches the preset-covered keys of a settings object. */
 export function findMatchingPreset(s: GameSettings): PresetId | null {
   for (const p of PRESETS) {
+    if (PRESET_KEYS.every((k) => p.settings[k] === s[k])) return p.id
+  }
+  return null
+}
+
+/** Like `findMatchingPreset` but for a list of user-defined custom presets.
+ *  Returns the matching custom preset's id, or null. */
+export function findMatchingCustomPreset(
+  s: GameSettings,
+  presets: ReadonlyArray<{ id: string; settings: PresetSettings }>,
+): string | null {
+  for (const p of presets) {
     if (PRESET_KEYS.every((k) => p.settings[k] === s[k])) return p.id
   }
   return null

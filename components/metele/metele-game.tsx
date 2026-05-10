@@ -1,11 +1,12 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react"
-import { Loader2, Pencil, RotateCcw, X } from "lucide-react"
+import { Loader2, Pencil, Sparkles, X } from "lucide-react"
 
 import { AppHeader, PrimaryActionButton } from "./app-header"
 import { AppShell } from "./app-shell"
 import { GameHud } from "./game-hud"
+import { ProfilePanel } from "./profile-panel"
 import { ResultsModal } from "./results-modal"
 import { SettingsPanel } from "./settings-panel"
 import { WelcomeModal } from "./welcome-modal"
@@ -14,7 +15,9 @@ import { WritingArea } from "./writing-area"
 import { pickRequiredWord, matchesWord, normalizeForMatch } from "@/lib/metele/words"
 import { fetchRelatedWords, parseCategoriesInput } from "@/lib/metele/words-api"
 import { createStory, type Story } from "@/lib/metele/stories-api"
+import { useAuth } from "@/lib/auth"
 import { useLocale, useTranslations } from "@/lib/i18n"
+import { usePreferences } from "@/lib/preferences"
 import { playBell, primeAudio } from "@/lib/metele/sound"
 import { randomIntervalMs } from "@/lib/metele/random"
 import {
@@ -25,7 +28,13 @@ import {
   type MatchedRange,
 } from "@/lib/metele/types"
 
-type GameState = "welcome" | "settings" | "loading" | "playing" | "ended" | "viewing"
+type GameState =
+  | "settings"
+  | "loading"
+  | "playing"
+  | "ended"
+  | "viewing"
+  | "profile"
 
 // Max time we'll block the user on the categories backend call. After this
 // the game starts with the hardcoded fallback pool while the request (if it
@@ -52,9 +61,14 @@ const WORD_AUTO_DISMISS_MS = 7_000
 export function MeteleGame() {
   const locale = useLocale()
   const t = useTranslations()
+  const { getAccessToken, status: authStatus } = useAuth()
+  const { bellEnabled: bellPref, setBellEnabled: setBellPref } = usePreferences()
 
   // ---- High-level game state ---------------------------------------------
-  const [gameState, setGameState] = useState<GameState>("welcome")
+  // Landing page is settings. Welcome modal floats on top under the existing
+  // first-visit conditions.
+  const [gameState, setGameState] = useState<GameState>("settings")
+  const [welcomeOpen, setWelcomeOpen] = useState(false)
   const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS)
   const [result, setResult] = useState<GameResult | null>(null)
   // Visibility of the post-session stats modal. Independent from `gameState`
@@ -63,22 +77,33 @@ export function MeteleGame() {
   const [resultsModalOpen, setResultsModalOpen] = useState(false)
   // Whether timers are actually running. Stays false from `startGame` until the
   // first real text modification, so the player isn't penalized for the time
-  // between clicking Start and beginning to type.
+  // between clicking Start and beginning to type. Also drives the "quit before
+  // armed → no stats modal" shortcut.
   const [armed, setArmed] = useState(false)
   // Bumped after a successful POST so the sidebar refetches.
   const [storiesRefreshKey, setStoriesRefreshKey] = useState(0)
+  // True iff there's a finished, not-yet-persisted story sitting in the
+  // textarea. Used as a single-fire guard so navigating away from "ended"
+  // through multiple paths (action button, profile menu, sidebar row) still
+  // POSTs at most once. Cleared synchronously the moment we kick off the
+  // request so a fast re-click can't double-fire.
+  const unsavedStoryRef = useRef(false)
 
-  // Skip the welcome modal if the user previously opted out.
+  // Show the welcome modal once on first visit, but never to logged-in users
+  // and never if the player previously opted out. Checked after the auth
+  // status resolves so we don't flash the modal during Auth0 rehydration.
   useEffect(() => {
-    if (typeof window === "undefined") return
-    try {
-      if (window.localStorage.getItem(WELCOME_STORAGE_KEY) === "1") {
-        setGameState("settings")
+    if (authStatus === "loading") return
+    if (authStatus === "authenticated") return
+    if (typeof window !== "undefined") {
+      try {
+        if (window.localStorage.getItem(WELCOME_STORAGE_KEY) === "1") return
+      } catch {
+        // localStorage unavailable; fall through to show the welcome modal.
       }
-    } catch {
-      // localStorage unavailable; show the welcome modal as default.
     }
-  }, [])
+    setWelcomeOpen(true)
+  }, [authStatus])
 
   function dismissWelcome(dontShowAgain: boolean) {
     if (dontShowAgain && typeof window !== "undefined") {
@@ -88,7 +113,7 @@ export function MeteleGame() {
         // ignore
       }
     }
-    setGameState("settings")
+    setWelcomeOpen(false)
   }
 
   // ---- Live game data ----------------------------------------------------
@@ -111,6 +136,25 @@ export function MeteleGame() {
   // Cache the active settings so timer callbacks don't depend on the closure
   // captured at start time and stay correct across replays.
   const settingsRef = useRef<GameSettings>(DEFAULT_SETTINGS)
+
+  // Bell is persisted per-user in localStorage (via PreferencesProvider).
+  // When the stored pref hydrates, mirror it into the active settings.
+  // Writes go the other direction through `handleSettingsChange`.
+  useEffect(() => {
+    if (bellPref === null) return
+    setSettings((s) =>
+      s.bellEnabled === bellPref ? s : { ...s, bellEnabled: bellPref },
+    )
+    settingsRef.current = { ...settingsRef.current, bellEnabled: bellPref }
+  }, [bellPref])
+
+  const handleSettingsChange = useCallback(
+    (next: GameSettings) => {
+      setSettings(next)
+      if (next.bellEnabled !== bellPref) setBellPref(next.bellEnabled)
+    },
+    [bellPref, setBellPref],
+  )
 
   // Active custom word pool fetched from the backend at game start. Null
   // means "use the hardcoded per-locale pool" (categories disabled, no input,
@@ -172,6 +216,21 @@ export function MeteleGame() {
 
   const endGame = useCallback(
     (reason: EndReason) => {
+      // Manual quit before timers ever started: don't show the stats modal,
+      // just bail back to settings — there's nothing to score.
+      if (reason === "manual" && !armed) {
+        clearAllTimers()
+        setArmed(false)
+        setText("")
+        textRef.current = ""
+        setMatches([])
+        setCurrentRequiredWord(null)
+        currentWordRef.current = null
+        setResult(null)
+        setGameState("settings")
+        return
+      }
+
       // Snapshot stats before tearing things down.
       const finalText = textRef.current
       const durationMs = startedAtRef.current === 0 ? 0 : Date.now() - startedAtRef.current
@@ -192,8 +251,12 @@ export function MeteleGame() {
         requiredWordsUsed: usedWordsRef.current.size,
         text: finalText,
       })
+      // Mark the just-ended session as needing persistence. The save flag is
+      // honored only when the player has actually written something — empty
+      // sessions silently skip the POST.
+      unsavedStoryRef.current = trimmed.length > 0
     },
-    [clearAllTimers],
+    [armed, clearAllTimers],
   )
 
   // Close the post-session stats modal. The player remains in the "ended"
@@ -202,41 +265,73 @@ export function MeteleGame() {
     setResultsModalOpen(false)
   }, [])
 
-  // Return to the settings screen to start a new session. Persists the just-
-  // finished session to the backend (anonymous for now) so it shows up in the
-  // sidebar. The POST is fire-and-forget — sidebar refetches once it resolves.
-  const startAgain = useCallback(() => {
-    const finalText = textRef.current.trim()
-    if (finalText.length > 0 && result !== null) {
-      const payload = {
-        text: textRef.current,
-        lang: locale,
-        settings: settingsRef.current as unknown as Record<string, unknown>,
-        stats: {
-          reason: result.reason,
-          durationMs: result.durationMs,
-          characters: result.characters,
-          words: result.words,
-          requiredWordsUsed: result.requiredWordsUsed,
-        } as Record<string, unknown>,
-      }
-      createStory(payload).then((created) => {
+  // Persist the just-finished session to the backend if there is one
+  // outstanding. Fire-and-forget; the unsaved flag is cleared synchronously so
+  // re-entrant calls (e.g. clicking action button + profile menu in quick
+  // succession) only trigger a single POST. Anonymous users silently skip.
+  const saveCurrentStoryIfNeeded = useCallback(() => {
+    if (!unsavedStoryRef.current) return
+    unsavedStoryRef.current = false
+    const snapshot = result
+    const finalText = textRef.current
+    if (snapshot === null || finalText.trim().length === 0) return
+    const payload = {
+      text: finalText,
+      lang: locale,
+      settings: settingsRef.current as unknown as Record<string, unknown>,
+      stats: {
+        reason: snapshot.reason,
+        durationMs: snapshot.durationMs,
+        characters: snapshot.characters,
+        words: snapshot.words,
+        requiredWordsUsed: snapshot.requiredWordsUsed,
+      } as Record<string, unknown>,
+    }
+    void getAccessToken().then((token) => {
+      if (token === null) return
+      return createStory(token, payload).then((created) => {
         if (created !== null) {
           setStoriesRefreshKey((k) => k + 1)
         }
       })
-    }
+    })
+  }, [getAccessToken, locale, result])
+
+  // Reset all transient game state (text, result, timers, etc.) without
+  // touching settings or preferences. Used both by the unified action button
+  // and by the logout cleanup effect.
+  const resetSessionState = useCallback(() => {
+    clearAllTimers()
+    setText("")
+    textRef.current = ""
+    setMatches([])
+    setCurrentRequiredWord(null)
+    currentWordRef.current = null
+    setResult(null)
     setResultsModalOpen(false)
+    setArmed(false)
+    wordSpawnedAtRef.current = null
+    usedWordsRef.current = new Set()
+  }, [clearAllTimers])
+
+  // Unified handler for the "Create a story" action button. Saves the
+  // just-finished story (if any), wipes transient state, and lands on
+  // settings. Used from `ended`, `viewing`, `profile`, and `loading`.
+  const createStoryAction = useCallback(() => {
+    saveCurrentStoryIfNeeded()
+    resetSessionState()
     setGameState("settings")
-  }, [locale, result])
+  }, [resetSessionState, saveCurrentStoryIfNeeded])
 
   // Load a story from the sidebar into the main pane in read-only viewing
-  // mode. Tears down any timers (in case the user clicked while the game was
-  // running) and shows just the text — no HUD, no settings, no stats modal.
+  // mode. If the player just finished a session, persist it before swapping
+  // in the saved story so nothing gets lost.
   const viewStory = useCallback(
     (story: Story) => {
+      saveCurrentStoryIfNeeded()
       clearAllTimers()
       setResultsModalOpen(false)
+      setResult(null)
       setMatches([])
       setCurrentRequiredWord(null)
       currentWordRef.current = null
@@ -244,15 +339,19 @@ export function MeteleGame() {
       textRef.current = story.text
       setGameState("viewing")
     },
-    [clearAllTimers],
+    [clearAllTimers, saveCurrentStoryIfNeeded],
   )
 
-  // Exit the read-only story view back to settings.
-  const closeStoryView = useCallback(() => {
-    setText("")
-    textRef.current = ""
-    setGameState("settings")
-  }, [])
+  // ---- Profile screen ----------------------------------------------------
+  // Open the profile pane. Profile entry is only reachable when not playing
+  // (the dropdown is disabled during a session), so there's no pause/resume
+  // dance — we just save any pending story and navigate.
+  const openProfile = useCallback(() => {
+    if (gameState === "profile") return
+    saveCurrentStoryIfNeeded()
+    resetSessionState()
+    setGameState("profile")
+  }, [gameState, resetSessionState, saveCurrentStoryIfNeeded])
 
   // ---- Required word lifecycle ------------------------------------------
   // Spawning ONLY happens via this function. It selects a new word and arms
@@ -404,18 +503,23 @@ export function MeteleGame() {
       const timeout = new Promise<null>((resolve) =>
         window.setTimeout(() => resolve(null), CATEGORIES_FETCH_TIMEOUT_MS),
       )
-      Promise.race([fetchRelatedWords(seeds, locale), timeout]).then((pool) => {
+      const fetchPool = (async (): Promise<string[] | null> => {
+        const token = await getAccessToken()
+        if (token === null) return null
+        return fetchRelatedWords(token, seeds, locale)
+      })()
+      Promise.race([fetchPool, timeout]).then((pool) => {
         if (resolved) return
         resolved = true
         if (pool === null) {
           console.log(
-            "[metele] no custom word pool (timeout or backend unreachable); using hardcoded pool",
+            "[metele] no custom word pool (anonymous, timeout, or backend unreachable); using hardcoded pool",
           )
         }
         beginPlaying(newSettings, pool)
       })
     },
-    [beginPlaying, locale],
+    [beginPlaying, getAccessToken, locale],
   )
 
   // Start all timers. Called on first real text modification after `startGame`.
@@ -443,6 +547,24 @@ export function MeteleGame() {
 
     setArmed(true)
   }, [armIdleTimeout, armSpawnTimer, endGame])
+
+  // ---- Logout cleanup ----------------------------------------------------
+  // When the user transitions from authenticated → anonymous (logout from any
+  // path: Auth0 SDK, dev session), wipe transient game/session state so a
+  // saved story isn't left visible to the post-logout anonymous shell. The
+  // unsaved flag is dropped: there's no token left to POST with, and the spec
+  // explicitly treats logout as a discard. Preferences are user-scoped and
+  // managed elsewhere; we don't touch them here.
+  const prevAuthStatusRef = useRef(authStatus)
+  useEffect(() => {
+    const prev = prevAuthStatusRef.current
+    prevAuthStatusRef.current = authStatus
+    if (prev === "authenticated" && authStatus === "anonymous") {
+      unsavedStoryRef.current = false
+      resetSessionState()
+      setGameState("settings")
+    }
+  }, [authStatus, resetSessionState])
 
   // ---- Cleanup on unmount ------------------------------------------------
   useEffect(() => {
@@ -509,7 +631,7 @@ export function MeteleGame() {
       if (next === textRef.current) return
 
       // Post-session edit mode: free-form editing, no timers, no required-word
-      // scanning. The player can correct typos until they hit "Start again".
+      // scanning. The player can correct typos until they hit "Create a story".
       if (gameState === "ended") {
         setText(next)
         return
@@ -573,10 +695,12 @@ export function MeteleGame() {
   ])
 
   // ---- Render ------------------------------------------------------------
-  // Primary action button shown in the AppHeader varies by state. Settings ↔
-  // game ↔ ended all use the same slot so the button stays anchored.
+  // Primary action button shown in the AppHeader. Only two screens get a
+  // bespoke action; everywhere else surfaces "Create a story" which routes
+  // back to settings (saving any pending story along the way).
+  const isPlaying = gameState === "playing"
   let primaryAction: React.ReactNode = null
-  if (gameState === "welcome" || gameState === "settings") {
+  if (gameState === "settings") {
     primaryAction = (
       <PrimaryActionButton
         icon={<Pencil className="size-4" aria-hidden />}
@@ -584,7 +708,7 @@ export function MeteleGame() {
         onClick={() => startGame(settings)}
       />
     )
-  } else if (gameState === "playing") {
+  } else if (isPlaying) {
     primaryAction = (
       <PrimaryActionButton
         icon={<X className="size-4" aria-hidden />}
@@ -592,27 +716,26 @@ export function MeteleGame() {
         onClick={() => endGame("manual")}
       />
     )
-  } else if (gameState === "ended") {
+  } else {
     primaryAction = (
       <PrimaryActionButton
-        icon={<RotateCcw className="size-4" aria-hidden />}
-        label={t.game.startAgain}
-        onClick={startAgain}
-      />
-    )
-  } else if (gameState === "viewing") {
-    primaryAction = (
-      <PrimaryActionButton
-        icon={<X className="size-4" aria-hidden />}
-        label={t.game.closeStory}
-        onClick={closeStoryView}
+        icon={<Sparkles className="size-4" aria-hidden />}
+        label={t.game.createStory}
+        onClick={createStoryAction}
       />
     )
   }
 
   return (
-    <AppShell storiesRefreshKey={storiesRefreshKey} onStorySelect={viewStory}>
-      <WelcomeModal open={gameState === "welcome"} onContinue={dismissWelcome} />
+    <AppShell
+      storiesRefreshKey={storiesRefreshKey}
+      onStorySelect={viewStory}
+      isPlaying={isPlaying}
+    >
+      <WelcomeModal
+        open={welcomeOpen && authStatus !== "loading"}
+        onContinue={dismissWelcome}
+      />
 
       <ResultsModal
         open={gameState === "ended" && resultsModalOpen}
@@ -633,10 +756,20 @@ export function MeteleGame() {
         </div>
       ) : (
         <main className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col gap-4 p-4 sm:p-6">
-          <AppHeader action={primaryAction} />
+          <AppHeader
+            action={primaryAction}
+            onOpenProfile={openProfile}
+            disableAccountMenu={isPlaying}
+          />
 
-          {gameState === "welcome" || gameState === "settings" ? (
-            <SettingsPanel settings={settings} onChange={setSettings} />
+          {gameState === "settings" ? (
+            <SettingsPanel settings={settings} onChange={handleSettingsChange} />
+          ) : null}
+
+          {gameState === "profile" ? (
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <ProfilePanel />
+            </div>
           ) : null}
 
           {gameState === "viewing" ? (

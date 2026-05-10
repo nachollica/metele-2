@@ -66,7 +66,7 @@ COPY --chown=metele:metele app /app/app
 # SQLite default lives next to the app; mount a volume here in production
 # (or set DATABASE_URL to point at Postgres) to persist between deploys.
 ENV DATABASE_URL=sqlite:////app/data/metele.db
-RUN mkdir -p /app/data && chown metele:metele /app/data
+# RUN mkdir -p /app/data && chown metele:metele /app/data
 
 USER metele
 
@@ -74,4 +74,5 @@ EXPOSE 8000
 
 # `--proxy-headers` is required because Caddy terminates TLS in front of us
 # and we want the real client IP / scheme to make it through to access logs.
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*"]
+# CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

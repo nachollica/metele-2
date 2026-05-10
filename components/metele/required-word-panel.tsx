@@ -4,7 +4,6 @@ import { Sparkles } from "lucide-react"
 
 import { cn, clamp01 } from "@/lib/utils"
 import { useTranslations } from "@/lib/i18n"
-import { formatSeconds } from "@/lib/metele/format"
 
 type Props = {
   /** Current required word, or null when none is active. */
@@ -41,30 +40,20 @@ export function RequiredWordPanel({ word, useWordIn, useWordTotal }: Props) {
       <div className="flex flex-col items-start gap-0.5">
         <span className="text-muted-foreground flex items-center gap-1 text-[10px] font-medium tracking-widest uppercase">
           <Sparkles className="text-primary size-3" aria-hidden />
-          {t.game.requiredWordHeader}
+          <span className="hidden sm:inline">{t.game.requiredWordHeader}</span>
         </span>
-        {useWordIn !== null ? (
-          <span
-            className={cn(
-              "font-mono text-[11px] tabular-nums",
-              urgent ? "text-destructive font-semibold" : "text-muted-foreground",
-            )}
-          >
-            {t.game.useWordIn} {formatSeconds(useWordIn, t.units)}
-          </span>
-        ) : null}
       </div>
 
-      <div className="flex flex-1 items-center justify-end gap-3 overflow-hidden">
+      <div className="flex flex-1 items-center justify-end gap-3">
         {word ? (
           <span
             key={word}
-            className="animate-in fade-in zoom-in-95 text-foreground truncate text-2xl font-semibold tracking-tight duration-300 sm:text-3xl"
+            className="animate-in fade-in zoom-in-95 text-foreground text-2xl font-semibold tracking-tight duration-300 sm:text-3xl"
           >
             {word}
           </span>
         ) : (
-          <span className="text-muted-foreground truncate text-base italic">
+          <span className="text-muted-foreground text-base italic">
             {t.game.noRequiredWord}
           </span>
         )}
@@ -84,6 +73,7 @@ function ProgressRing({ progress, urgent }: { progress: number; urgent: boolean 
   const dashOffset = circumference * (1 - progress)
   return (
     <svg
+      data-testid="progress-ring"
       width={24}
       height={24}
       viewBox="0 0 24 24"

@@ -1,8 +1,9 @@
 export { AuthProvider, useAuth } from "./context"
-export {
-  startProviderLogin,
-  authApiUrl,
-  TOKEN_STORAGE_KEY,
-} from "./client"
-export { AUTH_PROVIDERS } from "./types"
-export type { AuthProvider as AuthProviderId, AuthUser, AuthSession } from "./types"
+export type { AuthContextValue } from "./context"
+export { apiUrl, apiFetch, fetchMe, AUTH0_CONNECTION } from "./client"
+export { AUTH_PROVIDERS, MAX_CUSTOM_PRESETS } from "./types"
+export type {
+  AuthProvider as AuthProviderId,
+  AuthUser,
+  CustomPreset,
+} from "./types"

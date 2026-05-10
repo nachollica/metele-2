@@ -5,7 +5,7 @@
 // related words via WordNet hyponyms. Returns the parsed list, or null on any
 // error so callers can fall back to the hardcoded pool.
 
-import { authApiUrl } from "@/lib/auth/client"
+import { apiFetch } from "@/lib/auth/client"
 import type { Locale } from "@/lib/i18n/config"
 
 /** Default cap on the size of the returned pool. The backend allows up to
@@ -52,13 +52,14 @@ type RelatedWordsResponse = {
  * reachable. Callers must fall back to the hardcoded pool in that case.
  */
 export async function fetchRelatedWords(
+  token: string,
   words: string[],
   locale: Locale,
   limit: number = DEFAULT_RELATED_LIMIT,
 ): Promise<string[] | null> {
   if (words.length === 0) return null
   try {
-    const res = await fetch(authApiUrl("/words/related"), {
+    const res = await apiFetch(token, "/words/related", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ words, language: locale, limit }),
