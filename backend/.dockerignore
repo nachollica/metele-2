@@ -5,7 +5,7 @@ __pycache__/
 .ruff_cache/
 .env
 .env.local
-metele.db
+flowfic.db
 *.sqlite
 *.sqlite3
 tests/

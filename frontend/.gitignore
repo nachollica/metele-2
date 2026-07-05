@@ -1,0 +1,22 @@
+node_modules/
+
+*.db
+
+tsconfig.tsbuildinfo
+pnpm-workspace.yaml
+out/
+*.gz
+
+# Playwright e2e artifacts
+test-results/
+playwright-report/
+blob-report/
+
+# Vitest coverage report
+coverage/
+
+*~
+.*
+!.gitignore
+!.gitkeep
+!.dockerignore

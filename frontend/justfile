@@ -1,0 +1,66 @@
+# Frontend (Next.js static export) justfile.
+
+[doc("Print available commands.")]
+help:
+    @just --list
+
+[doc("Install dependencies.")]
+init:
+    pnpm i
+
+[doc("Compile static assets into ./out/.")]
+build:
+    pnpm build
+
+[group("development")]
+[doc("Start the Next.js dev server.")]
+dev:
+    pnpm dev
+
+[group("development")]
+[doc("Run ESLint.")]
+lint:
+    pnpm lint
+
+[group("development")]
+[doc("Autoformat + autofix.")]
+fix:
+    pnpm lint --fix
+
+[group("development")]
+[doc("Static type checking.")]
+tc:
+    pnpm typecheck
+
+[group("development")]
+[doc("Run the vitest suite.")]
+test:
+    pnpm test
+
+[group("e2e")]
+[doc("Install the Chromium browser Playwright needs (one-time setup). Run `just frontend::init` first for the npm deps.")]
+e2e-setup:
+    pnpm exec playwright install chromium
+
+[group("e2e")]
+[doc("Same as e2e-setup but also pulls OS-level browser deps (use on CI / fresh Linux).")]
+e2e-setup-ci:
+    pnpm exec playwright install --with-deps chromium
+
+[group("e2e")]
+[doc("Run the Playwright end-to-end suite (boots the dev server automatically).")]
+e2e:
+    pnpm test:e2e
+
+[group("e2e")]
+[doc("Open the Playwright UI runner for the e2e suite.")]
+e2e-ui:
+    pnpm test:e2e:ui
+
+[group("development")]
+[doc("Run all frontend code checks.")]
+cc: fix tc test
+
+[group("development")]
+[doc("Run all frontend checks without mutating files (CI entry point).")]
+ci: lint tc test

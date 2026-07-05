@@ -5,16 +5,43 @@ from __future__ import annotations
 import pytest
 from sqlmodel import Session
 
-from app.auth import get_current_user
 from app.db_models import Story, User
-
+from app.models import StorySettings, StoryStats
 
 URL = "/stories"
+
+# A complete, valid GameSettings/GameResult pair. Stories now persist typed
+# settings/stats, so seeds and create payloads must carry the full shape.
+VALID_SETTINGS: dict[str, object] = {
+    "mainTimerSeconds": 15,
+    "globalTimerEnabled": True,
+    "globalTimerSeconds": 600,
+    "requiredWordIntervalEnabled": True,
+    "requiredWordIntervalSeconds": 30,
+    "requiredWordUseTimerEnabled": False,
+    "requiredWordUseTimerSeconds": 20,
+    "bellEnabled": True,
+    "categoryWordsEnabled": False,
+    "categoryWordsInput": "",
+}
+VALID_STATS: dict[str, object] = {
+    "reason": "idle",
+    "durationMs": 1234,
+    "characters": 42,
+    "words": 8,
+    "requiredWordsUsed": 2,
+}
 
 
 def _seed_story(db_engine, user_id: str | None, *, text: str = "hi", lang: str = "en") -> int:
     with Session(db_engine) as s:
-        row = Story(text=text, lang=lang, user_id=user_id, settings={}, stats={})
+        row = Story(
+            text=text,
+            lang=lang,
+            user_id=user_id,
+            settings=StorySettings.model_validate(VALID_SETTINGS),
+            stats=StoryStats.model_validate(VALID_STATS),
+        )
         s.add(row)
         s.commit()
         s.refresh(row)
@@ -112,22 +139,42 @@ def test_create_persists_with_caller_as_owner(auth_client, test_user) -> None:
         json={
             "text": "fresh",
             "lang": "en",
-            "settings": {"foo": 1},
-            "stats": {"durationMs": 1234},
+            "settings": VALID_SETTINGS,
+            "stats": VALID_STATS,
         },
     )
     assert res.status_code == 201, res.text
     body = res.json()
     assert body["user_id"] == test_user.id
     assert body["text"] == "fresh"
-    assert body["settings"] == {"foo": 1}
+    assert body["settings"] == VALID_SETTINGS
+    assert body["stats"] == VALID_STATS
 
 
-@pytest.mark.parametrize("field", ["text", "lang"])
+@pytest.mark.parametrize("field", ["text", "lang", "settings", "stats"])
 def test_create_validates_required_fields(auth_client, field: str) -> None:
-    payload: dict[str, object] = {"text": "x", "lang": "en"}
+    payload: dict[str, object] = {
+        "text": "x",
+        "lang": "en",
+        "settings": VALID_SETTINGS,
+        "stats": VALID_STATS,
+    }
     payload.pop(field)
     assert auth_client.post(URL, json=payload).status_code == 422
+
+
+def test_create_rejects_unknown_settings_key(auth_client) -> None:
+    # Strict create: an unexpected key in settings is a 422, not silently kept.
+    res = auth_client.post(
+        URL,
+        json={
+            "text": "x",
+            "lang": "en",
+            "settings": {**VALID_SETTINGS, "bogus": 1},
+            "stats": VALID_STATS,
+        },
+    )
+    assert res.status_code == 422
 
 
 # ---- Count ---------------------------------------------------------------
@@ -190,3 +237,30 @@ def test_delete_404s_on_other_users_story(auth_client, db_engine) -> None:
 
 def test_delete_404s_on_unknown_id(auth_client) -> None:
     assert auth_client.delete(f"{URL}/9999").status_code == 404
+
+
+# ---- Title -----------------------------------------------------------------
+
+
+def test_create_persists_optional_title(auth_client, test_user) -> None:
+    res = auth_client.post(
+        URL,
+        json={
+            "title": "My Tale",
+            "text": "once upon",
+            "lang": "en",
+            "settings": VALID_SETTINGS,
+            "stats": VALID_STATS,
+        },
+    )
+    assert res.status_code == 201
+    assert res.json()["title"] == "My Tale"
+
+
+def test_create_defaults_title_to_null(auth_client) -> None:
+    res = auth_client.post(
+        URL,
+        json={"text": "x", "lang": "en", "settings": VALID_SETTINGS, "stats": VALID_STATS},
+    )
+    assert res.status_code == 201
+    assert res.json()["title"] is None

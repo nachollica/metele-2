@@ -1,18 +1,12 @@
-node_modules/
-
-*.db
-
-tsconfig.tsbuildinfo
-pnpm-workspace.yaml
-out/
+db-data/
+*.key
+*.pem
 *.gz
-
 *~
 .*
 !.gitignore
 !.gitkeep
 !.dockerignore
-
-Caddyfile
-docker-compose.yaml
-public/
+!.env.example
+# The blanket dotfile ignore above would swallow the CI workflows.
+!.github/

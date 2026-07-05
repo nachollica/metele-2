@@ -5,4 +5,10 @@ __pycache__/
 .ruff_cache/
 .env
 .env.local
-uv.lock
+
+# Local SQLite databases. Production uses Postgres via DATABASE_URL.
+*.db
+*.sqlite
+*.sqlite3
+
+!.python-version

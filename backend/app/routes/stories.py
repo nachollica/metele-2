@@ -1,22 +1,20 @@
-"""Stories endpoints.
+"""
+Stories endpoints.
 
 All routes require an authenticated user. Reads are scoped to the caller's
 own stories; creates always set ``user_id`` to the caller.
 """
 
-from __future__ import annotations
-
 from datetime import datetime
-from typing import Any
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field
-from sqlmodel import Session, desc, func, select
+from sqlmodel import desc, func, select
 
-from ..auth import get_current_user
-from ..db import get_db
-from ..db_models import Story, User
-
+from app.db_models import Story
+from app.dependencies import CurrentUser, DbSession
+from app.models import StorySettings, StorySettingsStrict, StoryStats, StoryStatsStrict
 
 router = APIRouter(prefix="/stories", tags=["stories"])
 
@@ -28,21 +26,23 @@ class StoryRead(BaseModel):
     """Public-facing story record."""
 
     id: int
+    title: str | None
     text: str
     lang: str
     created_at: datetime
     user_id: str | None
-    settings: dict[str, Any]
-    stats: dict[str, Any]
+    settings: StorySettings
+    stats: StoryStats
 
     model_config = {"from_attributes": True}
 
 
 class StoryCreate(BaseModel):
+    title: str | None = Field(default=None, max_length=200)
     text: str = Field(..., min_length=1, max_length=200_000)
     lang: str = Field(..., min_length=2, max_length=8)
-    settings: dict[str, Any] = Field(default_factory=dict)
-    stats: dict[str, Any] = Field(default_factory=dict)
+    settings: StorySettingsStrict
+    stats: StoryStatsStrict
 
 
 class StoryListResponse(BaseModel):
@@ -65,10 +65,10 @@ class StoryCount(BaseModel):
     summary="List the caller's recent stories (newest first), paginated.",
 )
 def list_stories(
-    limit: int = Query(default=20, ge=1, le=100),
-    offset: int = Query(default=0, ge=0),
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    db: DbSession,
+    user: CurrentUser,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    offset: Annotated[int, Query(ge=0)] = 0,
 ) -> StoryListResponse:
     total_stmt = select(func.count()).select_from(Story).where(Story.user_id == user.id)
     total = db.exec(total_stmt).one()
@@ -98,8 +98,8 @@ def list_stories(
     summary="Total number of stories owned by the caller.",
 )
 def count_stories(
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    db: DbSession,
+    user: CurrentUser,
 ) -> StoryCount:
     stmt = select(func.count()).select_from(Story).where(Story.user_id == user.id)
     return StoryCount(count=int(db.exec(stmt).one()))
@@ -115,8 +115,8 @@ def count_stories(
 )
 def get_story(
     story_id: int,
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    db: DbSession,
+    user: CurrentUser,
 ) -> StoryRead:
     row = db.get(Story, story_id)
     if row is None or row.user_id != user.id:
@@ -140,10 +140,11 @@ def get_story(
 )
 def create_story(
     payload: StoryCreate,
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    db: DbSession,
+    user: CurrentUser,
 ) -> StoryRead:
     row = Story(
+        title=payload.title,
         text=payload.text,
         lang=payload.lang,
         settings=payload.settings,
@@ -166,8 +167,8 @@ def create_story(
 )
 def delete_story(
     story_id: int,
-    db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    db: DbSession,
+    user: CurrentUser,
 ) -> Response:
     row = db.get(Story, story_id)
     if row is None or row.user_id != user.id:

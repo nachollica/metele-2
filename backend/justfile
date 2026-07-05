@@ -1,0 +1,61 @@
+# Backend (FastAPI / uv) justfile.
+
+[doc("Print available commands.")]
+help:
+    @just --list
+
+[doc("Install / refresh dependencies into ./.venv/.")]
+init:
+    uv sync
+
+[group("development")]
+[doc("Run uvicorn with autoreload on port 8000. Loads .env into the shell.")]
+dev:
+    set -a; [ -f .env ] && . ./.env; set +a; \
+    uv run uvicorn app.main:app --reload --port 8000
+
+[group("development")]
+[doc("Lint with ruff.")]
+lint:
+    uv run ruff check .
+
+[group("development")]
+[doc("Check-only lint + format (no autofix).")]
+check:
+    uv run ruff check .
+    uv run ruff format --check .
+
+[group("development")]
+[doc("Autofix lint findings + format.")]
+fix:
+    uv run ruff check --fix .
+    uv run ruff format .
+
+[group("development")]
+[doc("Static type check.")]
+tc:
+    uv run mypy .
+
+[group("development")]
+[doc("Run the pytest suite.")]
+test:
+    uv run pytest
+
+[group("development")]
+[doc("Run all backend code checks.")]
+cc: fix tc test
+
+[group("development")]
+[doc("Run all backend checks without mutating files (CI entry point).")]
+ci: check tc test
+
+[group("development")]
+[doc("Seed dev-user rows. Usage: just seed alice bob")]
+seed +USERNAMES:
+    set -a; [ -f .env ] && . ./.env; set +a; \
+    uv run python -m app.scripts.seed_dev_user {{USERNAMES}}
+
+[group("development")]
+[doc("Expand seed words into related words. Usage: just related kitchen food -l es -n 30")]
+related +ARGS:
+    uv run python -m app.scripts.related_words {{ARGS}}

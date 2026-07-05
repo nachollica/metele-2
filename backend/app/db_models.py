@@ -1,4 +1,5 @@
-"""SQLModel tables.
+"""
+SQLModel tables.
 
 Kept in a separate module from the Pydantic API models in ``models.py`` so DB
 state is clearly distinct from the wire-level shapes. Tables register on
@@ -8,12 +9,12 @@ state is clearly distinct from the wire-level shapes. Tables register on
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any
 
 from sqlalchemy import Column, DateTime
 from sqlmodel import Field, SQLModel
 
-from .json_field import JSONField
+from app.json_field import JSONField
+from app.models import CustomPreset, StorySettings, StoryStats
 
 
 def _utcnow() -> datetime:
@@ -21,13 +22,15 @@ def _utcnow() -> datetime:
 
 
 class User(SQLModel, table=True):
-    """Authenticated user.
+    """
+    Authenticated user.
 
-    ``id`` is the Auth0 ``sub`` claim (e.g. ``google-oauth2|abc123``). We use
-    it directly as the primary key so every place that holds a user reference
-    can stick to a single, stable string. Profile fields are populated from
-    Auth0's ``/userinfo`` endpoint on first sign-in and refreshed on later
-    logins.
+    ``id`` is either the Auth0 ``sub`` claim (e.g. ``google-oauth2|abc123``)
+    for real users created via social login, or a free-form username for
+    rows seeded for the dev-login backdoor (see
+    ``app.scripts.seed_dev_user``). Profile fields are populated from
+    Auth0's ``/userinfo`` on first sign-in; the user can then override
+    ``name``/``email``/``picture`` via ``PATCH /profile/me``.
     """
 
     __tablename__ = "users"
@@ -47,13 +50,9 @@ class User(SQLModel, table=True):
         sa_column=Column(DateTime(timezone=True), nullable=False),
     )
 
-    # User-defined session presets. Stored as a JSON list of objects shaped
-    # like ``{"id": str, "name": str, "settings": {...preset-covered keys...}}``.
-    # Validated at the API boundary (see ``models.CustomPreset``); the DB
-    # layer treats it as opaque JSON.
-    custom_presets: list[dict[str, Any]] = Field(
+    custom_presets: list[CustomPreset] = Field(
         default_factory=list,
-        sa_column=Column(JSONField, nullable=False, default=list),
+        sa_column=Column(JSONField(list[CustomPreset]), nullable=False, default=list),
     )
 
 
@@ -64,6 +63,11 @@ class Story(SQLModel, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
 
+    # Nullable display title. Not surfaced in the frontend yet — added so the
+    # story-list UI can render a heading once we decide how to populate it
+    # (manual entry, summarisation, etc.).
+    title: str | None = Field(default=None, max_length=200)
+
     text: str
     lang: str = Field(index=True)
 
@@ -72,16 +76,12 @@ class Story(SQLModel, table=True):
         sa_column=Column(DateTime(timezone=True), nullable=False, index=True),
     )
 
-    # Owner. Nullable so legacy anonymous rows persist; new rows always carry
-    # the authenticated caller's id.
     user_id: str | None = Field(default=None, foreign_key="users.id", index=True)
 
-    settings: dict[str, Any] = Field(
-        default_factory=dict,
-        sa_column=Column(JSONField, nullable=False),
+    settings: StorySettings = Field(
+        sa_column=Column(JSONField(StorySettings), nullable=False),
     )
 
-    stats: dict[str, Any] = Field(
-        default_factory=dict,
-        sa_column=Column(JSONField, nullable=False),
+    stats: StoryStats = Field(
+        sa_column=Column(JSONField(StoryStats), nullable=False),
     )

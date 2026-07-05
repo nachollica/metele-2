@@ -1,41 +1,45 @@
-"""Runtime configuration for the FastAPI backend."""
+"""
+Runtime configuration for the FastAPI backend.
+
+Values come exclusively from the process environment — nothing here reads a
+``.env`` file (the justfile loads ``.env`` into the shell for local dev). Every
+setting without a sane cross-environment default is mandatory, so a missing
+variable fails loudly at boot instead of silently assuming a value.
+"""
 
 from __future__ import annotations
 
 from functools import lru_cache
+from typing import Literal
 
-from pydantic import Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, model_validator
+from pydantic_settings import BaseSettings
+
+Environment = Literal["local", "development", "production", "testing"]
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        case_sensitive=False,
-        extra="ignore",
+    environment: Environment
+    frontend_origin: str
+    database_url: str
+    auth0_domain: str
+    auth0_audience: str
+    dev_user_enabled: bool = Field(
+        default=False,
+        description="Enable the POST /auth/dev-login backdoor. Refused in production.",
+    )
+    dev_user_token: str = Field(
+        default="",
+        description="Shared-secret prefix for dev-login tokens. Required when `dev_user_enabled`.",
+    )
+    email_validation_check_deliverability: bool = Field(
+        default=False,
+        description="Have email-validator run a DNS MX lookup on profile email updates.",
     )
 
-    # Where the static frontend lives. Used for the CORS allow-list.
-    frontend_origin: str = Field(default="http://localhost:3000")
-
-    # Auth0 tenant host (e.g. ``my-tenant.us.auth0.com``). Used to build
-    # the issuer (``https://<domain>/``), the JWKS URL, and the userinfo
-    # endpoint.
-    auth0_domain: str = Field(default="")
-
-    # Auth0 API identifier — the ``aud`` claim our backend requires on every
-    # access token. Configured in the Auth0 Dashboard under "APIs".
-    auth0_audience: str = Field(default="")
-
-    # Local-only "dev user" backdoor for testing without a real Auth0 tenant.
-    # When ``dev_user_enabled`` is true, ``POST /auth/dev-login`` accepts a
-    # username body and, if a row with that id exists, mints a token of the
-    # form ``<dev_user_token>:<username>``. The auth dep recognises tokens
-    # with that prefix and resolves them to the matching User row, skipping
-    # JWKS verification. NEVER enable in production.
-    dev_user_enabled: bool = Field(default=True)
-    dev_user_token: str = Field(default="dev-token-please-rotate")
+    @property
+    def is_production(self) -> bool:
+        return self.environment == "production"
 
     @property
     def auth0_issuer(self) -> str:
@@ -49,7 +53,47 @@ class Settings(BaseSettings):
     def auth0_userinfo_url(self) -> str:
         return f"https://{self.auth0_domain}/userinfo"
 
+    @model_validator(mode="after")
+    def _enforce_environment_invariants(self) -> "Settings":
+        """
+        Refuse to construct a configuration that is unsafe for its environment.
+
+        Failing here means the app won't boot — the desired loud-failure mode
+        for a misdeploy, since a server running with the wrong config is worse
+        than one that never came up.
+        """
+        if self.is_production:
+            problems: list[str] = []
+            if not self.auth0_domain:
+                problems.append("AUTH0_DOMAIN must be set")
+            if not self.auth0_audience:
+                problems.append("AUTH0_AUDIENCE must be set")
+            if self.dev_user_enabled:
+                problems.append("DEV_USER_ENABLED must be false")
+            if _is_unsafe_origin(self.frontend_origin):
+                problems.append(f"FRONTEND_ORIGIN must be public (got {self.frontend_origin!r})")
+            if self.database_url.startswith("sqlite"):
+                problems.append("DATABASE_URL must point at Postgres (SQLite is dev/test only)")
+            if not self.email_validation_check_deliverability:
+                problems.append("EMAIL_VALIDATION_CHECK_DELIVERABILITY must be true")
+            if problems:
+                raise ValueError("Invalid production configuration: " + "; ".join(problems))
+        elif self.dev_user_enabled and not self.dev_user_token:
+            # An empty token collapses the dev-login prefix check to a trivial
+            # bypass — refuse to start even outside production.
+            raise ValueError("DEV_USER_TOKEN must be set when DEV_USER_ENABLED is true.")
+        return self
+
+
+def _is_unsafe_origin(origin: str) -> bool:
+    lowered = origin.lower()
+    # Denylisted substrings for rejecting a non-public FRONTEND_ORIGIN — not a
+    # socket bind, so S104 (hardcoded all-interfaces bind) is a false positive.
+    return any(host in lowered for host in ("localhost", "127.0.0.1", "0.0.0.0"))  # noqa: S104
+
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    # Required fields are populated from the environment by pydantic-settings;
+    # type checkers without the pydantic plugin can't see that.
+    return Settings()  # type: ignore[call-arg]
