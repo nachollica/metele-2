@@ -1,61 +1,212 @@
-# METELE backend
+# FLOWFIC backend
 
-FastAPI service that handles user auth (Google / Instagram / Facebook OAuth)
-and a small WordNet-backed helper for the game's word pool. Pairs with the
-Next.js frontend at the project root.
+FastAPI service handling Auth0-backed user identity (social login only),
+per-user profile state (presets, etc.), the game's WordNet-based word
+helpers, and persistence for finished stories. Pairs with the Next.js
+frontend at `./frontend/`.
 
 ## Quickstart
 
 ```bash
 cd backend
 uv sync
-uv run uvicorn app.main:app --reload --port 8000
+cp .env.example .env   # then edit as needed
+just dev               # loads .env into the shell, runs uvicorn on :8000
 ```
 
-The server boots on `http://localhost:8000`. The frontend talks to it via
-`NEXT_PUBLIC_AUTH_API_URL` (defaults to that same origin in dev).
+Settings come only from the environment — nothing reads `.env` at runtime, so
+`just dev` sources it into the shell first. Every setting without a sensible
+default is mandatory and fails loudly at boot if unset. SQLite is for
+local/test; production points `DATABASE_URL` at Postgres — see
+[Database](#database).
+
+The frontend talks to the API via `NEXT_PUBLIC_API_URL` (same origin in dev).
+
+## Authentication
+
+Real users authenticate exclusively through Auth0's hosted social-login
+flow (Google, Facebook, X/Twitter). The backend validates the Auth0-issued
+RS256 access tokens against the tenant's JWKS — no email/password endpoint
+exists. The first time we see a given `sub`, we hit Auth0's `/userinfo` to
+populate the local `User` row's `name`, `picture`, and `email`. The
+`email` field is best-effort: providers that omit it (older Twitter
+configurations, some custom OIDC) simply leave it `NULL` on the row, and
+the user can fill it in later via `PATCH /profile/me`.
+
+For manual QA without a real Auth0 tenant there is a dev-user backdoor —
+see [Dev-user backdoor](#dev-user-backdoor) below.
 
 ## Environment
 
-Copy `.env.example` → `.env` and fill in the OAuth credentials you want to
-exercise. Anything you skip simply makes the corresponding *real* login route
-return 503 — the mock variants always work.
+Every variable is documented inline in [`.env.example`](.env.example) — copy
+it to `.env` and edit. The `app.settings.Settings` model enforces these
+environment-specific guardrails at construction; failing any stops the app from
+booting (the desired loud-failure mode for a misdeploy):
 
-| Var | Purpose |
-| --- | --- |
-| `FRONTEND_ORIGIN` | Used for CORS + `return_to` allow-listing. |
-| `BACKEND_ORIGIN` | The redirect URI registered with each provider. |
-| `JWT_SECRET` | Signs session JWTs and OAuth `state`. Rotate to force re-login. |
-| `<PROVIDER>_CLIENT_ID/SECRET` | OAuth credentials per provider. |
+| Env | Auth0 | Dev backdoor | DB | FRONTEND_ORIGIN | Deliverability |
+| --- | --- | --- | --- | --- | --- |
+| `local` / `development` / `testing` | optional | allowed | any | any | optional |
+| `production` | required | refused | Postgres only | non-localhost | forced on |
+
+The frontend Auth0 SPA client ID lives only in the frontend env
+(`NEXT_PUBLIC_AUTH0_CLIENT_ID`) — the backend never needs it: JWKS validation
+is independent of the client, and there is no client secret on the server.
 
 ## Endpoints
 
+### Auth (`/auth`)
+
 | Route | Description |
 | --- | --- |
-| `GET /auth/{provider}/login?return_to=...` | Redirects to provider consent screen. |
-| `GET /auth/mock/{provider}/login?return_to=...` | Same shape but skips the provider — handy for end-to-end tests. |
-| `GET /auth/{provider}/callback` | Exchanges the auth code, mints a session JWT, redirects to `return_to#token=...&user=...`. |
-| `GET /auth/me` | Returns the current user — `Authorization: Bearer <jwt>`. |
-| `POST /auth/logout` | No-op for stateless JWTs (token wipe is client-side). 204. |
-| `POST /words/related` | Expands "category" words into related words via WordNet hyponyms (EN/ES). |
-| `GET /health` | Liveness probe. |
+| `GET /auth/me` | Returns the current user — `Authorization: Bearer <token>`. |
+| `POST /auth/dev-login` | Mint a dev-user token by username. Disabled in prod. |
 
-`{provider}` ∈ `google`, `instagram`, `facebook`.
+### Profile (`/profile`)
 
-### `POST /words/related`
+Per-user state that isn't part of identity verification. All endpoints
+require auth.
 
-Body: `{ "words": ["animal"], "language": "en", "depth": 2, "limit": 100 }`.
+| Route | Description |
+| --- | --- |
+| `GET /profile/me` | Same shape as `/auth/me`; here for symmetry with PATCH. |
+| `PATCH /profile/me` | Partial update: name / email / picture. |
+| `POST /profile/me/presets` | Add a custom session preset (max 5). |
+| `PATCH /profile/me/presets/{id}` | Rename and/or replace a preset's settings. |
+| `DELETE /profile/me/presets/{id}` | Remove one preset. |
 
-`language` is optional. Resolution order:
+### Stories (`/stories`)
+
+| Route | Description |
+| --- | --- |
+| `GET /stories` | Paginated list of the caller's stories. |
+| `GET /stories/count` | Total count for the caller. |
+| `GET /stories/{id}` | Fetch one of the caller's stories by id. |
+| `POST /stories` | Create a story (optional `title`; full `settings` and `stats` objects, validated). |
+| `DELETE /stories/{id}` | Hard delete. |
+
+Ops note: databases created before the AI-illustration feature was removed
+(it never shipped an endpoint) may still contain an empty `story_images`
+table. It is unused and safe to drop manually
+(`DROP TABLE IF EXISTS story_images;`) whenever convenient.
+
+### Words (`/words`)
+
+| Route | Description |
+| --- | --- |
+| `POST /words/related` | Expand seed words into related words via a BFS over WordNet. |
+| `POST /words/random` | Sample an unseeded random pool (used when required words are on but no categories are given). |
+
+Both require auth. Body for `/words/related`:
+`{ "words": ["animal"], "language": "en", "depth": 3, "limit": 300, "include_partonomy": true }`
+(`limit` caps at 2000). `/words/random` takes just `{ "language": "en", "limit": 300 }`.
+
+Language resolution is unchanged from before:
 
 1. Explicit `language` field in the body.
-2. `Accept-Language` header (q-values respected, first supported tag wins).
-3. Otherwise → **400**. The server never silently defaults to English.
+2. `Accept-Language` header (q-values respected).
+3. Otherwise → **400**.
 
-Supported languages: `en`, `es`. Backed by [NLTK WordNet](https://www.nltk.org/howto/wordnet.html)
-plus the Open Multilingual WordNet for Spanish lemmas. The first request
-bootstraps the corpora into NLTK's data dir; subsequent calls are local
-lookups.
+The expansion is a breadth-first walk of each seed's WordNet synsets,
+descending hyponyms, instance-hyponyms, and adjective `similar_tos`. With
+`include_partonomy=true` (the default) we also follow holonym/meronym
+edges so e.g. `flower` surfaces `petal`, `stem`, etc. Multi-token,
+hyphenated, and proper-noun lemmas are dropped — see `_is_usable_word` for why.
+
+There is also an internal helper `is_morphological_variant(candidate,
+target, language)` in `app.wordnet` that decides whether two words
+share a root (e.g. `loving`/`love` → yes, `romance`/`love` → no). Not
+exposed via HTTP yet; will be wired into the required-word matcher later.
+
+### Meta
+
+| Route | Description |
+| --- | --- |
+| `GET /ping` | Unauthenticated liveness + metadata (version, environment, `devUserEnabled`). |
+| `GET /ping/db` | Auth-gated DB health check — confirms a trivial query, returns dialect + latency. |
+
+## Dev-user backdoor
+
+`POST /auth/dev-login` accepts `{ "username": "alice" }` and returns a
+shared-secret token of the shape `<DEV_USER_TOKEN>:<username>`. The auth
+dependency recognises that prefix and resolves it to the matching
+pre-seeded `User` row, skipping JWKS verification entirely.
+
+The backdoor **cannot create accounts** — only rows that already exist in
+the `users` table authenticate. Seed them via:
+
+```bash
+uv run python -m app.scripts.seed_dev_user alice bob carol
+```
+
+Production refuses to enable this feature: `Settings` rejects
+`DEV_USER_ENABLED=true` when `ENVIRONMENT=production`.
+
+## Database
+
+Backends live as siblings inside `app/db/`:
+
+- `app/db/sqlite.py` — local-dev SQLite engine. Sets `check_same_thread=False`.
+- `app/db/postgres.py` — production Postgres engine (psycopg v3, pre-ping,
+  pool). Normalises `postgres://` and `postgresql://` URLs to the psycopg
+  driver automatically.
+- `app/db/migrations.py` — the additive `ALTER TABLE` migration shim both
+  backends run on startup. One registry of (table, column, per-dialect DDL);
+  anything beyond ADD COLUMN waits for a real migration tool (Alembic).
+
+`app/db/__init__.py` picks the right backend from `DATABASE_URL` and
+re-exports `engine` / `init_db` / `get_db` so route modules stay agnostic.
+Production deploys point `DATABASE_URL` at Postgres; tests stay on SQLite.
+
+### Running in Docker
+
+The repo-root `docker-compose.yaml` runs just this service on SQLite (a named
+`flowfic-data` volume holds the file — `DATABASE_URL` is the only place the
+location is set):
+
+```bash
+docker compose up --build api
+```
+
+The production bundle in `prod/docker-compose.yaml` adds Postgres 16-alpine
+(with a `pg_isready` healthcheck the API waits on) and Caddy, and disables the
+`/docs` page via `ENVIRONMENT=production`.
+
+## Code conventions
+
+A few backend-wide conventions, explained here once so they aren't re-litigated
+inline:
+
+- **camelCase wire fields.** Some models cross the wire to (or are stored as
+  JSON for) the frontend and mirror its keys 1:1 — the full `GameSettings`
+  snapshot on a story, the preset settings, `AuthUser.avatarUrl`, the
+  `/ping` payload, etc. Those fields keep their camelCase names with an inline
+  `# noqa: N815` rather than relying on Pydantic aliases, so the wire shape is
+  explicit at the field and there is no hidden snake_case↔camelCase translation.
+  The one place we do translate (`User.picture` → `avatarUrl`) is an explicit
+  `AuthUser.from_user(...)` constructor, not an alias.
+- **Model construction.** Build models with explicit keyword constructors
+  (e.g. `AuthUser.from_user(...)`, `Settings(environment=..., ...)`) so mypy
+  checks each field. The one sanctioned use of `model_validate` is reading an
+  ORM row into a response model via `from_attributes` (e.g.
+  `StoryRead.model_validate(row)` in `app/routes/stories.py`), where the source
+  is a typed SQLModel row, not untrusted input.
+- **Docstrings.** Multi-line docstrings put the opening and closing `"""` on
+  their own lines, with the summary starting on the second line. The opening
+  half is enforced for `app/` by Ruff's `D213`; the closing-quote-on-its-own-line
+  and "leave one-line docstrings on one line" parts are conventions the linter
+  doesn't police.
+- **Multi-line strings.** When a string literal spans lines, wrap it in
+  parentheses and let the fragments implicitly concatenate, one per line:
+
+  ```python
+  detail=(
+      "Could not determine language. Provide it via the request "
+      "body `language` field or the `Accept-Language` header."
+  )
+  ```
+
+  Ruff can't distinguish this from the un-parenthesized form, so it's applied
+  by hand.
 
 ## Tests
 
@@ -63,6 +214,8 @@ lookups.
 uv run pytest
 ```
 
-Uses `respx` to mock the providers' HTTP calls — no network required. The
-mock-flow tests double as the integration check that the route plumbing works
-end-to-end.
+Tests run against SQLite — each case gets its own temp DB. Auth0 calls are
+mocked with `respx`; the dev-login backdoor is exercised end-to-end against
+the real `get_current_user` dependency. `test_settings.py` covers the
+production guardrails so a regression in the validator fails CI before it
+fails a deploy.

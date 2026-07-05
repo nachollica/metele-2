@@ -1,4 +1,5 @@
-"""Seed dev-user rows for the local Auth0-less backdoor.
+"""
+Seed dev-user rows for the local Auth0-less backdoor.
 
 Run::
 
@@ -20,8 +21,8 @@ from datetime import datetime, timezone
 
 from sqlmodel import Session
 
-from ..db import engine, init_db
-from ..db_models import User
+from app.db import engine, init_db
+from app.db_models import User
 
 
 def _humanize(username: str) -> str:
@@ -44,7 +45,7 @@ def seed_dev_users(usernames: list[str]) -> list[User]:
                 continue
             user = User(
                 id=username,
-                email=f"{username}@metele.local",
+                email=f"{username}@flowfic.local",
                 name=_humanize(username),
                 picture=None,
                 created_at=now,

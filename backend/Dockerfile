@@ -1,78 +1,78 @@
 # syntax=docker/dockerfile:1.7
-#
-# METELE backend — FastAPI served by uvicorn, dependencies managed via uv.
-#
+
+# FLOWFIC backend — FastAPI served by uvicorn, dependencies managed via uv.
 # Two-stage build:
 #   1. builder: pull deps with `uv sync` into a pinned virtualenv, and
 #      pre-download the WordNet corpora so the first request to /words/related
 #      doesn't spend ~2s on a synchronous nltk.download.
-#   2. runtime: distroless-ish python:3.11-slim with only the venv, the NLTK
+#   2. runtime: distroless-ish python:3.14-slim with only the venv, the NLTK
 #      data, and the app code. Listens on 8000.
 
+# Parameters for known paths, pinned versions, etc.
+ARG PYTHON_VERSION=3.14
+ARG PYTHON_DOCKER_TAG=3.14-slim
+ARG APP_ROOT=/src
+ARG VENV_PATH=${APP_ROOT}/.venv
+ARG NLTK_DATA=/usr/local/share/nltk_data
+ARG UV_VERSION=0.11.26
+
 # ----- Builder ---------------------------------------------------------------
-FROM python:3.11-slim AS builder
+FROM python:${PYTHON_DOCKER_TAG} AS builder
 
-ENV PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1 \
-    UV_LINK_MODE=copy \
-    UV_PROJECT_ENVIRONMENT=/app/.venv
+ARG APP_ROOT
+ARG VENV_PATH
+ARG NLTK_DATA
+ARG UV_VERSION
 
-# `uv` is the project's package manager (pyproject.toml + uv.lock locally).
-RUN pip install --no-cache-dir "uv>=0.5"
+ENV UV_PYTHON_PREFERENCE=only-system \
+    UV_PROJECT_ENVIRONMENT=${VENV_PATH} \
+    UV_LINK_MODE=copy
 
-WORKDIR /app
+# Pin uv, override with `--build-arg UV_VERSION=...`
+RUN pip install --no-cache-dir "uv==${UV_VERSION}"
 
-# Copy only metadata first so the heavy `uv sync` layer caches across code
-# changes. If a uv.lock is present in the build context it is honored;
-# otherwise uv resolves from pyproject.toml.
-COPY pyproject.toml ./
-COPY uv.loc[k] ./
+WORKDIR ${APP_ROOT}
 
-RUN uv sync --no-dev --frozen 2>/dev/null \
-    || uv sync --no-dev
+COPY pyproject.toml uv.lock ./
+RUN uv sync --no-dev --frozen
 
-# Pre-fetch NLTK corpora into a stable, image-baked location so the runtime
-# stage doesn't need network access. NLTK searches NLTK_DATA first.
-ENV NLTK_DATA=/usr/local/share/nltk_data
-RUN /app/.venv/bin/python -c "import nltk, os; \
+# Pre-fetch NLTK corpora into a stable, image-baked location.
+ENV NLTK_DATA=${NLTK_DATA}
+RUN "${VENV_PATH}/bin/python" -c "import nltk, os; \
     os.makedirs(os.environ['NLTK_DATA'], exist_ok=True); \
     nltk.download('wordnet', download_dir=os.environ['NLTK_DATA'], quiet=True); \
     nltk.download('omw-1.4', download_dir=os.environ['NLTK_DATA'], quiet=True)"
 
 
 # ----- Runtime ---------------------------------------------------------------
-FROM python:3.11-slim
+FROM python:${PYTHON_DOCKER_TAG}
 
-# Run as a non-root user. We don't need a home dir, just an account uvicorn
-# can drop privileges to once the venv is in place.
-RUN groupadd --system --gid 1001 metele \
- && useradd  --system --uid 1001 --gid metele --no-create-home metele
+ARG APP_ROOT
+ARG VENV_PATH
+ARG NLTK_DATA
+
+# Run as a non-root user. Create a home dir for NLTK to write into ~/nltk_data
+RUN groupadd --system --gid 1001 flowfic \
+    && useradd  --system --uid 1001 --gid flowfic --create-home --home-dir /home/flowfic flowfic
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    NLTK_DATA=/usr/local/share/nltk_data \
-    PATH="/app/.venv/bin:${PATH}"
+    HOME=/home/flowfic \
+    NLTK_DATA=${NLTK_DATA} \
+    PATH="${VENV_PATH}/bin:${PATH}"
 
-WORKDIR /app
+WORKDIR ${APP_ROOT}
 
-# Bring across the prepared venv and corpora.
-COPY --from=builder /app/.venv /app/.venv
-COPY --from=builder /usr/local/share/nltk_data /usr/local/share/nltk_data
+COPY --from=builder ${VENV_PATH} ${VENV_PATH}
+COPY --from=builder --chown=flowfic:flowfic ${NLTK_DATA} ${NLTK_DATA}
 
-# Application source. Owned by the runtime user so the SQLite file written
-# next to the app at runtime is writable without further chowning.
-COPY --chown=metele:metele app /app/app
+COPY --chown=flowfic:flowfic app ${APP_ROOT}/app
 
-# SQLite default lives next to the app; mount a volume here in production
-# (or set DATABASE_URL to point at Postgres) to persist between deploys.
-ENV DATABASE_URL=sqlite:////app/data/metele.db
-# RUN mkdir -p /app/data && chown metele:metele /app/data
+# Writable data dir for the SQLite file in local/dev runs.
+RUN install -d -o flowfic -g flowfic /data
 
-USER metele
+USER flowfic
 
 EXPOSE 8000
 
-# `--proxy-headers` is required because Caddy terminates TLS in front of us
-# and we want the real client IP / scheme to make it through to access logs.
-# CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*"]
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+ENTRYPOINT ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

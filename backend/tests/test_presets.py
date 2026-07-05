@@ -1,4 +1,5 @@
-"""Tests for the custom-preset endpoints under ``/auth/me/presets``.
+"""
+Tests for the custom-preset endpoints under ``/profile/me/presets``.
 
 We use the ``auth_client`` fixture, which short-circuits the JWKS path and
 pins a seeded user — preset CRUD is independent from token verification, so
@@ -25,7 +26,7 @@ def _valid_settings() -> dict:
 
 def _create(auth_client, name: str = "My Mode") -> dict:
     res = auth_client.post(
-        "/auth/me/presets",
+        "/profile/me/presets",
         json={"name": name, "settings": _valid_settings()},
     )
     assert res.status_code == 201, res.text
@@ -43,7 +44,8 @@ def test_create_custom_preset_assigns_id_and_persists(auth_client) -> None:
     presets = body["customPresets"]
     assert len(presets) == 1
     assert presets[0]["name"] == "Sprint"
-    assert isinstance(presets[0]["id"], str) and presets[0]["id"]
+    assert isinstance(presets[0]["id"], str)
+    assert presets[0]["id"]
     assert presets[0]["settings"] == _valid_settings()
 
     # Round-trip: GET /me reflects the same list.
@@ -58,7 +60,7 @@ def test_create_trims_whitespace_in_name(auth_client) -> None:
 
 def test_create_rejects_blank_name(auth_client) -> None:
     res = auth_client.post(
-        "/auth/me/presets",
+        "/profile/me/presets",
         json={"name": "", "settings": _valid_settings()},
     )
     assert res.status_code == 422
@@ -68,7 +70,7 @@ def test_create_rejects_invalid_settings(auth_client) -> None:
     bad = _valid_settings()
     bad["mainTimerSeconds"] = 0  # below ge=1
     res = auth_client.post(
-        "/auth/me/presets",
+        "/profile/me/presets",
         json={"name": "Bad", "settings": bad},
     )
     assert res.status_code == 422
@@ -78,7 +80,7 @@ def test_create_rejects_unknown_settings_field(auth_client) -> None:
     bad = _valid_settings()
     bad["bogus"] = True
     res = auth_client.post(
-        "/auth/me/presets",
+        "/profile/me/presets",
         json={"name": "Bad", "settings": bad},
     )
     assert res.status_code == 422
@@ -90,7 +92,7 @@ def test_create_enforces_max_limit(auth_client) -> None:
         _create(auth_client, f"P{i}")
     # The (n+1)-th create must be rejected with 409.
     res = auth_client.post(
-        "/auth/me/presets",
+        "/profile/me/presets",
         json={"name": "Overflow", "settings": _valid_settings()},
     )
     assert res.status_code == 409, res.text
@@ -100,7 +102,7 @@ def test_create_enforces_max_limit(auth_client) -> None:
 def test_update_custom_preset_renames(auth_client) -> None:
     created = _create(auth_client, "Original")["customPresets"][0]
     res = auth_client.patch(
-        f"/auth/me/presets/{created['id']}",
+        f"/profile/me/presets/{created['id']}",
         json={"name": "Renamed"},
     )
     assert res.status_code == 200
@@ -117,7 +119,7 @@ def test_update_custom_preset_changes_settings(auth_client) -> None:
     new_settings = _valid_settings()
     new_settings["mainTimerSeconds"] = 12
     res = auth_client.patch(
-        f"/auth/me/presets/{created['id']}",
+        f"/profile/me/presets/{created['id']}",
         json={"settings": new_settings},
     )
     assert res.status_code == 200
@@ -127,7 +129,7 @@ def test_update_custom_preset_changes_settings(auth_client) -> None:
 
 def test_update_unknown_preset_404s(auth_client) -> None:
     res = auth_client.patch(
-        "/auth/me/presets/does-not-exist",
+        "/profile/me/presets/does-not-exist",
         json={"name": "x"},
     )
     assert res.status_code == 404
@@ -136,7 +138,7 @@ def test_update_unknown_preset_404s(auth_client) -> None:
 def test_delete_removes_one_and_keeps_others(auth_client) -> None:
     a = _create(auth_client, "A")["customPresets"][0]
     b = _create(auth_client, "B")["customPresets"][-1]
-    res = auth_client.delete(f"/auth/me/presets/{a['id']}")
+    res = auth_client.delete(f"/profile/me/presets/{a['id']}")
     assert res.status_code == 200
     presets = res.json()["customPresets"]
     assert len(presets) == 1
@@ -144,23 +146,24 @@ def test_delete_removes_one_and_keeps_others(auth_client) -> None:
 
 
 def test_delete_unknown_preset_404s(auth_client) -> None:
-    res = auth_client.delete("/auth/me/presets/missing")
+    res = auth_client.delete("/profile/me/presets/missing")
     assert res.status_code == 404
 
 
 def test_delete_frees_a_slot_under_the_limit(auth_client) -> None:
     """After hitting the cap, deleting should let the user create again."""
-    created_ids = [_create(auth_client, f"P{i}")["customPresets"][-1]["id"]
-                   for i in range(MAX_CUSTOM_PRESETS)]
+    created_ids = [
+        _create(auth_client, f"P{i}")["customPresets"][-1]["id"] for i in range(MAX_CUSTOM_PRESETS)
+    ]
     overflow = auth_client.post(
-        "/auth/me/presets",
+        "/profile/me/presets",
         json={"name": "Overflow", "settings": _valid_settings()},
     )
     assert overflow.status_code == 409
 
-    auth_client.delete(f"/auth/me/presets/{created_ids[0]}")
+    auth_client.delete(f"/profile/me/presets/{created_ids[0]}")
     res = auth_client.post(
-        "/auth/me/presets",
+        "/profile/me/presets",
         json={"name": "After", "settings": _valid_settings()},
     )
     assert res.status_code == 201
@@ -168,6 +171,6 @@ def test_delete_frees_a_slot_under_the_limit(auth_client) -> None:
 
 
 def test_endpoints_require_auth(client) -> None:
-    assert client.post("/auth/me/presets", json={}).status_code == 401
-    assert client.patch("/auth/me/presets/x", json={}).status_code == 401
-    assert client.delete("/auth/me/presets/x").status_code == 401
+    assert client.post("/profile/me/presets", json={}).status_code == 401
+    assert client.patch("/profile/me/presets/x", json={}).status_code == 401
+    assert client.delete("/profile/me/presets/x").status_code == 401

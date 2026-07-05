@@ -1,33 +1,122 @@
 [project]
-name = "metele-backend"
+name = "flowfic-backend"
 version = "0.1.0"
-description = "FastAPI backend for METELE — Auth0-backed auth, words and stories APIs."
-requires-python = ">=3.11"
+description = "FastAPI backend for FLOWFIC — Auth0-backed auth, words and stories APIs."
+requires-python = ">=3.14"
 dependencies = [
-    "fastapi>=0.115",
-    "uvicorn[standard]>=0.32",
-    "httpx>=0.28",
-    "pydantic>=2.9",
-    "pydantic-settings>=2.6",
-    "pyjwt[crypto]>=2.9",
-    "nltk>=3.9",
-    "sqlmodel>=0.0.22",
-    "sqlalchemy>=2.0",
+    "email-validator>=2.3.0",
+    "fastapi>=0.138.1",
+    "httpx>=0.28.1",
+    "nltk>=3.9.4",
+    "psycopg[binary]>=3.3.4",
+    "pydantic-settings>=2.14.2",
+    "pydantic>=2.13.4",
+    "pyjwt[crypto]>=2.13.0",
+    "sqlalchemy>=2.0.51",
+    "sqlmodel>=0.0.39",
+    "uvicorn[standard]>=0.49.0",
+    "wordfreq>=3.1.1",
 ]
 
 [dependency-groups]
 dev = [
-    "pytest>=8.3",
-    "pytest-asyncio>=0.24",
-    "respx>=0.21",
-    "ruff>=0.7",
+    "mypy>=2.1.0",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "pytest-cov>=7.1.0",
+    "pytest-env>=1.6.0",
+    "respx>=0.23.1",
+    "ruff>=0.15.20",
 ]
+
+### Test
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
-addopts = "-q"
+env = [
+    # Mandatory settings the suite relies on. In-memory SQLite keeps tests
+    # file-free; per-test DBs are wired via fixtures in conftest.
+    "ENVIRONMENT=testing",
+    "AUTH0_DOMAIN=",
+    "AUTH0_AUDIENCE=",
+    "DATABASE_URL=sqlite://",
+    "FRONTEND_ORIGIN=http://localhost:3000",
+    "DEV_USER_ENABLED=true",
+    "DEV_USER_TOKEN=dev-test-token",
+    "EMAIL_VALIDATION_CHECK_DELIVERABILITY=false",
+]
+addopts = [
+    "--cov",
+    "--cov-report=term-missing",
+]
+
+[tool.coverage.run]
+source = ["app"]
+omit = []
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+sort = "Cover"
+
+### Lint
 
 [tool.ruff]
+target-version = "py314"
 line-length = 100
-target-version = "py311"
+exclude = [".venv/"]
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.ruff.lint]
+select = [
+    "A",        # Detect shadowing of Python builtins
+    "B",        # Catch likely bugs and bad design (flake8-bugbear)
+    "D213",     # Multi-line docstring summary starts on the second line
+    "E",        # pycodestyle errors
+    "F",        # Pyflakes: unused/undefined names, import errors
+    "I",        # Sort and group imports (isort)
+    "N",        # PEP 8 naming conventions
+    "S",        # Security checks (bandit)
+    "T",        # Disallow `print`/`pdb`/`breakpoint` calls
+    "W",        # pycodestyle warnings
+    "C4",       # Encourage idiomatic comprehensions
+    "BLE",      # Disallow blind `except:` clauses
+    "FURB",     # Modernize legacy patterns (refurb)
+    "INP",      # Disallow implicit namespace packages (require __init__.py)
+    "ISC",      # Detect implicit string concatenation issues
+    "PGH",      # Miscellaneous pygrep-hooks (noqa hygiene, etc.)
+    "PIE",      # Miscellaneous lints (flake8-pie)
+    "PLW",      # Pylint warnings
+    "RSE",      # Style for `raise` statements
+    "TCH",      # Move type-only imports into `TYPE_CHECKING` blocks
+    "PT",       # pytest style conventions
+]
+ignore = [
+    "E501",     # Line too long
+    "E731",     # Lambda assignment instead of `def`
+]
+
+[tool.ruff.lint.flake8-type-checking]
+# Pydantic resolves field annotations at runtime to build models, so imports
+# used only as field types must stay at module scope. Marking BaseModel/SQLModel
+# as runtime-evaluated stops TC001/TC002 from pushing those imports into a
+# TYPE_CHECKING block (which would break model construction at import time).
+runtime-evaluated-base-classes = ["pydantic.BaseModel", "sqlmodel.SQLModel"]
+
+[tool.ruff.lint.per-file-ignores]
+"app/scripts/*" = ["T"]
+"tests/*" = ["D", "S", "INP001", "TC002", "TC003"]
+# Route handlers take the centralized DI aliases (app.dependencies) and ORM
+# types as parameter annotations, which FastAPI introspects at runtime — they
+# must stay real imports, so TC001 (move into a TYPE_CHECKING block) is a false
+# positive here. The DI module itself is clean because the aliases are built in
+# runtime assignments, not annotations.
+"app/routes/*" = ["TC001"]
+
+[tool.mypy]
+python_version = "3.14"
+ignore_missing_imports = true
+exclude = [".venv/"]

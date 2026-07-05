@@ -1,0 +1,42 @@
+services:
+
+  api:
+    build: ./backend
+    image: flowfic-api
+    container_name: flowfic-api-local
+    restart: unless-stopped
+    command: ["--reload"]
+    ports:
+      - "8000:8000"
+    environment:
+      ENVIRONMENT: local
+      FRONTEND_ORIGIN: http://localhost:3000
+      # Absolute path into the named volume below (4 slashes). DATABASE_URL is
+      # the only place the SQLite location is set.
+      DATABASE_URL: sqlite:////data/flowfic.db
+      # Auth0 is unused locally (dev backdoor stands in) but the settings are
+      # mandatory, so declare them explicitly even when empty.
+      AUTH0_DOMAIN: ""
+      AUTH0_AUDIENCE: ""
+      DEV_USER_ENABLED: "true"
+      DEV_USER_TOKEN: dev-local-token
+    volumes:
+      - ./backend/app:/src/app
+      - flowfic-data:/data
+    healthcheck:
+      # The slim Python image ships no curl/wget; probe /api/ping (the app
+      # mounts under root_path=/api) with the stdlib instead.
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/ping', timeout=3)",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  flowfic-data:

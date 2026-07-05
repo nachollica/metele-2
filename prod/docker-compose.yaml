@@ -1,0 +1,83 @@
+services:
+
+  caddy:
+    image: caddy:2.11
+    container_name: flowfic-caddy
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      # Compiled frontend (Next.js `next build` output via `output: "export"`).
+      # Caddy serves files from /static.
+      - ./out:/static:ro
+      # Caddyfile + Cloudflare Origin certs. Mounted read-only — Caddy never
+      # writes here. Layout on the host:
+      #   conf/Caddyfile
+      #   conf/certs/flowfic.app.pem
+      #   conf/certs/flowfic.app.key
+      - ./conf:/etc/caddy:ro
+      # Caddy runtime state (logs, on-disk config, ACME storage). Kept
+      # outside `./conf/` so the read-only mount above isn't violated.
+      - ./caddy/logs:/var/log/caddy
+      - ./caddy/config:/config
+      - ./caddy/data:/data
+    depends_on:
+      api:
+        # Wait for the API's own healthcheck (below) so Caddy never starts
+        # proxying to a container that is still booting.
+        condition: service_healthy
+
+  api:
+    image: flowfic-api
+    container_name: flowfic-api
+    restart: unless-stopped
+    command: ["--workers", "4", "--proxy-headers", "--forwarded-allow-ips", "*"]
+    environment:
+      ENVIRONMENT: production
+      FRONTEND_ORIGIN: https://flowfic.app
+      DATABASE_URL: postgresql+psycopg://flowfic_user:flowfic_pw@db:5432/flowfic_db
+      AUTH0_DOMAIN: dev-kkowu0p3at2rwdwt.us.auth0.com
+      AUTH0_AUDIENCE: https://api.flowfic.local
+      DEV_USER_ENABLED: "false"
+      DEV_USER_TOKEN: ""
+      EMAIL_VALIDATION_CHECK_DELIVERABILITY: "true"
+    healthcheck:
+      # The slim Python image ships no curl/wget; probe /api/ping (the app
+      # mounts under root_path=/api) with the stdlib instead.
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/ping', timeout=3)",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    depends_on:
+      db:
+        # Only start the API once Postgres reports healthy — otherwise
+        # SQLAlchemy errors at import time and the container dies on boot.
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    container_name: flowfic-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: flowfic_user
+      POSTGRES_PASSWORD: flowfic_pw
+      POSTGRES_DB: flowfic_db
+    volumes:
+      - ./db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
