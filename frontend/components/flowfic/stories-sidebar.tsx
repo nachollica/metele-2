@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Calendar, Clock, History, MoreHorizontal, Trash2 } from "lucide-react"
 
 import {
@@ -38,6 +38,18 @@ const PREVIEW_CHARS = 90
 // own viewport — anything beyond this is rare and can be a follow-up.
 const PAGE_SIZE = 50
 
+// A silent token refresh can transiently fail on resume-after-inactivity (an
+// expired access token that needs a refresh, a briefly-wedged cross-tab lock,
+// a network blip). Retry a few times with a short backoff so the panel
+// self-heals instead of latching a permanent error on the first null token.
+// Backoff is per attempt; the last attempt has no trailing wait.
+const RETRY_BACKOFF_MS = [600, 1500]
+const MAX_ATTEMPTS = RETRY_BACKOFF_MS.length + 1
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 type Props = {
   /** Bumped by the parent after a successful POST so the list refetches. */
   refreshKey?: number
@@ -50,6 +62,15 @@ export function StoriesSidebar({ refreshKey = 0, onSelect }: Props) {
   const { status, getAccessToken } = useAuth()
   const [items, setItems] = useState<Story[] | null>(null)
   const [error, setError] = useState(false)
+  // Bumped by the focus/visibility/online listeners to re-arm a failed load.
+  const [retryTick, setRetryTick] = useState(0)
+
+  // Mirror `error` into a ref so the resume listeners (subscribed once) can
+  // decide whether to refetch without re-subscribing on every state change.
+  const erroredRef = useRef(false)
+  useEffect(() => {
+    erroredRef.current = error
+  }, [error])
 
   useEffect(() => {
     if (status === "loading") return
@@ -62,26 +83,52 @@ export function StoriesSidebar({ refreshKey = 0, onSelect }: Props) {
     setError(false)
     setItems(null)
     void (async () => {
-      const token = await getAccessToken()
-      if (cancelled) return
-      if (token === null) {
-        setError(true)
-        setItems([])
-        return
+      for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+        const token = await getAccessToken()
+        if (cancelled) return
+        if (token !== null) {
+          const res = await fetchStories(token, { limit: PAGE_SIZE, offset: 0 })
+          if (cancelled) return
+          if (res !== null) {
+            setItems(res.items)
+            return
+          }
+        }
+        // Token unavailable or the fetch failed. Back off and retry unless
+        // this was the final attempt.
+        const backoff = RETRY_BACKOFF_MS[attempt]
+        if (backoff === undefined) break
+        await delay(backoff)
+        if (cancelled) return
       }
-      const res = await fetchStories(token, { limit: PAGE_SIZE, offset: 0 })
-      if (cancelled) return
-      if (res === null) {
-        setError(true)
-        setItems([])
-        return
-      }
-      setItems(res.items)
+      setError(true)
+      setItems([])
     })()
     return () => {
       cancelled = true
     }
-  }, [getAccessToken, refreshKey, status])
+  }, [getAccessToken, refreshKey, status, retryTick])
+
+  // A tab resumed after inactivity often can't refresh its token until it's
+  // focused/visible again. When we're showing the error state, re-arm the load
+  // on focus / visibility / online so the panel recovers without a manual
+  // reload. Guarded by `erroredRef` so a healthy panel never refetches here.
+  useEffect(() => {
+    const retry = () => {
+      if (erroredRef.current) setRetryTick((n) => n + 1)
+    }
+    const onVisible = () => {
+      if (document.visibilityState === "visible") retry()
+    }
+    window.addEventListener("focus", retry)
+    window.addEventListener("online", retry)
+    document.addEventListener("visibilitychange", onVisible)
+    return () => {
+      window.removeEventListener("focus", retry)
+      window.removeEventListener("online", retry)
+      document.removeEventListener("visibilitychange", onVisible)
+    }
+  }, [])
 
   async function handleDelete(id: number): Promise<boolean> {
     const token = await getAccessToken()

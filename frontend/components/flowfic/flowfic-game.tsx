@@ -1,7 +1,9 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react"
-import { Loader2, Pencil, Sparkles, X } from "lucide-react"
+import { AlertTriangle, Loader2, Pencil, Sparkles, X } from "lucide-react"
+
+import { Button } from "@/components/ui/button"
 
 import { AppHeader, PrimaryActionButton } from "./app-header"
 import { AppShell } from "./app-shell"
@@ -86,6 +88,10 @@ export function FlowficGame() {
   const [armed, setArmed] = useState(false)
   // Bumped after a successful POST so the sidebar refetches.
   const [storiesRefreshKey, setStoriesRefreshKey] = useState(0)
+  // Set when a finished-story POST fails (e.g. a token blip on resume). Holds
+  // the full payload so the user can retry from a banner instead of losing it.
+  const [failedSave, setFailedSave] = useState<CreateStoryInput | null>(null)
+  const [retryingSave, setRetryingSave] = useState(false)
   // True iff there's a finished, not-yet-persisted story sitting in the
   // textarea. Used as a single-fire guard so navigating away from "ended"
   // through multiple paths (action button, profile menu, sidebar row) still
@@ -269,10 +275,26 @@ export function FlowficGame() {
     setResultsModalOpen(false)
   }, [])
 
+  // POST a finished story. Resolves true on success. A null token means the
+  // silent refresh couldn't produce one (see auth `getAccessToken`); we treat
+  // that as a failure so the caller can retain the story for a retry rather
+  // than dropping it.
+  const persistStory = useCallback(
+    async (payload: CreateStoryInput): Promise<boolean> => {
+      const token = await getAccessToken()
+      if (token === null) return false
+      const created = await createStory(token, payload)
+      return created !== null
+    },
+    [getAccessToken],
+  )
+
   // Persist the just-finished session to the backend if there is one
   // outstanding. Fire-and-forget; the unsaved flag is cleared synchronously so
   // re-entrant calls (e.g. clicking action button + profile menu in quick
-  // succession) only trigger a single POST. Anonymous users silently skip.
+  // succession) only trigger a single POST. Anonymous users silently skip. On
+  // failure the payload is retained in `failedSave` so a token blip can't
+  // silently lose a finished story — the user gets a retry banner.
   const saveCurrentStoryIfNeeded = useCallback(() => {
     if (!unsavedStoryRef.current) return
     unsavedStoryRef.current = false
@@ -291,15 +313,30 @@ export function FlowficGame() {
         requiredWordsUsed: snapshot.requiredWordsUsed,
       },
     }
-    void getAccessToken().then((token) => {
-      if (token === null) return
-      return createStory(token, payload).then((created) => {
-        if (created !== null) {
-          setStoriesRefreshKey((k) => k + 1)
-        }
-      })
+    void persistStory(payload).then((ok) => {
+      if (ok) {
+        setStoriesRefreshKey((k) => k + 1)
+      } else {
+        setFailedSave(payload)
+      }
     })
-  }, [getAccessToken, locale, result])
+  }, [persistStory, locale, result])
+
+  // Retry a previously-failed save from the banner. On success clear the
+  // banner and refresh the sidebar; on failure the banner stays for another go.
+  const retryFailedSave = useCallback(() => {
+    if (failedSave === null) return
+    setRetryingSave(true)
+    void persistStory(failedSave).then((ok) => {
+      setRetryingSave(false)
+      if (ok) {
+        setFailedSave(null)
+        setStoriesRefreshKey((k) => k + 1)
+      }
+    })
+  }, [failedSave, persistStory])
+
+  const dismissFailedSave = useCallback(() => setFailedSave(null), [])
 
   // Reset all transient game state (text, result, timers, etc.) without
   // touching settings or preferences. Used both by the unified action button
@@ -771,6 +808,41 @@ export function FlowficGame() {
             onOpenProfile={openProfile}
             disableAccountMenu={isPlaying}
           />
+
+          {failedSave !== null ? (
+            <div
+              role="alert"
+              className="border-destructive/40 bg-destructive/10 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border p-3 text-sm"
+            >
+              <AlertTriangle
+                className="text-destructive size-4 shrink-0"
+                aria-hidden
+              />
+              <span className="text-destructive flex-1">
+                {t.game.saveFailed}
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={retryFailedSave}
+                  disabled={retryingSave}
+                >
+                  {retryingSave ? t.game.saveRetrying : t.game.saveRetry}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={dismissFailedSave}
+                  disabled={retryingSave}
+                >
+                  {t.game.saveDismiss}
+                </Button>
+              </div>
+            </div>
+          ) : null}
 
           {gameState === "settings" ? (
             <SettingsPanel settings={settings} onChange={handleSettingsChange} />

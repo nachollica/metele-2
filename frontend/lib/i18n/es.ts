@@ -122,6 +122,10 @@ export const es = {
     quit: "Salir de sesión",
     createStory: "Crear una historia",
     viewingStory: "Viendo una historia anterior (solo lectura).",
+    saveFailed: "No se pudo guardar tu última historia.",
+    saveRetry: "Reintentar",
+    saveRetrying: "Reintentando…",
+    saveDismiss: "Descartar",
   },
 
   profile: {
