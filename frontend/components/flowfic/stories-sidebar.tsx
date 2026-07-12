@@ -329,11 +329,15 @@ function makePreview(text: string): string {
   return collapsed.slice(0, PREVIEW_CHARS).trimEnd() + "…"
 }
 
-// Best-effort short date+time. Uses the browser's locale rather than the
-// in-app i18n locale so timezones and 12/24h display match the user's OS
-// preferences — sidebar metadata is not gameplay-critical.
+// Full date + time. Uses the browser's locale rather than the in-app i18n
+// locale so date-part ordering, timezone, and 12/24h display match the user's
+// OS preferences — sidebar metadata is not gameplay-critical. The year is
+// always shown so records from earlier years are never ambiguous; the sidebar
+// is a fixed-width column, so date and time both fit (the metadata row wraps
+// to a second line if needed).
 function formatDate(d: Date): string {
   return d.toLocaleString(undefined, {
+    year: "numeric",
     month: "short",
     day: "numeric",
     hour: "2-digit",
