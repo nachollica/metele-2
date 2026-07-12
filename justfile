@@ -112,3 +112,13 @@ deploy-frontend:
 [group("deploy")]
 [doc("Run full deployment. Builds and ships both artifacts first, so the stack is only down for the restart itself.")]
 deploy: deploy-backend deploy-frontend prod-down prod-up
+
+[group("prod-db")]
+[doc("Open SSH tunnel for Prod DB.")]
+db-tunnel:
+    ssh -nNT -L 5432:127.0.0.1:5432 ash
+
+[group("prod-db")]
+[doc("Connect to the remote Prod DB.")]
+db:
+    PGPASSWORD=flowfic_pw psql -h 127.0.0.1 -p 5432 -U flowfic_user -d flowfic_db
