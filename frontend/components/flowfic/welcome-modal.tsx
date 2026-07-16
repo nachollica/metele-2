@@ -78,7 +78,10 @@ export function WelcomeModal({ open, onContinue }: Props) {
     <Dialog open={open}>
       <DialogContent
         showCloseButton={false}
-        className="sm:max-w-md"
+        // `bg-popover` (not the primitive's default `bg-background`) so the
+        // modal is a raised surface distinct from the page — otherwise in dark
+        // mode it paints the same color as the background and looks see-through.
+        className="bg-popover sm:max-w-md"
         onEscapeKeyDown={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
         onKeyDown={onKeyDown}

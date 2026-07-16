@@ -118,6 +118,10 @@ export const en = {
     quit: "Quit session",
     createStory: "Create a story",
     viewingStory: "Viewing a previous story (read-only).",
+    saveFailed: "Couldn't save your last story.",
+    saveRetry: "Retry",
+    saveRetrying: "Retrying…",
+    saveDismiss: "Dismiss",
   },
 
   profile: {

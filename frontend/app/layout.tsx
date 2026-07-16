@@ -24,6 +24,13 @@ export const metadata: Metadata = {
   title: "FLOWFIC — A Writing Game",
   description: "Train your storytelling under pressure. Keep typing, weave in surprise words, finish strong.",
   icons: { icon: "/icon.svg" },
+  // The app ships its own light/dark themes, so opt out of dark-mode browser
+  // extensions (Dark Reader et al.). They re-theme by parsing computed colors,
+  // choke on our `oklch()`/`lab()` values, and drop element backgrounds —
+  // which rendered the welcome modal see-through on affected setups.
+  // Next omits a meta whose content is an empty string, so give it a truthy
+  // value; Dark Reader keys off the tag's name, not its content.
+  other: { "darkreader-lock": "true" },
 }
 
 // Initial `<html lang>` uses the default locale; `LocaleProvider` detects the

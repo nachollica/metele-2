@@ -28,7 +28,41 @@ import {
   type DevLoginResult,
   type DevSession,
 } from "./dev"
+import { clearAuth0Locks } from "./recovery"
 import type { AuthProvider as AuthProviderId, AuthUser } from "./types"
+
+// Auth0 GenericError codes that mean the session can't be silently recovered:
+// the refresh token is missing, expired, revoked, or otherwise rejected. The
+// only path forward is a fresh interactive login.
+const REAUTH_ERROR_CODES = new Set([
+  "login_required",
+  "consent_required",
+  "missing_refresh_token",
+  "invalid_grant",
+])
+
+// Pull the Auth0 error code off a thrown value. The SDK throws `GenericError`
+// (and subclasses) with a string `error` field; anything else — a network
+// blip, a bare Error — has no code.
+function authErrorCode(err: unknown): string | null {
+  if (typeof err === "object" && err !== null && "error" in err) {
+    const code = (err as { error?: unknown }).error
+    return typeof code === "string" ? code : null
+  }
+  return null
+}
+
+function isReauthRequired(err: unknown): boolean {
+  const code = authErrorCode(err)
+  return code !== null && REAUTH_ERROR_CODES.has(code)
+}
+
+// `TimeoutError` carries the code "timeout". In practice this fires when the
+// silent-refresh cross-tab lock can't be acquired within the SDK's 5s window,
+// usually because a previous tab left a stale lock behind in localStorage.
+function isLockTimeout(err: unknown): boolean {
+  return authErrorCode(err) === "timeout"
+}
 
 type AuthStatus = "loading" | "authenticated" | "anonymous"
 
@@ -232,12 +266,32 @@ export function useAuth(): AuthContextValue {
     if (!a0.isAuthenticated) return null
     try {
       return await a0.getAccessTokenSilently()
-    } catch {
-      // Refresh failed (network error, token revoked, etc.) — caller
-      // treats null as "anonymous" and falls back accordingly.
+    } catch (err) {
+      if (isReauthRequired(err)) {
+        // The session is dead and can't be refreshed silently. Drop it so the
+        // app falls back to anonymous and prompts a clean re-login, instead of
+        // sitting "authenticated" with no usable token (the zombie state that
+        // makes even logout/login stop helping). `openUrl: false` clears the
+        // local Auth0 cache and flips isAuthenticated without a redirect.
+        clearAuth0Locks()
+        try {
+          await a0.logout({ openUrl: false })
+        } catch {
+          // Best-effort — the caller treating null as anonymous is enough.
+        }
+        local?.setOverride(null)
+      } else if (isLockTimeout(err)) {
+        // A stale silent-refresh lock is wedging every refresh. Clear it (the
+        // tokens are left intact) so the caller's retry can acquire a fresh
+        // lock and succeed. This is the case that survives logout/login and
+        // cookie clearing, since neither touches the lock keys.
+        clearAuth0Locks()
+      }
+      // Any other failure (transient network, etc.) — caller treats null as
+      // "not available yet" and retries / falls back accordingly.
       return null
     }
-  }, [a0, devSession])
+  }, [a0, devSession, local])
 
   const sdkUser: AuthUser | null = useMemo(() => {
     const u = a0.user
