@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
@@ -16,13 +17,42 @@ from app.routes.profile import router as profile_router
 from app.routes.stories import router as stories_router
 from app.routes.words import router as words_router
 from app.settings import get_settings
+from app.word_engine import EmbeddingConfig, configure, ensure_ready, resolve_model_id
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
+    from app.settings import Settings
+
+logger = logging.getLogger(__name__)
+
+
+def _embedding_config(settings: Settings) -> EmbeddingConfig:
+    """Translate the app settings into the engine's config object."""
+    return EmbeddingConfig(
+        model_id=resolve_model_id(settings.word_embeddings_size, settings.word_embeddings_model),
+        cache_dir=settings.word_embeddings_dir,
+        vocab_size=settings.word_embeddings_vocab_size,
+        match_threshold=settings.word_match_threshold,
+        per_seed=settings.word_related_per_seed,
+        min_similarity=settings.word_related_min_similarity,
+    )
+
 
 @asynccontextmanager
 async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    settings = get_settings()
+    # Skip the heavy model load in the test suite; unit tests stub the engine.
+    if settings.environment != "testing":
+        configure(_embedding_config(settings))
+        try:
+            # Load the model and build/load every hardcoded language's matrix,
+            # downloading whatever is missing from the configured directory.
+            ensure_ready()
+        except Exception:
+            # Don't take the whole app down if a corpus/model can't be prepared;
+            # word features degrade to empty until the artifact is available.
+            logger.exception("Embedding preload failed; word features degraded until available")
     yield
     # Close the connection pool on shutdown so a stopped server doesn't leave
     # database sockets dangling.

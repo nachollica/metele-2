@@ -17,11 +17,38 @@ from fastapi.testclient import TestClient
 from sqlalchemy import Engine
 from sqlmodel import Session, SQLModel, create_engine
 
+from app import word_engine
 from app.db import get_db
 from app.db_models import User
 from app.dependencies import get_current_user
 from app.main import create_app
 from app.settings import Settings, get_settings
+
+
+@pytest.fixture(autouse=True)
+def _no_embeddings(monkeypatch) -> Iterator[None]:
+    """
+    Keep the embedding model out of the test suite by default.
+
+    Loading the real model would download hundreds of MB and encode tens of
+    thousands of words — too slow and network-dependent, and CI runs offline.
+    Making ``_load_model`` raise exercises the same graceful degradation the
+    service relies on (related-words / match return empty rather than 500), so
+    the wordfreq and route tests run fast and deterministically. Embedding
+    tests re-patch ``_load_model`` / ``_vocab_matrix`` with in-memory stubs.
+    """
+    word_engine._active_config[0] = None
+    word_engine._model_cache.clear()
+    word_engine._matrix_cache.clear()
+
+    def _unavailable() -> object:
+        raise RuntimeError("embedding model disabled in tests")
+
+    monkeypatch.setattr(word_engine, "_load_model", _unavailable)
+    yield
+    word_engine._active_config[0] = None
+    word_engine._model_cache.clear()
+    word_engine._matrix_cache.clear()
 
 
 @pytest.fixture

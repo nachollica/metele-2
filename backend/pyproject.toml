@@ -7,11 +7,14 @@ dependencies = [
     "email-validator>=2.3.0",
     "fastapi>=0.138.1",
     "httpx>=0.28.1",
-    "nltk>=3.9.4",
+    # Capped below 3.10: newer NLTK switches OMW to the "omw-2.0" resource, and
+    # the WordNet base + its baked corpora (Dockerfile) target "omw-1.4".
+    "numpy>=2.0",
     "psycopg[binary]>=3.3.4",
     "pydantic-settings>=2.14.2",
     "pydantic>=2.13.4",
     "pyjwt[crypto]>=2.13.0",
+    "sentence-transformers>=5.6.0",
     "sqlalchemy>=2.0.51",
     "sqlmodel>=0.0.39",
     "uvicorn[standard]>=0.49.0",
@@ -20,6 +23,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "ipython>=9.15.0",
     "mypy>=2.1.0",
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
@@ -45,6 +49,9 @@ env = [
     "DEV_USER_ENABLED=true",
     "DEV_USER_TOKEN=dev-test-token",
     "EMAIL_VALIDATION_CHECK_DELIVERABILITY=false",
+    # Keep the wordfreq candidate pool tiny so vocabulary/random tests are fast;
+    # the embedding model itself is stubbed out (see conftest).
+    "WORD_EMBEDDINGS_VOCAB_SIZE=3000",
 ]
 addopts = [
     "--cov",

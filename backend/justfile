@@ -1,5 +1,10 @@
 # Backend (FastAPI / uv) justfile.
 
+# Default embedding model for the related-words + match features. Blank uses the
+# engine's size default (small). Override per-call, e.g.
+# `just embeddings sentence-transformers/paraphrase-multilingual-mpnet-base-v2`.
+EMBEDDINGS_MODEL := "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+
 [doc("Print available commands.")]
 help:
     @just --list
@@ -56,6 +61,16 @@ seed +USERNAMES:
     uv run python -m app.scripts.seed_dev_user {{USERNAMES}}
 
 [group("development")]
+[doc("Precompute the embedding matrices for all languages. Optional MODEL id override.")]
+embeddings MODEL=EMBEDDINGS_MODEL:
+    uv run python -m app.scripts.build_embeddings --model {{MODEL}}
+
+[group("development")]
 [doc("Expand seed words into related words. Usage: just related kitchen food -l es -n 30")]
 related +ARGS:
-    uv run python -m app.scripts.related_words {{ARGS}}
+    WORD_EMBEDDINGS_MODEL="{{EMBEDDINGS_MODEL}}" uv run python -m app.scripts.related_words {{ARGS}}
+
+[group("development")]
+[doc("Judge a typed word against a required word. Usage: just match planes plane -l en")]
+match WORD REQUIRED *ARGS:
+    WORD_EMBEDDINGS_MODEL="{{EMBEDDINGS_MODEL}}" uv run python -m app.scripts.match_word {{WORD}} {{REQUIRED}} {{ARGS}}

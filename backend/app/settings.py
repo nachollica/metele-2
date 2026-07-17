@@ -16,6 +16,7 @@ from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings
 
 Environment = Literal["local", "development", "production", "testing"]
+EmbeddingSize = Literal["small", "large"]
 
 
 class Settings(BaseSettings):
@@ -35,6 +36,47 @@ class Settings(BaseSettings):
     email_validation_check_deliverability: bool = Field(
         default=False,
         description="Have email-validator run a DNS MX lookup on profile email updates.",
+    )
+
+    # ---- Word embeddings -------------------------------------------------
+    # The related-words + match features run on one live multilingual
+    # sentence-transformers model. `size` selects a footprint tier (mapped to a
+    # concrete model id in app.word_engine); `model` overrides it outright. The
+    # model and the per-language vocabulary matrices live under `dir`; on startup
+    # the app loads them from there, downloading/building whatever is missing.
+    word_embeddings_size: EmbeddingSize = Field(
+        default="small",
+        description="Model footprint tier: 'small' (MiniLM) or 'large' (mpnet).",
+    )
+    word_embeddings_model: str = Field(
+        default="",
+        description="Explicit sentence-transformers model id; overrides `size` when set.",
+    )
+    word_embeddings_dir: str = Field(
+        default="",
+        description="Directory for the model cache + vocabulary matrices (blank = engine default).",
+    )
+    word_embeddings_vocab_size: int = Field(
+        default=40_000,
+        ge=1_000,
+        description="How many of a language's most frequent words form the candidate pool.",
+    )
+    word_match_threshold: float = Field(
+        default=0.85,
+        ge=0.0,
+        le=1.0,
+        description="Cosine floor above which POST /words/match calls two words a match.",
+    )
+    word_related_per_seed: int = Field(
+        default=50,
+        ge=1,
+        description="Max neighbours harvested per seed word before merging.",
+    )
+    word_related_min_similarity: float = Field(
+        default=0.3,
+        ge=0.0,
+        le=1.0,
+        description="Cosine floor a related-words candidate must clear to be kept.",
     )
 
     @property

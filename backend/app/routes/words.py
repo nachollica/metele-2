@@ -1,14 +1,17 @@
 """
-Words API — HTTP layer over the WordNet logic in :mod:`app.wordnet`.
+Words API — HTTP layer over the embedding word logic in :mod:`app.word_engine`.
 
-Two endpoints:
+Three endpoints:
 
 - ``POST /words/related`` expands user-supplied "category" seeds into a pool of
   related words.
 - ``POST /words/random`` samples an unseeded random pool (used when the player
   enables required words but gives no categories).
+- ``POST /words/match`` judges whether a typed word is a close enough match for a
+  required word (the frontend pre-filters on spelling; the backend decides
+  meaning, so "planes" matches "plane" but "planet" does not).
 
-Both resolve the language the same way and never default silently:
+All resolve the language the same way and never default silently:
 
 1. Explicit ``language`` field in the request body.
 2. ``Accept-Language`` header — parsed with q-values, first supported wins.
@@ -19,7 +22,14 @@ from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 
 from app.dependencies import AcceptLanguageHeader, CurrentUser
-from app.wordnet import Language, expand_related, parse_accept_language, random_words
+from app.word_engine import (
+    Language,
+    expand_related,
+    get_config,
+    parse_accept_language,
+    random_words,
+    semantic_similarity,
+)
 
 router = APIRouter(prefix="/words", tags=["words"])
 
@@ -30,14 +40,7 @@ router = APIRouter(prefix="/words", tags=["words"])
 class RelatedWordsRequest(BaseModel):
     words: list[str] = Field(..., min_length=1, max_length=50)
     language: Language | None = None
-    # Bumped: with the BFS walking multiple relations per hop, 3 is the new
-    # sweet spot — depth=2 produced thin pools for narrower seeds like
-    # "fruit", and the limit still keeps responses bounded.
-    depth: int = Field(default=3, ge=1, le=6)
     limit: int = Field(default=300, ge=1, le=2000)
-    # Whether to follow holonym/meronym edges. Disabled gives a cleaner
-    # taxonomic descent; enabled (default) gives a richer pool.
-    include_partonomy: bool = True
 
 
 class RelatedWordsResponse(BaseModel):
@@ -53,6 +56,19 @@ class RandomWordsRequest(BaseModel):
 class RandomWordsResponse(BaseModel):
     language: Language
     words: list[str]
+
+
+class MatchRequest(BaseModel):
+    # The word the player typed and the required word it should satisfy.
+    word: str = Field(..., min_length=1, max_length=100)
+    required: str = Field(..., min_length=1, max_length=100)
+    language: Language | None = None
+
+
+class MatchResponse(BaseModel):
+    language: Language
+    valid: bool
+    score: float
 
 
 # ---- Route -------------------------------------------------------------
@@ -76,7 +92,7 @@ def _resolve_language(explicit: Language | None, accept_language: str | None) ->
 @router.post(
     "/related",
     response_model=RelatedWordsResponse,
-    summary="Expand category words into related words via WordNet.",
+    summary="Expand category words into related words via embeddings.",
 )
 def related_words(
     payload: RelatedWordsRequest,
@@ -85,20 +101,14 @@ def related_words(
 ) -> RelatedWordsResponse:
     language = _resolve_language(payload.language, accept_language)
 
-    related = expand_related(
-        payload.words,
-        language,
-        depth=payload.depth,
-        limit=payload.limit,
-        include_partonomy=payload.include_partonomy,
-    )
+    related = expand_related(payload.words, language, limit=payload.limit)
     return RelatedWordsResponse(language=language, words=related)
 
 
 @router.post(
     "/random",
     response_model=RandomWordsResponse,
-    summary="Sample a pool of random words via WordNet.",
+    summary="Sample a pool of random words.",
 )
 def random_words_route(
     payload: RandomWordsRequest,
@@ -108,3 +118,22 @@ def random_words_route(
     language = _resolve_language(payload.language, accept_language)
     words = random_words(language, limit=payload.limit)
     return RandomWordsResponse(language=language, words=words)
+
+
+@router.post(
+    "/match",
+    response_model=MatchResponse,
+    summary="Judge whether a typed word semantically matches a required word.",
+)
+def match_word(
+    payload: MatchRequest,
+    _user: CurrentUser,
+    accept_language: AcceptLanguageHeader = None,
+) -> MatchResponse:
+    language = _resolve_language(payload.language, accept_language)
+    score = semantic_similarity(payload.word, payload.required)
+    return MatchResponse(
+        language=language,
+        valid=score >= get_config().match_threshold,
+        score=score,
+    )
