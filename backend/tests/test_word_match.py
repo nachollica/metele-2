@@ -10,7 +10,8 @@ from app.word_match import is_match, lemma
 ES = Language.ES
 EN = Language.EN
 
-# Inflections of the same word — must match.
+# Inflections of the same word — must match. Includes gender pairs: adjective
+# gender (alto/alta, via spaCy) and animate-noun gender (gato/gata, via simplemma).
 VARIANTS = [
     ("plan", "planes", ES),
     ("palo", "palos", ES),
@@ -20,6 +21,12 @@ VARIANTS = [
     ("luz", "luces", ES),
     ("perro", "perra", ES),
     ("ciudad", "ciudades", ES),
+    ("alto", "alta", ES),  # adjective gender
+    ("rojo", "roja", ES),
+    ("nuevo", "nueva", ES),
+    ("gato", "gata", ES),  # animate-noun gender
+    ("niño", "niña", ES),
+    ("hijo", "hija", ES),
     ("plane", "planes", EN),
     ("cat", "cats", EN),
     ("city", "cities", EN),
@@ -28,8 +35,9 @@ VARIANTS = [
     ("run", "runs", EN),
 ]
 
-# Spelled similarly, different words — must NOT match. Includes the exact cases
-# the user reported (pala/palo, palos/palas, pala/palos).
+# Spelled similarly, different words — must NOT match. Includes the reported
+# cases (pala/palo, palos/palas) and distinct o/a noun pairs that look like
+# gender inflections but are different words (puerto/puerta, banco/banca).
 LOOKALIKES = [
     ("pala", "palo", ES),
     ("palos", "palas", ES),
@@ -39,6 +47,11 @@ LOOKALIKES = [
     ("casa", "caza", ES),
     ("pero", "perro", ES),
     ("sal", "sol", ES),
+    ("puerto", "puerta", ES),  # port / door
+    ("caso", "casa", ES),  # case / house
+    ("banco", "banca", ES),
+    ("foco", "foca", ES),  # focus / seal
+    ("modo", "moda", ES),
     ("plane", "planet", EN),
     ("cat", "car", EN),
     ("angel", "angle", EN),

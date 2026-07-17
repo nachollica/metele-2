@@ -17,7 +17,8 @@ from app.routes.profile import router as profile_router
 from app.routes.stories import router as stories_router
 from app.routes.words import router as words_router
 from app.settings import get_settings
-from app.word_engine import EmbeddingConfig, configure, ensure_ready, resolve_model_id
+from app.word_engine import LANGUAGES, EmbeddingConfig, configure, ensure_ready, resolve_model_id
+from app.word_match import preload as preload_matchers
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -45,13 +46,14 @@ async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
     if settings.environment != "testing":
         configure(_embedding_config(settings))
         try:
-            # Load the model and build/load every hardcoded language's matrix,
-            # downloading whatever is missing from the configured directory.
+            # Load the related-words model + matrices (downloading anything
+            # missing) and warm the lemmatisers used by /words/match.
             ensure_ready()
+            preload_matchers(LANGUAGES)
         except Exception:
             # Don't take the whole app down if a corpus/model can't be prepared;
-            # word features degrade to empty until the artifact is available.
-            logger.exception("Embedding preload failed; word features degraded until available")
+            # word features degrade until the artifact is available.
+            logger.exception("Word-feature preload failed; degraded until available")
     yield
     # Close the connection pool on shutdown so a stopped server doesn't leave
     # database sockets dangling.
