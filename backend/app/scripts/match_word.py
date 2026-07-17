@@ -1,55 +1,63 @@
 """
-Eyeball the required-word match decision from the command line.
+Show the required-word match decision for every pair among a list of words.
 
 Run::
 
-    uv run python -m app.scripts.match_word planes plane
-    uv run python -m app.scripts.match_word planet plane --threshold 0.85
+    uv run python -m app.scripts.match_word plane planes planet
+    uv run python -m app.scripts.match_word palo pala palos palas -l es
 
-Prints the cosine similarity between the typed word and the required word, and
-whether it clears the match threshold. Mirrors ``POST /words/match`` so you can
-tune ``WORD_MATCH_THRESHOLD`` against real pairs without auth and HTTP.
+Takes two or more words and prints one row per unordered pair, in combination
+order — for ``A B C D`` that is ``A B``, ``A C``, ``A D``, ``B C``, ``B D``,
+``C D``. Columns are the two words, their lemmas (which explain the verdict), and
+whether they match. Mirrors ``POST /words/match``.
+
+``-l/--language`` selects the lemmatizer and defaults to ``en``; it can sit
+anywhere among the words.
 """
 
 from __future__ import annotations
 
 import argparse
-import os
+from itertools import combinations
 
-from app.word_engine import get_config, semantic_similarity
+from app.word_engine import Language
+from app.word_match import is_match, lemma
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="match_word",
-        description="Score a typed word against a required word.",
-    )
-    parser.add_argument("word", help="The word the player typed.")
-    parser.add_argument("required", help="The required word it should satisfy.")
-    parser.add_argument(
-        "-t",
-        "--threshold",
-        type=float,
-        default=None,
-        help="Cosine floor for a match (default: WORD_MATCH_THRESHOLD / config).",
+        description="Decide, for every pair of words, whether they are the same word inflected.",
     )
     parser.add_argument(
-        "-m",
-        "--model",
-        default=None,
-        help="Embedding model id (overrides WORD_EMBEDDINGS_MODEL / size default).",
+        "words",
+        nargs="+",
+        metavar="WORD",
+        help="Two or more words to compare pairwise.",
     )
-    args = parser.parse_args()
-
-    if args.model:
-        os.environ["WORD_EMBEDDINGS_MODEL"] = args.model
-
-    threshold = args.threshold if args.threshold is not None else get_config().match_threshold
-    score = semantic_similarity(args.word, args.required)
-    verdict = "MATCH" if score >= threshold else "no match"
-    print(
-        f"{args.word!r} vs {args.required!r}: score={score:.3f} threshold={threshold:.2f} -> {verdict}"
+    parser.add_argument(
+        "-l",
+        "--language",
+        choices=[lang.value for lang in Language],
+        default=Language.EN.value,
+        help="Language for lemmatisation (default: en).",
     )
+    # ``parse_intermixed_args`` lets ``-l`` sit anywhere around the variadic words.
+    args = parser.parse_intermixed_args()
+
+    if len(args.words) < 2:
+        parser.error("need at least two words to form a pair")
+    language = Language(args.language)
+
+    rows = [
+        (a, b, lemma(a, language), lemma(b, language), is_match(a, b, language))
+        for a, b in combinations(args.words, 2)
+    ]
+    word_w = max(len(w) for row in rows for w in (row[0], row[1]))
+    lemma_w = max(len(w) for row in rows for w in (row[2], row[3]))
+    for a, b, la, lb, ok in rows:
+        verdict = "match" if ok else "-"
+        print(f"{a:<{word_w}}  {b:<{word_w}}  {la:<{lemma_w}} {lb:<{lemma_w}}  {verdict}")
 
 
 if __name__ == "__main__":

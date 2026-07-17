@@ -25,11 +25,10 @@ from app.dependencies import AcceptLanguageHeader, CurrentUser
 from app.word_engine import (
     Language,
     expand_related,
-    get_config,
     parse_accept_language,
     random_words,
-    semantic_similarity,
 )
+from app.word_match import is_match
 
 router = APIRouter(prefix="/words", tags=["words"])
 
@@ -68,7 +67,6 @@ class MatchRequest(BaseModel):
 class MatchResponse(BaseModel):
     language: Language
     valid: bool
-    score: float
 
 
 # ---- Route -------------------------------------------------------------
@@ -123,7 +121,7 @@ def random_words_route(
 @router.post(
     "/match",
     response_model=MatchResponse,
-    summary="Judge whether a typed word semantically matches a required word.",
+    summary="Judge whether a typed word is an inflection of a required word.",
 )
 def match_word(
     payload: MatchRequest,
@@ -131,9 +129,7 @@ def match_word(
     accept_language: AcceptLanguageHeader = None,
 ) -> MatchResponse:
     language = _resolve_language(payload.language, accept_language)
-    score = semantic_similarity(payload.word, payload.required)
     return MatchResponse(
         language=language,
-        valid=score >= get_config().match_threshold,
-        score=score,
+        valid=is_match(payload.word, payload.required, language),
     )

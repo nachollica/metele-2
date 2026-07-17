@@ -1,16 +1,15 @@
 """
 Embedding-backed word logic, free of any HTTP/auth/DB coupling.
 
-One live multilingual sentence-transformers model powers two features:
+``expand_related`` turns "category" seeds (e.g. ``["animal", "fruta"]``) into a
+pool of related words using one live multilingual sentence-transformers model:
+for each seed we take its nearest neighbours over the requested language's
+candidate matrix, union the seeds' neighbourhoods with a per-seed quota (so a
+weak seed still shows up), and keep the common ones.
 
-- ``expand_related`` turns "category" seeds (e.g. ``["animal", "fruta"]``) into a
-  pool of related words. For each seed we take its nearest neighbours over the
-  requested language's candidate matrix, union the seeds' neighbourhoods with a
-  per-seed quota (so a weak seed still shows up), and keep the common ones.
-- ``semantic_similarity`` / ``is_semantic_match`` score a pair of words for the
-  required-word matcher: the frontend pre-filters on spelling, the backend
-  decides whether e.g. "planes" (a variant of "plane") counts while "planet"
-  (a look-alike) does not.
+(The required-word matcher — deciding whether "planes" satisfies "plane" — lives
+in :mod:`app.word_match`; it is a lemma question, not a semantic one, so it does
+not use this model.)
 
 The candidate vocabulary for every language comes from wordfreq — the same list
 that supplies the commonness filter — scrubbed of cross-language words up front
@@ -53,15 +52,19 @@ class Language(str, Enum):
     """
     Supported game languages. Values match the frontend locale segment so the
     same identifier flows end-to-end.
+
+    Scoped to en/es for now. The other languages are wired everywhere else
+    (wordfreq, simplemma, and the sentence model are all multilingual) — adding
+    one is just uncommenting a member here, then a rebuild to bake its matrix.
     """
 
     EN = "en"
     ES = "es"
-    FR = "fr"
-    DE = "de"
-    PT = "pt"
-    IT = "it"
-    RU = "ru"
+    # FR = "fr"
+    # DE = "de"
+    # PT = "pt"
+    # IT = "it"
+    # RU = "ru"
 
 
 # The languages the app builds/loads models for. Hardcoded on purpose: adding a
@@ -154,7 +157,6 @@ class EmbeddingConfig:
     model_id: str
     cache_dir: str
     vocab_size: int = 40_000
-    match_threshold: float = 0.85
     per_seed: int = 50
     min_similarity: float = 0.3
 
@@ -179,7 +181,6 @@ def _config_from_env() -> EmbeddingConfig:
         ),
         cache_dir=os.environ.get("WORD_EMBEDDINGS_DIR") or _default_cache_dir(),
         vocab_size=int(os.environ.get("WORD_EMBEDDINGS_VOCAB_SIZE", "40000")),
-        match_threshold=float(os.environ.get("WORD_MATCH_THRESHOLD", "0.85")),
         per_seed=int(os.environ.get("WORD_RELATED_PER_SEED", "50")),
         min_similarity=float(os.environ.get("WORD_RELATED_MIN_SIMILARITY", "0.3")),
     )
@@ -205,6 +206,7 @@ def configure(config: EmbeddingConfig) -> None:
         _active_config[0] = config
         _model_cache.clear()
         _matrix_cache.clear()
+        _vocab_words_cache.clear()
 
 
 def get_config() -> EmbeddingConfig:
@@ -249,14 +251,24 @@ def _is_cross_language(word: str, language: Language, here_zipf: float) -> bool:
     return False
 
 
+_vocab_words_cache: dict[tuple[Language, int], list[str]] = {}
+
+
 def _candidate_vocabulary(language: Language, vocab_size: int) -> list[str]:
     """
     The language's candidate words: frequent, usable, single-language.
 
     Sourced from wordfreq's frequency list, filtered by usability, the
     commonness threshold, and the cross-language guard. Shared by the embedding
-    matrix and ``random_words`` so both draw from the same scrubbed pool.
+    matrix and ``random_words`` so both draw from the same scrubbed pool. The
+    result is deterministic per (language, size), so it is memoised — the scan
+    touches every supported language's frequency table and is not cheap.
     """
+    key = (language, vocab_size)
+    cached = _vocab_words_cache.get(key)
+    if cached is not None:
+        return cached
+
     words: list[str] = []
     seen: set[str] = set()
     for raw in top_n_list(language.value, vocab_size):
@@ -273,6 +285,7 @@ def _candidate_vocabulary(language: Language, vocab_size: int) -> list[str]:
             continue
         seen.add(folded)
         words.append(word)
+    _vocab_words_cache[key] = words
     return words
 
 
@@ -285,7 +298,14 @@ _MATRIX_VERSION = 1
 
 
 def _load_model() -> SentenceTransformer:
-    """Load (and memoise) the sentence-transformers model for the active config."""
+    """
+    Load (and memoise) the sentence-transformers model for the active config.
+
+    The model's weights live in the standard Hugging Face cache (``HF_HOME``),
+    which the Docker image bakes and pins offline; the matrices live under
+    ``cache_dir``. Keeping the two locations separate avoids surprising the HF
+    hub with a custom layout.
+    """
     cfg = get_config()
     cached = _model_cache.get(cfg.model_id)
     if cached is not None:
@@ -295,7 +315,7 @@ def _load_model() -> SentenceTransformer:
         if cached is None:
             from sentence_transformers import SentenceTransformer
 
-            cached = SentenceTransformer(cfg.model_id, cache_folder=cfg.cache_dir or None)
+            cached = SentenceTransformer(cfg.model_id)
             _model_cache[cfg.model_id] = cached
     return cached
 
@@ -311,11 +331,8 @@ def _encode(words: list[str]) -> np.ndarray:
 
 def _matrix_path(model_id: str, language: Language, vocab_size: int) -> str:
     safe = re.sub(r"[^A-Za-z0-9._-]", "_", model_id)
-    return os.path.join(
-        get_config().cache_dir,
-        safe,
-        f"{language.value}.n{vocab_size}.v{_MATRIX_VERSION}.npz",
-    )
+    base = get_config().cache_dir or _default_cache_dir()
+    return os.path.join(base, safe, f"{language.value}.n{vocab_size}.v{_MATRIX_VERSION}.npz")
 
 
 def build_matrix(language: Language) -> tuple[list[str], np.ndarray]:
@@ -493,37 +510,6 @@ def expand_related(
     result = list(chosen)[:limit]
     random.shuffle(result)
     return result
-
-
-# ---- Pairwise match ----------------------------------------------------
-
-
-def semantic_similarity(word_a: str, word_b: str) -> float:
-    """
-    Cosine similarity of two words in the shared multilingual space.
-
-    Backs the required-word matcher: the frontend has already decided the pair is
-    spelled similarly, so this only judges meaning. Returns 0.0 on blank input or
-    if the model can't be loaded (so callers treat it as "not a match").
-    """
-    import numpy as np
-
-    a, b = word_a.strip(), word_b.strip()
-    if not a or not b:
-        return 0.0
-    if a.casefold() == b.casefold():
-        return 1.0
-    try:
-        vecs = _encode([a, b])
-    except Exception:  # noqa: BLE001 — no model → not a match, never a 500.
-        return 0.0
-    return float(np.dot(vecs[0], vecs[1]))
-
-
-def is_semantic_match(word_a: str, word_b: str, threshold: float | None = None) -> bool:
-    """Whether the two words are close enough to accept, per the configured floor."""
-    floor = get_config().match_threshold if threshold is None else threshold
-    return semantic_similarity(word_a, word_b) >= floor
 
 
 # ---- Random pool -------------------------------------------------------

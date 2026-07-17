@@ -61,12 +61,6 @@ class Settings(BaseSettings):
         ge=1_000,
         description="How many of a language's most frequent words form the candidate pool.",
     )
-    word_match_threshold: float = Field(
-        default=0.85,
-        ge=0.0,
-        le=1.0,
-        description="Cosine floor above which POST /words/match calls two words a match.",
-    )
     word_related_per_seed: int = Field(
         default=50,
         ge=1,

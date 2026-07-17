@@ -33,7 +33,6 @@ def _embedding_config(settings: Settings) -> EmbeddingConfig:
         model_id=resolve_model_id(settings.word_embeddings_size, settings.word_embeddings_model),
         cache_dir=settings.word_embeddings_dir,
         vocab_size=settings.word_embeddings_vocab_size,
-        match_threshold=settings.word_match_threshold,
         per_seed=settings.word_related_per_seed,
         min_similarity=settings.word_related_min_similarity,
     )

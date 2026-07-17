@@ -71,6 +71,6 @@ related +ARGS:
     WORD_EMBEDDINGS_MODEL="{{EMBEDDINGS_MODEL}}" uv run python -m app.scripts.related_words {{ARGS}}
 
 [group("development")]
-[doc("Judge a typed word against a required word. Usage: just match planes plane -l en")]
-match WORD REQUIRED *ARGS:
-    WORD_EMBEDDINGS_MODEL="{{EMBEDDINGS_MODEL}}" uv run python -m app.scripts.match_word {{WORD}} {{REQUIRED}} {{ARGS}}
+[doc("Match every pair among a list of words. Usage: just match palo pala palos -l es")]
+match +WORDS:
+    uv run python -m app.scripts.match_word {{WORDS}}

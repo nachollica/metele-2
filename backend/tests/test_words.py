@@ -12,7 +12,6 @@ from app.word_engine import (
     is_common,
     parse_accept_language,
     random_words,
-    semantic_similarity,
 )
 
 
@@ -71,12 +70,11 @@ class TestParseAcceptLanguage:
         assert parse_accept_language("en-US,en;q=0.9") is Language.EN
         assert parse_accept_language("es-AR,es;q=0.9,en;q=0.5") is Language.ES
 
-    def test_supports_the_new_languages(self) -> None:
-        assert parse_accept_language("fr-FR") is Language.FR
-        assert parse_accept_language("de,en;q=0.5") is Language.DE
-        assert parse_accept_language("pt-BR,pt") is Language.PT
-        assert parse_accept_language("it") is Language.IT
-        assert parse_accept_language("ru-RU") is Language.RU
+    def test_currently_unsupported_languages_fall_through(self) -> None:
+        # Scoped to en/es for now; other locales are not offered yet. A supported
+        # tag later in the header still wins.
+        assert parse_accept_language("fr-FR") is None
+        assert parse_accept_language("de,es;q=0.5") is Language.ES
 
     def test_obeys_q_weights_over_header_order(self) -> None:
         assert parse_accept_language("zz;q=1.0,en;q=0.4,es;q=0.8") is Language.ES
@@ -122,7 +120,7 @@ class TestCrossLanguageGuard:
         assert not self._cross("cat", Language.EN)
 
     def test_candidate_vocabulary_is_scrubbed(self) -> None:
-        vocab = we._candidate_vocabulary(Language.ES, 3000)
+        vocab = we._candidate_vocabulary(Language.ES, we.get_config().vocab_size)
         assert vocab, "expected a non-empty Spanish candidate pool"
         lower = {w.lower() for w in vocab}
         assert not (lower & {"food", "kitchen", "eat", "the", "and"})
@@ -194,52 +192,12 @@ class TestExpandRelated:
         assert expand_related(["alpha"], self.ES, limit=0, min_zipf=0.0) == []
 
 
-# ---- semantic match ----------------------------------------------------
-
-
-class TestSemanticMatch:
-    # "run"/"running" nearly identical; "run"/"rung" far apart.
-    TABLE = {
-        "run": [1.0, 0.0],
-        "running": [0.98, 0.199],  # cos ~ 0.98 → match
-        "rung": [0.5, 0.866],  # cos ~ 0.50 → no match
-    }
-
-    def test_identical_words_are_a_perfect_match(self) -> None:
-        # Short-circuits before the model, so no stub needed.
-        assert semantic_similarity("Plane", "plane") == 1.0
-        assert we.is_semantic_match("plane", "plane")
-
-    def test_variant_matches(self, monkeypatch) -> None:
-        _install_stub(monkeypatch, table=self.TABLE)
-        assert semantic_similarity("running", "run") > 0.9
-        assert we.is_semantic_match("running", "run")
-
-    def test_lookalike_does_not_match(self, monkeypatch) -> None:
-        _install_stub(monkeypatch, table=self.TABLE)
-        assert semantic_similarity("rung", "run") < 0.85
-        assert not we.is_semantic_match("rung", "run")
-
-    def test_threshold_override(self, monkeypatch) -> None:
-        _install_stub(monkeypatch, table=self.TABLE)
-        # With a permissive floor even the look-alike passes.
-        assert we.is_semantic_match("rung", "run", threshold=0.4)
-
-    def test_blank_inputs_are_not_a_match(self) -> None:
-        assert semantic_similarity("", "run") == 0.0
-        assert not we.is_semantic_match("run", "")
-
-    def test_degrades_to_zero_when_model_unavailable(self) -> None:
-        # Autouse fixture makes the model raise; distinct words → 0.0.
-        assert semantic_similarity("running", "run") == 0.0
-
-
 # ---- random_words ------------------------------------------------------
 
 
 class TestRandomWords:
     def test_returns_non_empty_for_each_language(self) -> None:
-        for lang in (Language.EN, Language.ES, Language.FR, Language.DE):
+        for lang in (Language.EN, Language.ES):
             assert random_words(lang, limit=20), f"empty random pool for {lang.value}"
 
     def test_respects_limit(self) -> None:
@@ -320,11 +278,11 @@ class TestRandomWordsRoute:
 
     def test_explicit_language_wins_over_header(self, auth_client) -> None:
         r = auth_client.post(
-            self.URL, json={"language": "fr", "limit": 20}, headers={"Accept-Language": "en"}
+            self.URL, json={"language": "es", "limit": 20}, headers={"Accept-Language": "en"}
         )
         assert r.status_code == 200
         body = r.json()
-        assert body["language"] == "fr"
+        assert body["language"] == "es"
         assert body["words"]
 
     def test_missing_language_returns_400(self, auth_client) -> None:
@@ -352,25 +310,30 @@ class TestMatchRoute:
         r = auth_client.post(self.URL, json={"word": "planes", "required": "plane"})
         assert r.status_code == 400
 
-    def test_identical_words_match_without_model(self, auth_client) -> None:
-        # Identical short-circuits, so this works even with the model disabled.
+    def test_response_shape(self, auth_client) -> None:
         r = auth_client.post(
             self.URL, json={"word": "plane", "required": "plane", "language": "en"}
         )
         assert r.status_code == 200
-        body = r.json()
-        assert body == {"language": "en", "valid": True, "score": 1.0}
+        assert r.json() == {"language": "en", "valid": True}
 
-    def test_variant_matches_lookalike_does_not(self, auth_client, monkeypatch) -> None:
-        _install_stub(
-            monkeypatch,
-            table={"plane": [1.0, 0.0], "planes": [0.99, 0.1], "planet": [0.5, 0.866]},
-        )
+    def test_variant_matches_lookalike_does_not_en(self, auth_client) -> None:
         ok = auth_client.post(
             self.URL, json={"word": "planes", "required": "plane", "language": "en"}
         ).json()
         assert ok["valid"] is True
         nope = auth_client.post(
             self.URL, json={"word": "planet", "required": "plane", "language": "en"}
+        ).json()
+        assert nope["valid"] is False
+
+    def test_variant_matches_lookalike_does_not_es(self, auth_client) -> None:
+        # The user's reported cases: plan/planes should match, pala/palos not.
+        ok = auth_client.post(
+            self.URL, json={"word": "planes", "required": "plan", "language": "es"}
+        ).json()
+        assert ok["valid"] is True
+        nope = auth_client.post(
+            self.URL, json={"word": "palos", "required": "pala", "language": "es"}
         ).json()
         assert nope["valid"] is False
