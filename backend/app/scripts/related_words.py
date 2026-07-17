@@ -7,22 +7,28 @@ Run::
     uv run python -m app.scripts.related_words animal --language es --limit 30
 
 Positional arguments are the seed "category" words. The script reuses the same
-``expand_related`` logic that backs ``POST /words/related`` and prints the
-resulting pool (a random sample), one word per line. Handy for eyeballing what
-a given seed and language produce without going through auth and HTTP.
+``expand_related`` logic that backs ``POST /words/related`` (embedding neighbours
+of each seed, unioned and filtered by wordfreq) and prints the resulting pool,
+one word per line. Handy for eyeballing what a given seed and language produce
+without going through auth and HTTP.
+
+The embedding model is chosen by id — ``--model`` here, or ``WORD_EMBEDDINGS_*``
+in the service — never hardcoded, so any sentence-transformers model can be
+swapped in. The matrices are read from (or built into) ``WORD_EMBEDDINGS_DIR``.
 """
 
 from __future__ import annotations
 
 import argparse
+import os
 
-from app.wordnet import DEFAULT_MIN_ZIPF, Language, expand_related
+from app.word_engine import DEFAULT_MIN_ZIPF, Language, expand_related
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="related_words",
-        description="Expand seed words into related words via WordNet.",
+        description="Expand seed words into related words via embeddings.",
     )
     parser.add_argument(
         "words",
@@ -45,13 +51,6 @@ def main() -> None:
         help="Cap on the number of related words returned (default: 100).",
     )
     parser.add_argument(
-        "-d",
-        "--depth",
-        type=int,
-        default=3,
-        help="How many WordNet edges to walk from each seed (default: 3).",
-    )
-    parser.add_argument(
         "-f",
         "--min-frequency",
         type=float,
@@ -62,23 +61,20 @@ def main() -> None:
         ),
     )
     parser.add_argument(
-        "--no-partonomy",
-        dest="include_partonomy",
-        action="store_false",
-        help=(
-            "Skip holonym/meronym edges (e.g. petal/stem for flower) for a "
-            "cleaner taxonomic descent. Mirrors `include_partonomy` on "
-            "POST /words/related; the default follows them."
-        ),
+        "-m",
+        "--model",
+        default=None,
+        help="Embedding model id (overrides WORD_EMBEDDINGS_MODEL / size default).",
     )
     args = parser.parse_args()
+
+    if args.model:
+        os.environ["WORD_EMBEDDINGS_MODEL"] = args.model
 
     words = expand_related(
         args.words,
         Language(args.language),
-        depth=args.depth,
         limit=args.limit,
-        include_partonomy=args.include_partonomy,
         min_zipf=args.min_frequency,
     )
     for word in words:
