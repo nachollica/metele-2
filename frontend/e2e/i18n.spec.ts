@@ -10,33 +10,25 @@ import { dismissWelcomeBeforeLoad, mockBackend } from "./fixtures"
 test.describe("English locale", () => {
   test.use({ locale: "en-US" })
 
-  test("renders the settings screen in English", async ({ page }) => {
+  test("renders the home dashboard in English", async ({ page }) => {
     await mockBackend(page)
     await dismissWelcomeBeforeLoad(page)
     await page.goto("/")
 
-    await expect(
-      page.getByRole("heading", { name: "Session settings" }),
-    ).toBeVisible()
-    await expect(
-      page.getByRole("button", { name: "Start writing" }),
-    ).toBeVisible()
+    await expect(page.getByRole("heading", { name: "Write non-stop" })).toBeVisible()
+    await expect(page.getByRole("button", { name: "Start", exact: true })).toBeVisible()
   })
 })
 
 test.describe("Spanish locale", () => {
   test.use({ locale: "es-ES" })
 
-  test("renders the settings screen in Spanish", async ({ page }) => {
+  test("renders the home dashboard in Spanish", async ({ page }) => {
     await mockBackend(page)
     await dismissWelcomeBeforeLoad(page)
     await page.goto("/")
 
-    await expect(
-      page.getByRole("heading", { name: "Configuración de sesión" }),
-    ).toBeVisible()
-    await expect(
-      page.getByRole("button", { name: "Empezar a escribir" }),
-    ).toBeVisible()
+    await expect(page.getByRole("heading", { name: "Escribí sin parar" })).toBeVisible()
+    await expect(page.getByRole("button", { name: "Comenzar", exact: true })).toBeVisible()
   })
 })

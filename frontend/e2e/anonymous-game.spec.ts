@@ -2,27 +2,25 @@ import { expect, test } from "@playwright/test"
 
 import { dismissWelcomeBeforeLoad, mockBackend } from "./fixtures"
 
-// Journeys playable without an account. The app boots into the "settings"
-// screen regardless of auth, so these don't depend on Auth0 resolving — but we
-// still stub /api/** so no stray request escapes to a real backend.
+// Journeys playable without an account. The app boots into the Home dashboard
+// regardless of auth, so these don't depend on Auth0 resolving — but we still
+// stub /api/** so no stray request escapes to a real backend.
 test.beforeEach(async ({ page }) => {
   await mockBackend(page)
 })
 
-test("first visit shows the welcome modal, which dismisses to the settings screen", async ({
+test("first visit shows the welcome modal, which dismisses to the home dashboard", async ({
   page,
 }) => {
   await page.goto("/")
 
-  // The first-visit tutorial floats over the settings screen.
+  // The first-visit tutorial floats over the dashboard.
   const skip = page.getByRole("button", { name: "Skip tutorial" })
   await expect(skip).toBeVisible()
   await skip.click()
 
-  // Dismissed -> settings screen is interactive.
-  await expect(
-    page.getByRole("heading", { name: "Session settings" }),
-  ).toBeVisible()
+  // Dismissed -> the home quick-start card is interactive.
+  await expect(page.getByRole("heading", { name: "Write non-stop" })).toBeVisible()
   await expect(skip).toBeHidden()
 })
 
@@ -32,7 +30,7 @@ test("start -> type -> quit shows the results modal with session stats", async (
   await dismissWelcomeBeforeLoad(page)
   await page.goto("/")
 
-  await page.getByRole("button", { name: "Start writing" }).click()
+  await page.getByRole("button", { name: "Start", exact: true }).click()
 
   const textarea = page.getByRole("textbox")
   await expect(textarea).toBeVisible()
@@ -56,7 +54,7 @@ test("the idle timeout ends the session on its own", async ({ page }) => {
   await dismissWelcomeBeforeLoad(page)
   await page.goto("/")
 
-  await page.getByRole("button", { name: "Start writing" }).click()
+  await page.getByRole("button", { name: "Start", exact: true }).click()
 
   const textarea = page.getByRole("textbox")
   await expect(textarea).toBeVisible()

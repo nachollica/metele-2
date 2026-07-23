@@ -14,10 +14,8 @@ test("hides the auth control when the backend is unreachable but keeps the game 
   await dismissWelcomeBeforeLoad(page)
   await page.goto("/")
 
-  // The settings screen is up and interactive.
-  await expect(
-    page.getByRole("heading", { name: "Session settings" }),
-  ).toBeVisible()
+  // The home dashboard is up and interactive.
+  await expect(page.getByRole("heading", { name: "Write non-stop" })).toBeVisible()
 
   // No auth control at all while /ping fails.
   await expect(page.getByRole("button", { name: /^log in$/i })).toHaveCount(0)
@@ -25,6 +23,6 @@ test("hides the auth control when the backend is unreachable but keeps the game 
   await expect(page.getByRole("button", { name: /account menu/i })).toHaveCount(0)
 
   // The game itself still works without the backend.
-  await page.getByRole("button", { name: "Start writing" }).click()
+  await page.getByRole("button", { name: "Start", exact: true }).click()
   await expect(page.getByRole("textbox")).toBeVisible()
 })
