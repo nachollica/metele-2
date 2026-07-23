@@ -14,8 +14,9 @@ import {
 import { useIsMobile } from "@/components/ui/use-mobile"
 import { cn } from "@/lib/utils"
 
-import { AuthButton } from "@/components/auth/auth-button"
+import { DevLoginButton } from "@/components/auth/dev-login-button"
 import { useAuth } from "@/lib/auth"
+import { useBackendStatus } from "@/lib/backend"
 import { useTranslations } from "@/lib/i18n"
 import { deriveTitle } from "@/lib/flowfic/gamification"
 import { useGameEngine } from "@/lib/flowfic/use-game-engine"
@@ -42,6 +43,7 @@ const WELCOME_STORAGE_KEY = "flowfic.welcome.dismissed"
 export function Dashboard() {
   const t = useTranslations()
   const { status: authStatus, user } = useAuth()
+  const { devUserEnabled } = useBackendStatus()
   const engine = useGameEngine()
   const isMobile = useIsMobile()
 
@@ -195,7 +197,12 @@ export function Dashboard() {
   }
 
   const sidebar = (
-    <DashboardSidebar active={section} onSelect={selectSection} disabled={engine.isPlaying || loading} />
+    <DashboardSidebar
+      active={section}
+      onSelect={selectSection}
+      onOpenProfile={openProfile}
+      disabled={engine.isPlaying || loading}
+    />
   )
 
   return (
@@ -241,8 +248,13 @@ export function Dashboard() {
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-2">
+              {/* Dev-user backdoor stays a header-only shortcut (never in the
+                  sidebar account control); shown only while anonymous and only
+                  when the backend reports it enabled. */}
+              {authStatus === "anonymous" && devUserEnabled ? (
+                <DevLoginButton disabled={engine.isPlaying || loading} />
+              ) : null}
               {primaryAction}
-              <AuthButton onOpenProfile={openProfile} disabled={engine.isPlaying || loading} />
             </div>
           </header>
 

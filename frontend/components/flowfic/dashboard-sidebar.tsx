@@ -2,39 +2,27 @@
 
 import { Flame } from "lucide-react"
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
 
-import { useAuth } from "@/lib/auth"
-import { useLocale, useTranslations } from "@/lib/i18n"
-import { formatCount } from "@/lib/flowfic/gamification"
+import { useTranslations } from "@/lib/i18n"
 
 import { NAV_ITEMS, type Section } from "./dashboard-nav"
 import { PrefsControls } from "./prefs-controls"
-import { ProgressMeter } from "./dashboard-widgets"
+import { SidebarAccount } from "./sidebar-account"
 import { useGamification } from "./gamification-context"
 
 type Props = {
   active: Section
   onSelect: (section: Section) => void
-  /** While a sprint is running, nav is present but not actionable. */
+  /** Opens the profile screen from the account menu. */
+  onOpenProfile?: () => void
+  /** While a sprint is running, nav + account are present but not actionable. */
   disabled?: boolean
 }
 
-export function DashboardSidebar({ active, onSelect, disabled = false }: Props) {
+export function DashboardSidebar({ active, onSelect, onOpenProfile, disabled = false }: Props) {
   const t = useTranslations()
-  const locale = useLocale()
-  const { status, user } = useAuth()
   const { overview } = useGamification()
-
-  const level = overview?.level
-  const initials = (user?.name ?? "")
-    .split(/\s+/)
-    .map((p) => p[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase()
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 p-4">
@@ -76,36 +64,6 @@ export function DashboardSidebar({ active, onSelect, disabled = false }: Props) 
 
       <div className="flex-1" />
 
-      {/* User / level card */}
-      {status === "authenticated" && user ? (
-        <div className="bg-primary/5 flex flex-col gap-2 rounded-2xl p-3">
-          <div className="flex items-center gap-2.5">
-            <Avatar className="size-9">
-              {user.avatarUrl ? <AvatarImage src={user.avatarUrl} alt="" /> : null}
-              <AvatarFallback className="text-xs">{initials || "?"}</AvatarFallback>
-            </Avatar>
-            <div className="min-w-0">
-              <div className="truncate text-sm font-semibold">{user.name}</div>
-              <div className="text-primary text-xs font-medium">
-                {t.dashboard.level} {level?.level ?? 1}
-              </div>
-            </div>
-          </div>
-          <ProgressMeter
-            value={level ? level.xpIntoLevel / Math.max(1, level.xpForLevel) : 0}
-            label={t.dashboard.xpLabel}
-          />
-          <div className="text-muted-foreground text-xs tabular-nums">
-            {formatCount(level?.xpIntoLevel ?? 0, locale)} / {formatCount(level?.xpForLevel ?? 0, locale)}{" "}
-            {t.dashboard.xp}
-          </div>
-        </div>
-      ) : (
-        <div className="bg-muted/50 text-muted-foreground rounded-2xl p-3 text-xs leading-relaxed">
-          {t.dashboard.signInHint}
-        </div>
-      )}
-
       {/* Streak card */}
       <div className="flex items-center gap-3 rounded-2xl border border-orange-300/50 bg-orange-50 p-3 dark:border-orange-500/25 dark:bg-orange-500/10">
         <Flame className="size-5 shrink-0 text-orange-500" aria-hidden />
@@ -118,6 +76,10 @@ export function DashboardSidebar({ active, onSelect, disabled = false }: Props) 
           </div>
         </div>
       </div>
+
+      {/* Account (login / profile+logout) — sits with the language + theme
+          controls in the bottom-left corner. */}
+      <SidebarAccount onOpenProfile={onOpenProfile} disabled={disabled} />
 
       {/* Prefs */}
       <PrefsControls />
