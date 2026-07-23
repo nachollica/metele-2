@@ -9,6 +9,8 @@ import type { GameResult, GameSettings } from "@/lib/flowfic/types"
 
 export type Story = {
   id: number
+  /** Optional display title; derived from the text on the client when null. */
+  title: string | null
   text: string
   lang: string
   /** ISO-8601 timestamp; `Date` after `new Date(s.createdAt)`. */
@@ -27,6 +29,7 @@ export type StoryListResponse = {
 
 type StoryWire = {
   id: number
+  title: string | null
   text: string
   lang: string
   created_at: string
@@ -38,6 +41,7 @@ type StoryWire = {
 function fromWire(s: StoryWire): Story {
   return {
     id: s.id,
+    title: s.title ?? null,
     text: s.text,
     lang: s.lang,
     createdAt: s.created_at,

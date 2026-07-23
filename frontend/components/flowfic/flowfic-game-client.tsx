@@ -7,11 +7,10 @@ import dynamic from "next/dynamic"
 // SSR'd auth-dependent UI mismatches the post-mount client render and
 // trips React's hydration check. The app is designed to ship as static
 // assets anyway — see project notes in CLAUDE.md.
-const FlowficGame = dynamic(
-  () => import("./flowfic-game").then((m) => m.FlowficGame),
-  { ssr: false },
-)
+const Dashboard = dynamic(() => import("./dashboard").then((m) => m.Dashboard), {
+  ssr: false,
+})
 
 export function FlowficGameClient() {
-  return <FlowficGame />
+  return <Dashboard />
 }
