@@ -14,6 +14,7 @@ from app.db import engine, init_db
 from app.routes.auth import router as auth_router
 from app.routes.ping import router as ping_router
 from app.routes.profile import router as profile_router
+from app.routes.stats import router as stats_router
 from app.routes.stories import router as stories_router
 from app.routes.words import router as words_router
 from app.settings import get_settings
@@ -88,6 +89,7 @@ def create_app() -> FastAPI:
     app.include_router(profile_router)
     app.include_router(words_router)
     app.include_router(stories_router)
+    app.include_router(stats_router)
 
     return app
 

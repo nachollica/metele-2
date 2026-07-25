@@ -20,6 +20,9 @@ test("a required word spawns and is cleared by typing it", async ({ page }) => {
   await page.clock.install()
   await page.goto("/")
 
+  // Session config lives in the Settings section now.
+  await page.getByRole("button", { name: "Settings" }).click()
+
   // Turn on custom categories and give a seed so startGame fetches the pool.
   await page
     .getByRole("switch", { name: "Use custom word categories" })

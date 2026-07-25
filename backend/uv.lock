@@ -540,6 +540,7 @@ dependencies = [
     { name = "spacy" },
     { name = "sqlalchemy" },
     { name = "sqlmodel" },
+    { name = "tzdata" },
     { name = "uvicorn", extra = ["standard"] },
     { name = "wordfreq" },
 ]
@@ -573,6 +574,7 @@ requires-dist = [
     { name = "spacy", specifier = ">=3.8.13" },
     { name = "sqlalchemy", specifier = ">=2.0.51" },
     { name = "sqlmodel", specifier = ">=0.0.39" },
+    { name = "tzdata", specifier = ">=2026.3" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.49.0" },
     { name = "wordfreq", specifier = ">=3.1.1" },
 ]

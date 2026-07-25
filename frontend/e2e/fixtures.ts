@@ -7,7 +7,7 @@ import { type Page } from "@playwright/test"
 
 // ---- localStorage keys (mirror the app) ---------------------------------
 // Keep these in sync with the constants in the app:
-//   - flowfic-game.tsx          -> WELCOME_STORAGE_KEY
+//   - dashboard.tsx             -> WELCOME_STORAGE_KEY
 //   - lib/auth/dev.ts           -> TOKEN_KEY / USER_KEY
 const WELCOME_DISMISSED_KEY = "flowfic.welcome.dismissed"
 const DEV_TOKEN_KEY = "flowfic.dev.token"
@@ -137,6 +137,39 @@ export async function mockBackend(
           offset: 0,
         },
       })
+      return
+    }
+
+    // Gamification endpoints — the dashboard fetches these for signed-in users.
+    // Zeros + empty lists are enough to render every card; the individual specs
+    // don't assert on the numbers.
+    if (path === "/stats/overview" && method === "GET") {
+      await route.fulfill({
+        json: {
+          streak: 0,
+          totalSessions: 0,
+          totalWords: 0,
+          totalDurationMs: 0,
+          level: { level: 1, totalXp: 0, xpIntoLevel: 0, xpForLevel: 300 },
+          weekly: {
+            sessions: 0,
+            words: 0,
+            durationMs: 0,
+            deltaSessions: null,
+            deltaWords: null,
+            deltaDurationMs: null,
+          },
+          chart: [],
+        },
+      })
+      return
+    }
+
+    if (
+      (path === "/stats/achievements" || path === "/stats/challenges") &&
+      method === "GET"
+    ) {
+      await route.fulfill({ json: [] })
       return
     }
 

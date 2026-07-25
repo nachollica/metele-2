@@ -15,8 +15,9 @@ test("a finished session is saved to the backend and shows in the sidebar", asyn
   await seedDevSession(page)
   await page.goto("/")
 
-  // Signed-in users skip the welcome modal and land straight on settings.
-  await page.getByRole("button", { name: "Start writing" }).click()
+  // Signed-in users skip the welcome modal and land on the home dashboard;
+  // the quick-start card's Start button begins a sprint.
+  await page.getByRole("button", { name: "Start", exact: true }).click()
 
   const story = "Lighthouse keepers count the waves at dusk. "
   const textarea = page.getByRole("textbox")
@@ -39,9 +40,9 @@ test("a finished session is saved to the backend and shows in the sidebar", asyn
   expect(posted.lang).toBe("en")
   expect(posted.stats).toMatchObject({ reason: "manual", words: 7 })
 
-  // The post-save refetch surfaces it in the recent-stories sidebar.
-  const sidebar = page.getByRole("complementary", { name: "Recent stories" })
+  // The post-save refetch surfaces it in the home "Recent stories" cards. The
+  // card shows a title derived from the opening words of the text.
   await expect(
-    sidebar.getByText("Lighthouse keepers count the waves at dusk."),
+    page.getByText("Lighthouse keepers count the waves at"),
   ).toBeVisible()
 })
