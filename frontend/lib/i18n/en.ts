@@ -6,6 +6,7 @@ export const en = {
   app: {
     title: "Flowfic",
     tagline: "A writing game. Keep your hands moving.",
+    loading: "Loading FLOWFIC…",
   },
 
   welcome: {

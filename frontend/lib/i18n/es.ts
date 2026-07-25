@@ -10,6 +10,7 @@ export const es = {
   app: {
     title: "Flowfic",
     tagline: "Un juego de escritura. No pares las manos.",
+    loading: "Cargando FLOWFIC…",
   },
 
   welcome: {
