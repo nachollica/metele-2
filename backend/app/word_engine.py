@@ -1,36 +1,38 @@
 """
-Embedding-backed word logic, free of any HTTP/auth/DB coupling.
+Static-vector word logic, free of any HTTP/auth/DB coupling.
 
 ``expand_related`` turns "category" seeds (e.g. ``["animal", "fruta"]``) into a
-pool of related words using one live multilingual sentence-transformers model:
-for each seed we take its nearest neighbours over the requested language's
-candidate matrix, union the seeds' neighbourhoods with a per-seed quota (so a
-weak seed still shows up), and keep the common ones.
+game word pool. Tight relatedness is *not* a goal: a seed only nudges the pool,
+so ``dog`` may pull in ``cat`` and ``bone`` but ``plane`` is perfectly fine too.
+Each seed contributes its nearest neighbours over the language's precomputed
+vector matrix; the neighbours are then deliberately diluted with random pool
+words (:data:`WordConfig.random_fraction`) and shuffled, so the result stays
+varied rather than a tight synonym cluster.
 
-(The required-word matcher — deciding whether "planes" satisfies "plane" — lives
-in :mod:`app.word_match`; it is a lemma question, not a semantic one, so it does
-not use this model.)
+The required-word matcher — deciding whether "planes" satisfies "plane" — lives
+in :mod:`app.word_match`; it is a lemma question, not a semantic one.
 
-The candidate vocabulary for every language comes from wordfreq — the same list
-that supplies the commonness filter — scrubbed of cross-language words up front
-(:func:`_is_cross_language`). Because a request only ever searches its own
-language's matrix, results cannot leak across languages regardless of the model
-being multilingual.
+Everything is per-language and single-language. The pool is wordfreq's frequency
+list, intersected with the language's simplemma dictionary (strips proper nouns
+like "john"/"stuart") and scrubbed of loanwords both dictionaries list but that
+read as the other language (a wordfreq frequency-margin guard drops "agua" from
+English, "box" from Spanish — see :func:`_clean_candidates`). Vectors come from
+that language's own mono-lingual fastText file. No multilingual model is ever
+loaded.
 
-This module is imported by the ``/words`` route, the ``related_words`` /
-``build_embeddings`` scripts, and the app lifespan, so it must not pull in
-FastAPI, the DB, or auth. It is configured via :func:`configure` (the lifespan
-passes values from ``app.settings``); standalone callers fall back to
-environment variables, so it never imports ``app.settings`` directly.
+At runtime this module needs only numpy: the per-language matrices are baked
+into the image as ``.npz`` artifacts under ``data_dir`` (see the
+``build_vectors`` script and the backend Dockerfile) and loaded with mmap-speed.
+wordfreq/simplemma are pulled in *only* by :func:`build_pool` at build time.
 
-The model and the per-language matrices are loaded lazily and memoised. In
-production they are baked into the image and loaded from ``cache_dir``; a missing
-artifact is downloaded/rebuilt on demand — see the backend Dockerfile and the
-``build_embeddings`` script.
+It is configured via :func:`configure` (the lifespan passes values from
+``app.settings``); standalone callers fall back to environment variables, so it
+never imports ``app.settings`` directly.
 """
 
 from __future__ import annotations
 
+import itertools
 import os
 import random
 import re
@@ -39,11 +41,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from wordfreq import available_languages, top_n_list, zipf_frequency
-
 if TYPE_CHECKING:
     import numpy as np
-    from sentence_transformers import SentenceTransformer
 
 # ---- Language ----------------------------------------------------------
 
@@ -53,9 +52,9 @@ class Language(str, Enum):
     Supported game languages. Values match the frontend locale segment so the
     same identifier flows end-to-end.
 
-    Scoped to en/es for now. The other languages are wired everywhere else
-    (wordfreq, simplemma, and the sentence model are all multilingual) — adding
-    one is just uncommenting a member here, then a rebuild to bake its matrix.
+    Scoped to en/es for now. Adding one is uncommenting a member here, then a
+    rebuild to bake its pool + vector matrix (wordfreq, simplemma, and fastText
+    all cover far more languages).
     """
 
     EN = "en"
@@ -67,32 +66,19 @@ class Language(str, Enum):
     # RU = "ru"
 
 
-# The languages the app builds/loads models for. Hardcoded on purpose: adding a
+# The languages the app builds/loads pools for. Hardcoded on purpose: adding a
 # language is a code change + rebuild + redeploy, not a runtime toggle.
 LANGUAGES: tuple[Language, ...] = tuple(Language)
 
 
-# ---- Commonness filter -------------------------------------------------
+# ---- Commonness --------------------------------------------------------
 
 
-# Minimum wordfreq "zipf" score a word must clear to count as common enough for
-# the game. The zipf scale runs ~0 (never seen) to ~8 (words like "the"); 2.5
-# was tuned against the hand-curated frontend pools — it keeps common words while
-# dropping obscure / scientific terms (e.g. "chordate" 1.31, "Acaridae" 0.0).
+# Minimum wordfreq "zipf" score a word must clear to enter the pool at build
+# time. The zipf scale runs ~0 (never seen) to ~8 (words like "the"); 2.5 keeps
+# common, recognisable words while dropping obscure/scientific terms. Stored per
+# word in the artifact so :func:`is_common` needs no wordfreq at runtime.
 DEFAULT_MIN_ZIPF = 2.5
-
-
-def is_common(word: str, language: Language, min_zipf: float = DEFAULT_MIN_ZIPF) -> bool:
-    """
-    Whether ``word`` is frequent enough to be a fun, recognisable game word.
-
-    Backed by wordfreq's zipf frequency for the language. Languages wordfreq
-    doesn't cover are not filtered (returns True) so future languages degrade
-    gracefully instead of yielding an empty pool.
-    """
-    if language.value not in available_languages():
-        return True
-    return zipf_frequency(word, language.value) >= min_zipf
 
 
 # ---- Accept-Language parsing -------------------------------------------
@@ -140,82 +126,145 @@ def parse_accept_language(header: str | None) -> Language | None:
 # ---- Configuration -----------------------------------------------------
 
 
-# Footprint tiers → concrete sentence-transformers model ids. Both are
-# multilingual and symmetric (good for the pairwise match check); "small" is the
-# default because we prefer footprint over recall.
-_SIZE_TO_MODEL: dict[str, str] = {
-    "small": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
-    "large": "sentence-transformers/paraphrase-multilingual-mpnet-base-v2",
-}
-DEFAULT_EMBEDDING_SIZE = "small"
-
-
 @dataclass(frozen=True)
-class EmbeddingConfig:
-    """Everything the engine needs to locate, size, and tune the model."""
+class WordConfig:
+    """Everything the engine needs to locate and tune the word pools."""
 
-    model_id: str
-    cache_dir: str
-    vocab_size: int = 40_000
+    # Where the baked ``word_pool/{lang}.npz`` artifacts live.
+    data_dir: str
+    # Runtime related-words tuning.
     per_seed: int = 50
-    min_similarity: float = 0.3
+    min_similarity: float = 0.25
+    random_fraction: float = 0.35
+    # Build-time only: how many of wordfreq's most frequent words to consider,
+    # and the fastText vector dimensionality.
+    vocab_size: int = 60_000
+    dim: int = 300
 
 
-def resolve_model_id(size: str, override: str = "") -> str:
-    """An explicit override wins; otherwise map the size tier to a model id."""
-    if override:
-        return override
-    return _SIZE_TO_MODEL.get(size, _SIZE_TO_MODEL[DEFAULT_EMBEDDING_SIZE])
+def default_data_dir() -> str:
+    """The packaged ``backend/data`` directory (baked into the image)."""
+    return os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
 
 
-def _default_cache_dir() -> str:
-    return os.path.join(os.path.expanduser("~"), ".cache", "flowfic", "embeddings")
-
-
-def _config_from_env() -> EmbeddingConfig:
+def _config_from_env() -> WordConfig:
     """Build a config from environment variables (for CLI/script use)."""
-    return EmbeddingConfig(
-        model_id=resolve_model_id(
-            os.environ.get("WORD_EMBEDDINGS_SIZE", DEFAULT_EMBEDDING_SIZE),
-            os.environ.get("WORD_EMBEDDINGS_MODEL", ""),
-        ),
-        cache_dir=os.environ.get("WORD_EMBEDDINGS_DIR") or _default_cache_dir(),
-        vocab_size=int(os.environ.get("WORD_EMBEDDINGS_VOCAB_SIZE", "40000")),
+    return WordConfig(
+        data_dir=os.environ.get("WORD_DATA_DIR") or default_data_dir(),
         per_seed=int(os.environ.get("WORD_RELATED_PER_SEED", "50")),
-        min_similarity=float(os.environ.get("WORD_RELATED_MIN_SIMILARITY", "0.3")),
+        min_similarity=float(os.environ.get("WORD_RELATED_MIN_SIMILARITY", "0.25")),
+        random_fraction=float(os.environ.get("WORD_RELATED_RANDOM_FRACTION", "0.35")),
+        vocab_size=int(os.environ.get("WORD_POOL_VOCAB_SIZE", "60000")),
+        dim=int(os.environ.get("WORD_VECTORS_DIM", "300")),
     )
 
 
 # Single-element holder so ``configure`` can rebind the active config without a
 # module-level ``global`` (ruff PLW0603). ``None`` means "derive from the env".
-_active_config: list[EmbeddingConfig | None] = [None]
+_active_config: list[WordConfig | None] = [None]
 _state_lock = threading.Lock()
-_model_cache: dict[str, SentenceTransformer] = {}
-_matrix_cache: dict[tuple[str, Language], tuple[list[str], np.ndarray]] = {}
 
 
-def configure(config: EmbeddingConfig) -> None:
+@dataclass(frozen=True)
+class PoolData:
+    """A language's loaded pool: aligned words, normalised vectors, and zipf."""
+
+    words: list[str]
+    matrix: np.ndarray  # (N, dim) float32, L2-normalised
+    index: dict[str, int]  # casefolded word -> row
+    zipf: np.ndarray  # (N,) float32
+
+
+_pool_cache: dict[tuple[str, Language], PoolData] = {}
+
+
+def configure(config: WordConfig) -> None:
     """
-    Install the active config and drop memoised model/matrices.
+    Install the active config and drop memoised pools.
 
     The lifespan calls this with values from ``app.settings`` at startup; tests
-    use it to point at stubs. Clearing the caches lets a reconfigure (e.g. a
-    different model id) take effect.
+    use it to point at fixture artifacts. Clearing the cache lets a reconfigure
+    (e.g. a different ``data_dir``) take effect.
     """
     with _state_lock:
         _active_config[0] = config
-        _model_cache.clear()
-        _matrix_cache.clear()
-        _vocab_words_cache.clear()
+        _pool_cache.clear()
 
 
-def get_config() -> EmbeddingConfig:
+def get_config() -> WordConfig:
     """The installed config, or one derived from the environment."""
     active = _active_config[0]
     return active if active is not None else _config_from_env()
 
 
-# ---- Vocabulary --------------------------------------------------------
+# ---- Pool loading ------------------------------------------------------
+
+
+# Bump when the pool-building logic or its inputs change so stale on-disk
+# artifacts are rebuilt (and recommitted) rather than silently reused.
+_POOL_VERSION = 1
+
+
+def _pool_path(data_dir: str, language: Language) -> str:
+    return os.path.join(data_dir, "word_pool", f"{language.value}.v{_POOL_VERSION}.npz")
+
+
+def _load_pool(language: Language) -> PoolData:
+    """Return the language's pool from RAM or the baked ``.npz`` (empty if absent)."""
+    import numpy as np
+
+    cfg = get_config()
+    key = (cfg.data_dir, language)
+    cached = _pool_cache.get(key)
+    if cached is not None:
+        return cached
+
+    path = _pool_path(cfg.data_dir, language)
+    if not os.path.exists(path):
+        # Don't cache the miss: an artifact appearing later (e.g. a test writing
+        # one, or a build finishing) should be picked up without a reconfigure.
+        return PoolData(
+            [], np.zeros((0, 0), dtype=np.float32), {}, np.zeros((0,), dtype=np.float32)
+        )
+
+    with _state_lock:
+        cached = _pool_cache.get(key)
+        if cached is not None:
+            return cached
+        data = np.load(path, allow_pickle=True)
+        words = [str(w) for w in data["words"]]
+        matrix = np.ascontiguousarray(data["vectors"], dtype=np.float32)
+        zipf = np.ascontiguousarray(data["zipf"], dtype=np.float32)
+        index = {word.casefold(): row for row, word in enumerate(words)}
+        pool = PoolData(words, matrix, index, zipf)
+        _pool_cache[key] = pool
+        return pool
+
+
+def ensure_ready(languages: tuple[Language, ...] = LANGUAGES) -> None:
+    """
+    Preload every language's pool so the first request is served from RAM.
+
+    The lifespan calls this at startup. Missing artifacts load as empty pools
+    (the feature degrades to nothing rather than crashing).
+    """
+    for language in languages:
+        _load_pool(language)
+
+
+def is_common(word: str, language: Language, min_zipf: float = DEFAULT_MIN_ZIPF) -> bool:
+    """
+    Whether ``word`` is in the language's pool and clears ``min_zipf``.
+
+    Backed by the zipf value baked into the artifact, so no wordfreq at runtime.
+    A word absent from the pool is not common (returns False).
+    """
+    pool = _load_pool(language)
+    row = pool.index.get(word.casefold())
+    return row is not None and float(pool.zipf[row]) >= min_zipf
+
+
+# ---- Vocabulary / usability -------------------------------------------
 
 
 def _is_usable_word(word: str) -> bool:
@@ -223,26 +272,65 @@ def _is_usable_word(word: str) -> bool:
     Whether ``word`` is usable as a game word.
 
     ``isalpha`` drops multi-word/hyphenated/digit entries (the frontend only
-    checks the last finished token); the lowercase check drops proper nouns.
+    checks the last finished token); the lowercase check drops proper nouns that
+    kept their capital (wordfreq lowercases most, so the dictionary filter in
+    :func:`build_pool` does the real proper-noun scrubbing).
     """
     return word.isalpha() and word == word.lower()
 
 
+# ---- Build (build-time only) ------------------------------------------
+
+
+def _read_fasttext_vectors(path: str, wanted: set[str], dim: int) -> dict[str, np.ndarray]:
+    """
+    Stream a fastText ``.vec``/``.vec.gz`` file, returning vectors for ``wanted``.
+
+    fastText files are one ``word f1 f2 ... fdim`` line per token, optionally
+    prefixed by a ``"<count> <dim>"`` header. Streaming keeps memory flat: only
+    the small wanted subset is retained, not the multi-million-row source.
+    """
+    import gzip
+
+    import numpy as np
+
+    found: dict[str, np.ndarray] = {}
+
+    def _consume(line: str) -> None:
+        parts = line.rstrip().split(" ")
+        if len(parts) <= dim:
+            return
+        token = parts[0]
+        if token not in wanted or token in found:
+            return
+        values = parts[1 : dim + 1]
+        found[token] = np.asarray(values, dtype=np.float32)
+
+    opener = gzip.open if path.endswith(".gz") else open
+    with opener(path, "rt", encoding="utf-8", errors="replace") as handle:
+        first = handle.readline()
+        header = first.split()
+        if not (len(header) == 2 and all(tok.lstrip("-").isdigit() for tok in header)):
+            _consume(first)  # no header line — the first line is data
+        for line in handle:
+            if len(found) >= len(wanted):
+                break
+            _consume(line)
+    return found
+
+
 # A word is treated as belonging to another language (and dropped from this
-# language's candidate pool) when its zipf frequency there exceeds its frequency
-# here by more than this margin. This keeps English loanwords that ride along in
-# wordfreq's Spanish list ("food", "kitchen") out of Spanish results.
+# language's pool) when its zipf frequency there exceeds its frequency here by
+# more than this margin. simplemma's dictionary lists common loanwords in both
+# languages ("agua" in English, "box" in Spanish), so this frequency guard — not
+# the dictionary alone — is what keeps a language's pool single-language.
 _CROSS_LANGUAGE_MARGIN = 1.0
 
 
-def _is_cross_language(word: str, language: Language, here_zipf: float) -> bool:
-    """
-    Whether ``word`` reads as another supported language more than this one.
+def _reads_as_other_language(word: str, language: Language, here_zipf: float) -> bool:
+    """Whether ``word`` is markedly more frequent in another supported language."""
+    from wordfreq import available_languages, zipf_frequency
 
-    ``here_zipf`` is passed in so the caller can compute it once. This is the
-    structural guard that makes cross-language leakage impossible: a scrubbed
-    per-language pool is the only thing the related-words search can return.
-    """
     for other in Language:
         if other is language or other.value not in available_languages():
             continue
@@ -251,25 +339,21 @@ def _is_cross_language(word: str, language: Language, here_zipf: float) -> bool:
     return False
 
 
-_vocab_words_cache: dict[tuple[Language, int], list[str]] = {}
-
-
-def _candidate_vocabulary(language: Language, vocab_size: int) -> list[str]:
+def _clean_candidates(language: Language, vocab_size: int) -> dict[str, float]:
     """
-    The language's candidate words: frequent, usable, single-language.
+    Frequency-ranked, dictionary-clean, single-language candidate words → zipf.
 
-    Sourced from wordfreq's frequency list, filtered by usability, the
-    commonness threshold, and the cross-language guard. Shared by the embedding
-    matrix and ``random_words`` so both draw from the same scrubbed pool. The
-    result is deterministic per (language, size), so it is memoised — the scan
-    touches every supported language's frequency table and is not cheap.
+    Three filters compose the pool: wordfreq's frequency list supplies common
+    words (and their zipf); ``simplemma.is_known`` keeps only real dictionary
+    words for *this* language (dropping proper nouns like "john"/"juan"); and the
+    cross-language frequency guard drops loanwords both dictionaries list but
+    that clearly read as the other language ("agua", "box"). Together they make
+    the pool single-language — no cross-language leakage.
     """
-    key = (language, vocab_size)
-    cached = _vocab_words_cache.get(key)
-    if cached is not None:
-        return cached
+    import simplemma
+    from wordfreq import top_n_list, zipf_frequency
 
-    words: list[str] = []
+    candidates: dict[str, float] = {}
     seen: set[str] = set()
     for raw in top_n_list(language.value, vocab_size):
         word = raw.strip()
@@ -281,117 +365,62 @@ def _candidate_vocabulary(language: Language, vocab_size: int) -> list[str]:
         here = zipf_frequency(word, language.value)
         if here < DEFAULT_MIN_ZIPF:
             continue
-        if _is_cross_language(word, language, here):
+        if not simplemma.is_known(word, language.value):
+            continue
+        if _reads_as_other_language(word, language, here):
             continue
         seen.add(folded)
+        candidates[word] = here
+    return candidates
+
+
+def build_pool(language: Language, fasttext_path: str) -> tuple[list[str], np.ndarray]:
+    """
+    Build and persist the language's pool from its fastText file.
+
+    Called by the ``build_vectors`` script. Intersects the clean candidate words
+    with those fastText has a vector for, L2-normalises, and writes
+    ``data_dir/word_pool/{lang}.vN.npz`` (words, float16 vectors, float16 zipf).
+    Vectors are float16 on disk to keep the committed artifact small; they widen
+    to float32 on load for fast matmul.
+    """
+    import numpy as np
+
+    cfg = get_config()
+    candidates = _clean_candidates(language, cfg.vocab_size)
+    vectors = _read_fasttext_vectors(fasttext_path, set(candidates), cfg.dim)
+
+    words: list[str] = []
+    rows: list[np.ndarray] = []
+    zipfs: list[float] = []
+    for word, here in candidates.items():
+        vector = vectors.get(word)
+        if vector is None:
+            continue
+        norm = float(np.linalg.norm(vector))
+        if norm == 0.0:
+            continue
         words.append(word)
-    _vocab_words_cache[key] = words
-    return words
+        rows.append(vector / norm)
+        zipfs.append(here)
 
+    matrix = (
+        np.asarray(rows, dtype=np.float32) if rows else np.zeros((0, cfg.dim), dtype=np.float32)
+    )
 
-# ---- Model + matrices --------------------------------------------------
-
-
-# Bump when the matrix-building logic or its inputs change so stale on-disk
-# matrices are rebuilt rather than silently reused.
-_MATRIX_VERSION = 1
-
-
-def _load_model() -> SentenceTransformer:
-    """
-    Load (and memoise) the sentence-transformers model for the active config.
-
-    The model's weights live in the standard Hugging Face cache (``HF_HOME``),
-    which the Docker image bakes and pins offline; the matrices live under
-    ``cache_dir``. Keeping the two locations separate avoids surprising the HF
-    hub with a custom layout.
-    """
-    cfg = get_config()
-    cached = _model_cache.get(cfg.model_id)
-    if cached is not None:
-        return cached
-    with _state_lock:
-        cached = _model_cache.get(cfg.model_id)
-        if cached is None:
-            from sentence_transformers import SentenceTransformer
-
-            cached = SentenceTransformer(cfg.model_id)
-            _model_cache[cfg.model_id] = cached
-    return cached
-
-
-def _encode(words: list[str]) -> np.ndarray:
-    """Encode ``words`` into L2-normalised float32 vectors (cosine == dot)."""
-    import numpy as np
-
-    model = _load_model()
-    vectors = model.encode(list(words), normalize_embeddings=True, show_progress_bar=False)
-    return np.asarray(vectors, dtype=np.float32)
-
-
-def _matrix_path(model_id: str, language: Language, vocab_size: int) -> str:
-    safe = re.sub(r"[^A-Za-z0-9._-]", "_", model_id)
-    base = get_config().cache_dir or _default_cache_dir()
-    return os.path.join(base, safe, f"{language.value}.n{vocab_size}.v{_MATRIX_VERSION}.npz")
-
-
-def build_matrix(language: Language) -> tuple[list[str], np.ndarray]:
-    """
-    Compute the normalised candidate matrix for ``language`` and persist it.
-
-    Called by the ``build_embeddings`` script, the lifespan on a cache miss, and
-    the Docker build. Vectors are stored as float16 to keep the baked artifact
-    small; they are widened back to float32 on load for fast matmul.
-    """
-    import numpy as np
-
-    cfg = get_config()
-    words = _candidate_vocabulary(language, cfg.vocab_size)
-    vectors = _encode(words) if words else np.zeros((0, 0), dtype=np.float32)
-
-    path = _matrix_path(cfg.model_id, language, cfg.vocab_size)
+    path = _pool_path(cfg.data_dir, language)
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    np.savez(path, words=np.asarray(words, dtype=object), vectors=vectors.astype(np.float16))
-    result = (words, vectors)
-    _matrix_cache[(cfg.model_id, language)] = result
+    np.savez(
+        path,
+        words=np.asarray(words, dtype=object),
+        vectors=matrix.astype(np.float16),
+        zipf=np.asarray(zipfs, dtype=np.float16),
+    )
+    result = (words, matrix)
+    _pool_cache[(cfg.data_dir, language)] = PoolData(
+        words, matrix, {w.casefold(): i for i, w in enumerate(words)}, np.asarray(zipfs, np.float32)
+    )
     return result
-
-
-def _vocab_matrix(language: Language) -> tuple[list[str], np.ndarray]:
-    """Return (words, normalised float32 matrix) — from RAM, disk, or freshly built."""
-    import numpy as np
-
-    cfg = get_config()
-    key = (cfg.model_id, language)
-    cached = _matrix_cache.get(key)
-    if cached is not None:
-        return cached
-    with _state_lock:
-        cached = _matrix_cache.get(key)
-        if cached is not None:
-            return cached
-        path = _matrix_path(cfg.model_id, language, cfg.vocab_size)
-        if os.path.exists(path):
-            data = np.load(path, allow_pickle=True)
-            result = (list(data["words"]), data["vectors"].astype(np.float32))
-            _matrix_cache[key] = result
-            return result
-    # Build outside the lock: encoding tens of thousands of words is slow and we
-    # don't want to block other languages' reads. build_matrix re-populates the
-    # cache under its own lock-free write (dict assignment is atomic enough here).
-    return build_matrix(language)
-
-
-def ensure_ready(languages: tuple[Language, ...] = LANGUAGES) -> None:
-    """
-    Preload the model and every language's matrix (building any that are absent).
-
-    The lifespan calls this at startup and the build script reuses it. After it
-    returns, related-words and match requests are served entirely from RAM.
-    """
-    _load_model()
-    for language in languages:
-        _vocab_matrix(language)
 
 
 # ---- Related words -----------------------------------------------------
@@ -402,40 +431,55 @@ def _shares_seed_prefix(word: str, seeds: set[str]) -> bool:
     Cheap inflection guard: treat ``word`` as a seed variant if it shares a
     seed's first four characters (e.g. ``cocina`` → ``cocinar``/``cocinando``).
     """
-    for seed in seeds:
-        if len(seed) >= 4 and len(word) >= 4 and word[:4] == seed[:4]:
-            return True
-    return False
+    return any(len(seed) >= 4 and len(word) >= 4 and word[:4] == seed[:4] for seed in seeds)
 
 
 def _seed_neighbours(
     scores: np.ndarray,
-    vocab: list[str],
+    pool: PoolData,
     *,
     excluded: set[str],
     min_similarity: float,
     per_seed: int,
     min_zipf: float,
-    language: Language,
-) -> list[tuple[str, float]]:
-    """Ranked (word, score) neighbours of one seed, filtered and capped."""
+) -> list[str]:
+    """Ranked neighbours of one seed (by cosine score), filtered and capped."""
     import numpy as np
 
-    picked: list[tuple[str, float]] = []
+    picked: list[str] = []
     for idx in np.argsort(-scores):
-        score = float(scores[idx])
-        if score < min_similarity:
+        if float(scores[idx]) < min_similarity:
             break
-        word = vocab[int(idx)]
+        row = int(idx)
+        if float(pool.zipf[row]) < min_zipf:
+            continue
+        word = pool.words[row]
         folded = word.casefold()
         if folded in excluded or _shares_seed_prefix(folded, excluded):
             continue
-        if not is_common(word, language, min_zipf):
-            continue
-        picked.append((word, score))
+        picked.append(word)
         if len(picked) >= per_seed:
             break
     return picked
+
+
+def _random_fill(
+    pool: PoolData,
+    *,
+    count: int,
+    exclude: set[str],
+    min_zipf: float,
+) -> list[str]:
+    """``count`` random pool words not already excluded (respecting ``min_zipf``)."""
+    candidates = [
+        word
+        for row, word in enumerate(pool.words)
+        if word.casefold() not in exclude and float(pool.zipf[row]) >= min_zipf
+    ]
+    if len(candidates) <= count:
+        random.shuffle(candidates)
+        return candidates
+    return random.sample(candidates, count)
 
 
 def expand_related(
@@ -446,70 +490,66 @@ def expand_related(
     min_zipf: float = DEFAULT_MIN_ZIPF,
 ) -> list[str]:
     """
-    Related words as the union of the seeds' embedding neighbourhoods.
+    A game word pool loosely themed by the seeds.
 
-    Each seed contributes its nearest neighbours (above ``min_similarity``, up to
-    ``per_seed``). We then compose the final pool with a per-seed quota so a weak
-    seed A stays represented even when a strong seed B scores higher, and fill any
-    remaining slots by global score. Everything passes the wordfreq commonness
-    filter (dropping weird/scientific words) and excludes the seeds and their
-    inflections. Best-effort: if the model/matrix is unavailable, returns ``[]``.
+    Each seed found in the pool contributes its nearest neighbours (cosine above
+    ``min_similarity``, up to ``per_seed``), merged round-robin so every seed is
+    represented. Roughly ``random_fraction`` of the ``limit`` is then filled with
+    random pool words and the whole thing is shuffled, so the pool is varied
+    rather than a tight cluster. Seeds absent from the pool contribute nothing;
+    if none resolve, the result is simply a random pool. Best-effort: returns
+    ``[]`` on any failure or empty pool.
     """
     cfg = get_config()
     seeds = [w.strip() for w in words if w.strip()]
     if not seeds or limit <= 0:
         return []
     try:
-        vocab, matrix = _vocab_matrix(language)
-        seed_vecs = _encode(seeds)
+        pool = _load_pool(language)
+        if not pool.words:
+            return []
+
+        excluded = {s.casefold() for s in seeds}
+        seed_rows = [pool.index[s] for s in excluded if s in pool.index]
+
+        themed: list[str] = []
+        if seed_rows:
+            seed_vecs = pool.matrix[seed_rows]  # (k, dim)
+            sims = pool.matrix @ seed_vecs.T  # (N, k)
+            per_seed_lists = [
+                _seed_neighbours(
+                    sims[:, si],
+                    pool,
+                    excluded=excluded,
+                    min_similarity=cfg.min_similarity,
+                    per_seed=cfg.per_seed,
+                    min_zipf=min_zipf,
+                )
+                for si in range(len(seed_rows))
+            ]
+            # Round-robin so a weak seed still lands words alongside a strong one.
+            seen = set(excluded)
+            for tier in itertools.zip_longest(*per_seed_lists):
+                for word in tier:
+                    if word is None:
+                        continue
+                    folded = word.casefold()
+                    if folded in seen:
+                        continue
+                    seen.add(folded)
+                    themed.append(word)
+
+        # Reserve part of the budget for random words (guaranteed variety); when
+        # no seed resolved, the whole pool is random.
+        n_random = round(limit * cfg.random_fraction) if themed else limit
+        chosen = themed[: limit - n_random]
+        exclude = {w.casefold() for w in chosen} | excluded
+        chosen += _random_fill(pool, count=limit - len(chosen), exclude=exclude, min_zipf=min_zipf)
+
+        random.shuffle(chosen)
+        return chosen[:limit]
     except Exception:  # noqa: BLE001 — the feature degrades to empty rather than 500.
         return []
-    if not vocab or matrix.shape[0] == 0:
-        return []
-
-    excluded = {s.casefold() for s in seeds}
-    sims = matrix @ seed_vecs.T  # (vocab, seeds)
-    per_seed_lists = [
-        _seed_neighbours(
-            sims[:, si],
-            vocab,
-            excluded=excluded,
-            min_similarity=cfg.min_similarity,
-            per_seed=cfg.per_seed,
-            min_zipf=min_zipf,
-            language=language,
-        )
-        for si in range(len(seeds))
-    ]
-
-    # Quota pass: give each seed up to ``quota`` of its own top neighbours.
-    quota = max(1, limit // len(seeds))
-    chosen: dict[str, float] = {}
-    for picked in per_seed_lists:
-        added = 0
-        for word, score in picked:
-            if added >= quota:
-                break
-            if word not in chosen:
-                chosen[word] = score
-                added += 1
-            else:
-                chosen[word] = max(chosen[word], score)
-
-    # Global fill: best remaining neighbours across all seeds, by score.
-    if len(chosen) < limit:
-        pool: dict[str, float] = {}
-        for picked in per_seed_lists:
-            for word, score in picked:
-                pool[word] = max(pool.get(word, -1.0), score)
-        for word, _score in sorted(pool.items(), key=lambda kv: -kv[1]):
-            if len(chosen) >= limit:
-                break
-            chosen.setdefault(word, _score)
-
-    result = list(chosen)[:limit]
-    random.shuffle(result)
-    return result
 
 
 # ---- Random pool -------------------------------------------------------
@@ -524,16 +564,10 @@ def random_words(
     """
     Sample a varied pool from the language's common vocabulary.
 
-    Draws from the same scrubbed wordfreq candidate pool as the related-words
-    matrix (frequent, usable, single-language). No model needed; order is random
-    since the whole point is variety.
+    Draws from the same baked pool as :func:`expand_related`. No seeds, so the
+    order is random by design. Returns ``[]`` if the artifact is absent.
     """
-    vocab = _candidate_vocabulary(language, get_config().vocab_size)
-    if min_zipf != DEFAULT_MIN_ZIPF:
-        vocab = [w for w in vocab if is_common(w, language, min_zipf)]
-    if not vocab:
+    pool = _load_pool(language)
+    if not pool.words:
         return []
-    if len(vocab) <= limit:
-        random.shuffle(vocab)
-        return vocab
-    return random.sample(vocab, limit)
+    return _random_fill(pool, count=limit, exclude=set(), min_zipf=min_zipf)

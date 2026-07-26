@@ -4,9 +4,9 @@ Required-word matching: is a typed word an inflection of the required word?
 The frontend pre-filters on spelling (edit distance), then asks the backend to
 decide whether a syntactically-similar pair is *the same word* — "planes" should
 satisfy "plane", but "planet" should not. This is a lemma question, not a
-semantic-similarity one: sentence/word embeddings conflate "same lemma" with
-"looks/means alike", so they happily match "pala"/"palos". Two dictionary
-lemmatizers instead reduce each word to its base form and compare.
+semantic-similarity one: word embeddings conflate "same lemma" with "looks/means
+alike", so they happily match "pala"/"palos". Two dictionary lemmatizers instead
+reduce each word to its base form and compare.
 
 Why two? They are complementary (QA'd on ~180 ES/EN pairs at perfect precision —
 no distinct-noun look-alike ever matches):
@@ -18,11 +18,15 @@ no distinct-noun look-alike ever matches):
 
 Neither ever collapses genuinely different nouns (palo/pala, puerto/puerta), so
 their union recovers both gender kinds while keeping look-alikes apart. A
-regular-plural rule fills the remaining gaps (flor/flores, luz/luces), applied to
-the surface words and to the simplemma lemmas.
+regular-plural rule fills the remaining gaps (flor/flores, luz/luces).
 
-The residual misses are a couple of verb person forms (hablo/hablas), acceptable
-because recovering them would require matching genuine look-alikes.
+spaCy is heavy (the pipeline, thinc, and two ~55MB models), and its answer for a
+given surface word never changes. So it is run **at build time** over the pool
+(see the ``build_lemma_maps`` script) and its lemmas are baked into a compact
+``lemma_maps/{lang}.json``. At runtime we do a dict lookup instead — no spaCy.
+This replays spaCy's decision for every pooled word (which covers the common
+forms players actually type); a form absent from the map degrades to no-match
+rather than a false positive, so precision is preserved.
 
 Kept free of HTTP/DB/auth coupling like :mod:`app.word_engine`; imported by the
 ``/words/match`` route and the ``match_word`` CLI.
@@ -30,65 +34,63 @@ Kept free of HTTP/DB/auth coupling like :mod:`app.word_engine`; imported by the
 
 from __future__ import annotations
 
+import json
+import os
 import threading
-from typing import TYPE_CHECKING
 
 import simplemma
 
-from app.word_engine import Language
+from app.word_engine import Language, get_config
 
-if TYPE_CHECKING:
-    from spacy.language import Language as SpacyPipeline
+# Bump alongside the build script when the map format/inputs change.
+_LEMMA_MAP_VERSION = 1
 
-# spaCy model per language (md tier: perfect precision on the QA set; sm
-# false-matched banco/banca and foco/foca). Installed as pinned deps, so no
-# runtime download — see pyproject `[tool.uv.sources]`.
-_SPACY_MODELS: dict[Language, str] = {
-    Language.ES: "es_core_news_md",
-    Language.EN: "en_core_web_md",
-}
-
-# Two distinct locks: one guards lazy loading of the pipelines, the other
-# serialises pipeline calls (spaCy pipelines are not guaranteed thread-safe).
-# They must never be nested — doing so self-deadlocks a non-reentrant Lock.
-_spacy_load_lock = threading.Lock()
-_spacy_call_lock = threading.Lock()
-_spacy_cache: dict[Language, SpacyPipeline] = {}
+# Guards lazy loading of the per-language maps.
+_map_lock = threading.Lock()
+_map_cache: dict[tuple[str, Language], dict[str, str]] = {}
 
 
-def _load_spacy(language: Language) -> SpacyPipeline:
-    """Load (and memoise) the spaCy pipeline for ``language`` (tagger + lemmatizer)."""
-    cached = _spacy_cache.get(language)
+def _map_path(data_dir: str, language: Language) -> str:
+    return os.path.join(data_dir, "lemma_maps", f"{language.value}.v{_LEMMA_MAP_VERSION}.json")
+
+
+def _lemma_map(language: Language) -> dict[str, str]:
+    """
+    The precomputed spaCy-lemma map for ``language`` (casefolded surface → lemma).
+
+    Absent artifact → empty map (the spaCy path simply contributes nothing, and
+    matching falls back to simplemma + the plural rule).
+    """
+    data_dir = get_config().data_dir
+    key = (data_dir, language)
+    cached = _map_cache.get(key)
     if cached is not None:
         return cached
-    with _spacy_load_lock:
-        cached = _spacy_cache.get(language)
-        if cached is None:
-            import spacy
-
-            # Only the tagger/morphologizer + lemmatizer are needed.
-            cached = spacy.load(_SPACY_MODELS[language], disable=["parser", "ner"])
-            _spacy_cache[language] = cached
-    return cached
+    with _map_lock:
+        cached = _map_cache.get(key)
+        if cached is not None:
+            return cached
+        path = _map_path(data_dir, language)
+        mapping: dict[str, str] = {}
+        if os.path.exists(path):
+            with open(path, encoding="utf-8") as handle:
+                mapping = {str(k): str(v) for k, v in json.load(handle).items()}
+        _map_cache[key] = mapping
+        return mapping
 
 
 def preload(languages: tuple[Language, ...]) -> None:
-    """Warm the spaCy pipelines at startup so the first match isn't slow."""
+    """Warm the lemma maps and simplemma at startup so the first match isn't slow."""
     for language in languages:
-        _load_spacy(language)
+        _lemma_map(language)
+        # Touch simplemma so its language data is resident before the first call.
+        simplemma.lemmatize("a", lang=language.value)
 
 
-def _spacy_lemma(word: str, language: Language) -> str:
-    """The spaCy lemma of ``word`` (lowercased); the input itself on any failure."""
-    # Resolve (and possibly load) the pipeline *before* taking the call lock, so
-    # the load lock and the call lock are never held at the same time.
-    pipeline = _load_spacy(language)
-    try:
-        with _spacy_call_lock:
-            doc = pipeline(word)
-    except Exception:  # noqa: BLE001 — a lemmatiser miss must not 500 the endpoint.
-        return word
-    return doc[0].lemma_.casefold() if len(doc) else word
+def _mapped_lemma(word: str, language: Language) -> str:
+    """The baked spaCy lemma of ``word`` (casefolded); the word itself if unmapped."""
+    folded = word.casefold()
+    return _lemma_map(language).get(folded, folded)
 
 
 def lemma(word: str, language: Language) -> str:
@@ -122,7 +124,7 @@ def is_match(word_a: str, word_b: str, language: Language) -> bool:
     Whether ``word_a`` is the required word ``word_b`` (or an inflection of it).
 
     Symmetric. Empty inputs never match. Matches when the two share a lemma under
-    *either* lemmatiser (simplemma for noun gender, spaCy for adjective gender),
+    *either* simplemma (noun gender) or the baked spaCy map (adjective gender),
     or when one is the regular plural of the other (checked on the surface forms
     and the simplemma lemmas).
     """
@@ -136,6 +138,6 @@ def is_match(word_a: str, word_b: str, language: Language) -> bool:
     sa, sb = lemma(a, language), lemma(b, language)
     if sa and sa == sb:
         return True
-    if _spacy_lemma(a, language) == _spacy_lemma(b, language):
+    if _mapped_lemma(a, language) == _mapped_lemma(b, language):
         return True
     return _is_regular_plural(a, b, language) or _is_regular_plural(sa, sb, language)

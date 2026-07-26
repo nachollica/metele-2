@@ -1,17 +1,12 @@
 # Backend (FastAPI / uv) justfile.
 
-# Default embedding model for the related-words + match features. Blank uses the
-# engine's size default (small). Override per-call, e.g.
-# `just embeddings sentence-transformers/paraphrase-multilingual-mpnet-base-v2`.
-EMBEDDINGS_MODEL := "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
-
 [doc("Print available commands.")]
 help:
     @just --list
 
-[doc("Install / refresh dependencies into ./.venv/.")]
+[doc("Install / refresh dependencies into ./.venv/ (incl. the build group).")]
 init:
-    uv sync
+    uv sync --group build
 
 [group("development")]
 [doc("Run uvicorn with autoreload on port 8000. Loads .env into the shell.")]
@@ -61,14 +56,21 @@ seed +USERNAMES:
     uv run python -m app.scripts.seed_dev_user {{USERNAMES}}
 
 [group("development")]
-[doc("Precompute the embedding matrices for all languages. Optional MODEL id override.")]
-embeddings MODEL=EMBEDDINGS_MODEL:
-    uv run python -m app.scripts.build_embeddings --model {{MODEL}}
+[doc("Rebuild the per-language vector pools. Needs fastText files; see the script. \
+Usage: just vectors --fasttext-dir ~/fasttext")]
+vectors +ARGS:
+    uv run python -m app.scripts.build_vectors {{ARGS}}
+
+[group("development")]
+[doc("Rebuild the per-language spaCy lemma maps used by the matcher. \
+Usage: just lemma-maps  (or: just lemma-maps -l es)")]
+lemma-maps *ARGS:
+    uv run python -m app.scripts.build_lemma_maps {{ARGS}}
 
 [group("development")]
 [doc("Expand seed words into related words. Usage: just related kitchen food -l es -n 30")]
 related +ARGS:
-    WORD_EMBEDDINGS_MODEL="{{EMBEDDINGS_MODEL}}" uv run python -m app.scripts.related_words {{ARGS}}
+    uv run python -m app.scripts.related_words {{ARGS}}
 
 [group("development")]
 [doc("Match every pair among a list of words. Usage: just match palo pala palos -l es")]

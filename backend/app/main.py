@@ -18,7 +18,7 @@ from app.routes.stats import router as stats_router
 from app.routes.stories import router as stories_router
 from app.routes.words import router as words_router
 from app.settings import get_settings
-from app.word_engine import LANGUAGES, EmbeddingConfig, configure, ensure_ready, resolve_model_id
+from app.word_engine import LANGUAGES, WordConfig, configure, default_data_dir, ensure_ready
 from app.word_match import preload as preload_matchers
 
 if TYPE_CHECKING:
@@ -29,31 +29,29 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def _embedding_config(settings: Settings) -> EmbeddingConfig:
+def _word_config(settings: Settings) -> WordConfig:
     """Translate the app settings into the engine's config object."""
-    return EmbeddingConfig(
-        model_id=resolve_model_id(settings.word_embeddings_size, settings.word_embeddings_model),
-        cache_dir=settings.word_embeddings_dir,
-        vocab_size=settings.word_embeddings_vocab_size,
+    return WordConfig(
+        data_dir=settings.word_data_dir or default_data_dir(),
         per_seed=settings.word_related_per_seed,
         min_similarity=settings.word_related_min_similarity,
+        random_fraction=settings.word_related_random_fraction,
     )
 
 
 @asynccontextmanager
 async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
-    # Skip the heavy model load in the test suite; unit tests stub the engine.
+    # Skip artifact loading in the test suite; fixtures wire their own pools.
     if settings.environment != "testing":
-        configure(_embedding_config(settings))
+        configure(_word_config(settings))
         try:
-            # Load the related-words model + matrices (downloading anything
-            # missing) and warm the lemmatisers used by /words/match.
+            # Load the baked per-language vector pools and lemma maps into RAM.
             ensure_ready()
             preload_matchers(LANGUAGES)
         except Exception:
-            # Don't take the whole app down if a corpus/model can't be prepared;
-            # word features degrade until the artifact is available.
+            # Don't take the whole app down if an artifact can't be prepared;
+            # word features degrade until it is available.
             logger.exception("Word-feature preload failed; degraded until available")
     yield
     # Close the connection pool on shutdown so a stopped server doesn't leave

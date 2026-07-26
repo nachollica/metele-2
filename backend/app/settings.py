@@ -16,7 +16,6 @@ from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings
 
 Environment = Literal["local", "development", "production", "testing"]
-EmbeddingSize = Literal["small", "large"]
 
 
 class Settings(BaseSettings):
@@ -38,28 +37,16 @@ class Settings(BaseSettings):
         description="Have email-validator run a DNS MX lookup on profile email updates.",
     )
 
-    # ---- Word embeddings -------------------------------------------------
-    # The related-words + match features run on one live multilingual
-    # sentence-transformers model. `size` selects a footprint tier (mapped to a
-    # concrete model id in app.word_engine); `model` overrides it outright. The
-    # model and the per-language vocabulary matrices live under `dir`; on startup
-    # the app loads them from there, downloading/building whatever is missing.
-    word_embeddings_size: EmbeddingSize = Field(
-        default="small",
-        description="Model footprint tier: 'small' (MiniLM) or 'large' (mpnet).",
-    )
-    word_embeddings_model: str = Field(
+    # ---- Words -----------------------------------------------------------
+    # The related-words + match features load precomputed per-language artifacts
+    # (fastText vector matrices and spaCy lemma maps) baked into the image under
+    # `dir`. No model is loaded at runtime — only numpy + simplemma. The build
+    # knobs (vocab size, vector dim, fastText source) live in the build scripts,
+    # not here, since they only matter when regenerating the committed artifacts.
+    word_data_dir: str = Field(
         default="",
-        description="Explicit sentence-transformers model id; overrides `size` when set.",
-    )
-    word_embeddings_dir: str = Field(
-        default="",
-        description="Directory for the model cache + vocabulary matrices (blank = engine default).",
-    )
-    word_embeddings_vocab_size: int = Field(
-        default=40_000,
-        ge=1_000,
-        description="How many of a language's most frequent words form the candidate pool.",
+        description="Directory holding the baked word_pool/ + lemma_maps/ artifacts "
+        "(blank = the packaged backend/data).",
     )
     word_related_per_seed: int = Field(
         default=50,
@@ -67,10 +54,16 @@ class Settings(BaseSettings):
         description="Max neighbours harvested per seed word before merging.",
     )
     word_related_min_similarity: float = Field(
-        default=0.3,
+        default=0.25,
         ge=0.0,
         le=1.0,
-        description="Cosine floor a related-words candidate must clear to be kept.",
+        description="Cosine floor a related-words neighbour must clear to be kept.",
+    )
+    word_related_random_fraction: float = Field(
+        default=0.35,
+        ge=0.0,
+        le=1.0,
+        description="Fraction of the related-words pool filled with random words for variety.",
     )
 
     @property

@@ -17,38 +17,37 @@ from fastapi.testclient import TestClient
 from sqlalchemy import Engine
 from sqlmodel import Session, SQLModel, create_engine
 
-from app import word_engine
+from app import word_engine, word_match
 from app.db import get_db
 from app.db_models import User
 from app.dependencies import get_current_user
 from app.main import create_app
 from app.settings import Settings, get_settings
+from app.word_engine import Language, WordConfig, configure
+from tests.word_fixtures import DEFAULT_EN, DEFAULT_ES, reconfigure, write_lemma_map, write_pool
 
 
 @pytest.fixture(autouse=True)
-def _no_embeddings(monkeypatch) -> Iterator[None]:
+def word_data_dir(tmp_path_factory) -> Iterator[str]:
     """
-    Keep the embedding model out of the test suite by default.
+    Point the word engine at a temp dir seeded with tiny synthetic artifacts.
 
-    Loading the real model would download hundreds of MB and encode tens of
-    thousands of words — too slow and network-dependent, and CI runs offline.
-    Making ``_load_model`` raise exercises the same graceful degradation the
-    service relies on (related-words / match return empty rather than 500), so
-    the wordfreq and route tests run fast and deterministically. Embedding
-    tests re-patch ``_load_model`` / ``_vocab_matrix`` with in-memory stubs.
+    The real fastText pools + spaCy lemma maps are built offline and committed;
+    the suite writes a handful of words with deterministic unit vectors and an
+    empty lemma map, so related/random/match run fast and offline with no
+    build-only deps. Tests needing specific pools request this fixture and call
+    ``write_pool`` / ``write_lemma_map`` + ``reconfigure`` to override.
     """
-    word_engine._active_config[0] = None
-    word_engine._model_cache.clear()
-    word_engine._matrix_cache.clear()
-
-    def _unavailable() -> object:
-        raise RuntimeError("embedding model disabled in tests")
-
-    monkeypatch.setattr(word_engine, "_load_model", _unavailable)
-    yield
-    word_engine._active_config[0] = None
-    word_engine._model_cache.clear()
-    word_engine._matrix_cache.clear()
+    data_dir = str(tmp_path_factory.mktemp("word_data"))
+    write_pool(data_dir, Language.ES, DEFAULT_ES)
+    write_pool(data_dir, Language.EN, DEFAULT_EN)
+    write_lemma_map(data_dir, Language.ES, {})
+    write_lemma_map(data_dir, Language.EN, {})
+    reconfigure(data_dir)
+    yield data_dir
+    configure(WordConfig(data_dir="/nonexistent-flowfic-word-data"))
+    word_match._map_cache.clear()
+    word_engine._pool_cache.clear()
 
 
 @pytest.fixture

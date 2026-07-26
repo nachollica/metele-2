@@ -6,12 +6,27 @@ import pytest
 
 from app.word_engine import Language
 from app.word_match import is_match, lemma
+from tests.word_fixtures import reconfigure, write_lemma_map
 
 ES = Language.ES
 EN = Language.EN
 
+
+@pytest.fixture(autouse=True)
+def _adjective_gender_map(word_data_dir: str) -> None:
+    """
+    Seed the ES lemma map with the adjective-gender cases the baked spaCy map
+    would carry (alta→alto, nueva→nuevo). simplemma already handles noun gender
+    (gato/gata) and the plural rule covers flor/flores, luz/luces, so those need
+    no map entry.
+    """
+    write_lemma_map(word_data_dir, ES, {"alta": "alto", "nueva": "nuevo"})
+    reconfigure(word_data_dir)
+
+
 # Inflections of the same word — must match. Includes gender pairs: adjective
-# gender (alto/alta, via spaCy) and animate-noun gender (gato/gata, via simplemma).
+# gender (alto/alta, via the lemma map) and animate-noun gender (gato/gata, via
+# simplemma).
 VARIANTS = [
     ("plan", "planes", ES),
     ("palo", "palos", ES),

@@ -1,9 +1,10 @@
 # FLOWFIC backend
 
 FastAPI service handling Auth0-backed user identity (social login only),
-per-user profile state (presets, etc.), the game's WordNet-based word
-helpers, and persistence for finished stories. Pairs with the Next.js
-frontend at `./frontend/`.
+per-user profile state (presets, etc.), the game's word helpers (related /
+random / match, served from precomputed per-language artifacts), and
+persistence for finished stories. Pairs with the Next.js frontend at
+`./frontend/`.
 
 ## Quickstart
 
@@ -93,29 +94,46 @@ table. It is unused and safe to drop manually
 
 | Route | Description |
 | --- | --- |
-| `POST /words/related` | Expand seed words into related words via a BFS over WordNet. |
+| `POST /words/related` | Expand seed words into a loosely-themed game word pool. |
 | `POST /words/random` | Sample an unseeded random pool (used when required words are on but no categories are given). |
+| `POST /words/match` | Judge whether a typed word is an inflection of a required word. |
 
-Both require auth. Body for `/words/related`:
-`{ "words": ["animal"], "language": "en", "depth": 3, "limit": 300, "include_partonomy": true }`
-(`limit` caps at 2000). `/words/random` takes just `{ "language": "en", "limit": 300 }`.
+All require auth. Body for `/words/related`:
+`{ "words": ["animal"], "language": "en", "limit": 300 }` (`limit` caps at
+2000). `/words/random` takes `{ "language": "en", "limit": 300 }`; `/words/match`
+takes `{ "word": "planes", "required": "plane", "language": "en" }`.
 
-Language resolution is unchanged from before:
+Language resolution is the same for all three:
 
 1. Explicit `language` field in the body.
 2. `Accept-Language` header (q-values respected).
 3. Otherwise → **400**.
 
-The expansion is a breadth-first walk of each seed's WordNet synsets,
-descending hyponyms, instance-hyponyms, and adjective `similar_tos`. With
-`include_partonomy=true` (the default) we also follow holonym/meronym
-edges so e.g. `flower` surfaces `petal`, `stem`, etc. Multi-token,
-hyphenated, and proper-noun lemmas are dropped — see `_is_usable_word` for why.
+Everything is served from precomputed, per-language, single-language artifacts
+baked under `data/` — no model runs at request time:
 
-There is also an internal helper `is_morphological_variant(candidate,
-target, language)` in `app.wordnet` that decides whether two words
-share a root (e.g. `loving`/`love` → yes, `romance`/`love` → no). Not
-exposed via HTTP yet; will be wired into the required-word matcher later.
+- **Related / random** (`app.word_engine`) read `data/word_pool/{lang}.npz`: the
+  language's clean word pool plus mono-lingual fastText vectors. The pool is
+  wordfreq's frequency list intersected with that language's simplemma
+  dictionary, which strips proper nouns (`john`, `juan`) and makes
+  cross-language leakage impossible. `related` takes each seed's nearest
+  neighbours and deliberately dilutes them with random pool words (tight
+  relatedness is not a goal — a seed only nudges the pool), so `dog` may pull in
+  `cat` but `plane` is fine too.
+- **Match** (`app.word_match`) reduces both words to a base form and compares:
+  simplemma for noun gender (`gato`/`gata`) and a baked spaCy lemma map
+  (`data/lemma_maps/{lang}.json`) for adjective gender (`alto`/`alta`), plus a
+  regular-plural rule. Distinct look-alikes (`palo`/`pala`, `banco`/`banca`)
+  never collapse. spaCy runs only at build time; the runtime does a dict lookup.
+
+Regenerating the artifacts (after a vocabulary/tuning change) needs the
+build-only dependency group and, for vectors, the mono-lingual fastText files:
+
+```bash
+uv sync --group build   # or: just init
+just vectors --fasttext-dir ~/fasttext   # cc.en.300.vec.gz, cc.es.300.vec.gz
+just lemma-maps
+```
 
 ### Meta
 

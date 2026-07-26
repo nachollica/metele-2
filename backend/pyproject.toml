@@ -5,8 +5,6 @@ description = "FastAPI backend for FLOWFIC — Auth0-backed auth, words and stor
 requires-python = ">=3.14"
 dependencies = [
     "email-validator>=2.3.0",
-    "en-core-web-md",
-    "es-core-news-md",
     "fastapi>=0.138.1",
     "httpx>=0.28.1",
     "numpy>=2.0",
@@ -14,14 +12,11 @@ dependencies = [
     "pydantic-settings>=2.14.2",
     "pydantic>=2.13.4",
     "pyjwt[crypto]>=2.13.0",
-    "sentence-transformers>=5.6.0",
     "simplemma>=1.2.0",
-    "spacy>=3.8.13",
     "sqlalchemy>=2.0.51",
     "sqlmodel>=0.0.39",
     "tzdata>=2026.3",
     "uvicorn[standard]>=0.49.0",
-    "wordfreq>=3.1.1",
 ]
 
 [dependency-groups]
@@ -34,6 +29,17 @@ dev = [
     "pytest-env>=1.6.0",
     "respx>=0.23.1",
     "ruff>=0.15.20",
+]
+# Heavy, build-time-only tooling for regenerating the committed word artifacts
+# (data/word_pool/*.npz via build_vectors, data/lemma_maps/*.json via
+# build_lemma_maps). Deliberately NOT a runtime dependency: `uv sync --no-dev`
+# (the Docker build) excludes it, so torch/spaCy/wordfreq never enter the image.
+# Install locally with `uv sync --group build` (what `just init` does).
+build = [
+    "en-core-web-md",
+    "es-core-news-md",
+    "spacy>=3.8.13",
+    "wordfreq>=3.1.1",
 ]
 
 ### Test
@@ -52,9 +58,10 @@ env = [
     "DEV_USER_ENABLED=true",
     "DEV_USER_TOKEN=dev-test-token",
     "EMAIL_VALIDATION_CHECK_DELIVERABILITY=false",
-    # Keep the wordfreq candidate pool tiny so vocabulary/random tests are fast;
-    # the embedding model itself is stubbed out (see conftest).
-    "WORD_EMBEDDINGS_VOCAB_SIZE=1000",
+    # The word features load per-language artifacts from WORD_DATA_DIR; the suite
+    # writes tiny synthetic pools/maps into a tmp dir and points the engine there
+    # (see conftest), so no real artifacts, fastText, or spaCy are needed.
+    "WORD_DATA_DIR=/nonexistent-flowfic-word-data",
 ]
 addopts = [
     "--cov",
