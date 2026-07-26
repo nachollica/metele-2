@@ -10,21 +10,20 @@ words (:data:`WordConfig.random_fraction`) and shuffled, so the result stays
 varied rather than a tight synonym cluster.
 
 The required-word matcher — deciding whether "planes" satisfies "plane" — is a
-lemma question, not a semantic one; it runs in the frontend against the match map
-built by :mod:`app.scripts.build_match_map`.
+lemma question, not a semantic one; it runs in the frontend against a match map,
+produced by the same tool that builds this pool.
 
-Everything is per-language and single-language. The pool is wordfreq's frequency
-list, intersected with the language's simplemma dictionary (strips proper nouns
-like "john"/"stuart") and scrubbed of loanwords both dictionaries list but that
-read as the other language (a wordfreq frequency-margin guard drops "agua" from
-English, "box" from Spanish — see :func:`_clean_candidates`). Vectors come from
-that language's own mono-lingual fastText file. No multilingual model is ever
-loaded.
+Everything is per-language and single-language: the pool is wordfreq's frequency
+list, kept to real dictionary words (simplemma) and scrubbed of loanwords that
+read as the other language, paired with that language's own mono-lingual fastText
+vectors. No multilingual model is ever involved.
 
-At runtime this module needs only numpy: the per-language matrices are baked
-into the image as ``.npz`` artifacts under ``data_dir`` (see the
-``build_vectors`` script and the backend Dockerfile) and loaded with mmap-speed.
-wordfreq/simplemma are pulled in *only* by :func:`build_pool` at build time.
+This module is purely the *runtime* half: it needs only numpy, and reads the
+per-language ``.npz`` pools baked under ``data_dir`` at mmap-speed. The build
+half (fastText/wordfreq/simplemma/spaCy) lives outside the backend in the
+top-level ``word-assets`` tool, which writes these ``.npz`` files here and the
+frontend's match map. The artifacts are gitignored; the backend image build
+fails loudly if the pool is missing (see the Dockerfile).
 
 It is configured via :func:`configure` (the lifespan passes values from
 ``app.settings``); standalone callers fall back to environment variables, so it
@@ -201,8 +200,9 @@ def get_config() -> WordConfig:
 # ---- Pool loading ------------------------------------------------------
 
 
-# Bump when the pool-building logic or its inputs change so stale on-disk
-# artifacts are rebuilt (and recommitted) rather than silently reused.
+# Filename version for the baked pool. Must match POOL_VERSION in the word-assets
+# tool (the writer). Bump both when the .npz format changes so a stale artifact
+# is regenerated rather than silently reused.
 _POOL_VERSION = 1
 
 
@@ -263,165 +263,6 @@ def is_common(word: str, language: Language, min_zipf: float = DEFAULT_MIN_ZIPF)
     pool = _load_pool(language)
     row = pool.index.get(word.casefold())
     return row is not None and float(pool.zipf[row]) >= min_zipf
-
-
-# ---- Vocabulary / usability -------------------------------------------
-
-
-def _is_usable_word(word: str) -> bool:
-    """
-    Whether ``word`` is usable as a game word.
-
-    ``isalpha`` drops multi-word/hyphenated/digit entries (the frontend only
-    checks the last finished token); the lowercase check drops proper nouns that
-    kept their capital (wordfreq lowercases most, so the dictionary filter in
-    :func:`build_pool` does the real proper-noun scrubbing).
-    """
-    return word.isalpha() and word == word.lower()
-
-
-# ---- Build (build-time only) ------------------------------------------
-
-
-def _read_fasttext_vectors(path: str, wanted: set[str], dim: int) -> dict[str, np.ndarray]:
-    """
-    Stream a fastText ``.vec``/``.vec.gz`` file, returning vectors for ``wanted``.
-
-    fastText files are one ``word f1 f2 ... fdim`` line per token, optionally
-    prefixed by a ``"<count> <dim>"`` header. Streaming keeps memory flat: only
-    the small wanted subset is retained, not the multi-million-row source.
-    """
-    import gzip
-
-    import numpy as np
-
-    found: dict[str, np.ndarray] = {}
-
-    def _consume(line: str) -> None:
-        parts = line.rstrip().split(" ")
-        if len(parts) <= dim:
-            return
-        token = parts[0]
-        if token not in wanted or token in found:
-            return
-        values = parts[1 : dim + 1]
-        found[token] = np.asarray(values, dtype=np.float32)
-
-    opener = gzip.open if path.endswith(".gz") else open
-    with opener(path, "rt", encoding="utf-8", errors="replace") as handle:
-        first = handle.readline()
-        header = first.split()
-        if not (len(header) == 2 and all(tok.lstrip("-").isdigit() for tok in header)):
-            _consume(first)  # no header line — the first line is data
-        for line in handle:
-            if len(found) >= len(wanted):
-                break
-            _consume(line)
-    return found
-
-
-# A word is treated as belonging to another language (and dropped from this
-# language's pool) when its zipf frequency there exceeds its frequency here by
-# more than this margin. simplemma's dictionary lists common loanwords in both
-# languages ("agua" in English, "box" in Spanish), so this frequency guard — not
-# the dictionary alone — is what keeps a language's pool single-language.
-_CROSS_LANGUAGE_MARGIN = 1.0
-
-
-def _reads_as_other_language(word: str, language: Language, here_zipf: float) -> bool:
-    """Whether ``word`` is markedly more frequent in another supported language."""
-    from wordfreq import available_languages, zipf_frequency
-
-    for other in Language:
-        if other is language or other.value not in available_languages():
-            continue
-        if zipf_frequency(word, other.value) - here_zipf > _CROSS_LANGUAGE_MARGIN:
-            return True
-    return False
-
-
-def _clean_candidates(language: Language, vocab_size: int) -> dict[str, float]:
-    """
-    Frequency-ranked, dictionary-clean, single-language candidate words → zipf.
-
-    Three filters compose the pool: wordfreq's frequency list supplies common
-    words (and their zipf); ``simplemma.is_known`` keeps only real dictionary
-    words for *this* language (dropping proper nouns like "john"/"juan"); and the
-    cross-language frequency guard drops loanwords both dictionaries list but
-    that clearly read as the other language ("agua", "box"). Together they make
-    the pool single-language — no cross-language leakage.
-    """
-    import simplemma
-    from wordfreq import top_n_list, zipf_frequency
-
-    candidates: dict[str, float] = {}
-    seen: set[str] = set()
-    for raw in top_n_list(language.value, vocab_size):
-        word = raw.strip()
-        if not word or not _is_usable_word(word):
-            continue
-        folded = word.casefold()
-        if folded in seen:
-            continue
-        here = zipf_frequency(word, language.value)
-        if here < DEFAULT_MIN_ZIPF:
-            continue
-        if not simplemma.is_known(word, language.value):
-            continue
-        if _reads_as_other_language(word, language, here):
-            continue
-        seen.add(folded)
-        candidates[word] = here
-    return candidates
-
-
-def build_pool(language: Language, fasttext_path: str) -> tuple[list[str], np.ndarray]:
-    """
-    Build and persist the language's pool from its fastText file.
-
-    Called by the ``build_vectors`` script. Intersects the clean candidate words
-    with those fastText has a vector for, L2-normalises, and writes
-    ``data_dir/word_pool/{lang}.vN.npz`` (words, float16 vectors, float16 zipf).
-    Vectors are float16 on disk to keep the committed artifact small; they widen
-    to float32 on load for fast matmul.
-    """
-    import numpy as np
-
-    cfg = get_config()
-    candidates = _clean_candidates(language, cfg.vocab_size)
-    vectors = _read_fasttext_vectors(fasttext_path, set(candidates), cfg.dim)
-
-    words: list[str] = []
-    rows: list[np.ndarray] = []
-    zipfs: list[float] = []
-    for word, here in candidates.items():
-        vector = vectors.get(word)
-        if vector is None:
-            continue
-        norm = float(np.linalg.norm(vector))
-        if norm == 0.0:
-            continue
-        words.append(word)
-        rows.append(vector / norm)
-        zipfs.append(here)
-
-    matrix = (
-        np.asarray(rows, dtype=np.float32) if rows else np.zeros((0, cfg.dim), dtype=np.float32)
-    )
-
-    path = _pool_path(cfg.data_dir, language)
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    np.savez(
-        path,
-        words=np.asarray(words, dtype=object),
-        vectors=matrix.astype(np.float16),
-        zipf=np.asarray(zipfs, dtype=np.float16),
-    )
-    result = (words, matrix)
-    _pool_cache[(cfg.data_dir, language)] = PoolData(
-        words, matrix, {w.casefold(): i for i, w in enumerate(words)}, np.asarray(zipfs, np.float32)
-    )
-    return result
 
 
 # ---- Related words -----------------------------------------------------

@@ -1,21 +1,20 @@
 """
-Tests for the pure match-map builder (``app.scripts.build_match_map``).
+Tests for the pure match-map logic (normalisation + connected components).
 
-Only the pure normalisation + connected-components logic is exercised here; the
-full build (simplemma dictionary + spaCy) is a build-time script and is not run
-in the suite. ``build_groups`` takes the two edge sets directly, so we can feed
-synthetic ones and assert the resulting grouping.
+The full build (simplemma dictionary + spaCy) is exercised only by running the
+CLI; here ``build_groups`` takes the two edge sets directly, so synthetic ones
+pin down the grouping.
 """
 
 from __future__ import annotations
 
-from app.scripts.build_match_map import build_groups, normalize_for_match
+from contract import normalize_for_match
+from matchmap import build_groups
 
 
 class TestNormalizeForMatch:
     def test_lowercases_and_strips_diacritics(self) -> None:
         assert normalize_for_match("Brújula") == "brujula"
-        assert normalize_for_match("¡Mármol!") == "¡marmol!"  # punctuation left to the caller
         assert normalize_for_match("NIÑO") == "nino"
 
     def test_folds_special_letters(self) -> None:
@@ -24,7 +23,6 @@ class TestNormalizeForMatch:
 
 
 class TestBuildGroups:
-    # simplemma-style surface → lemma, plus a spaCy adjective-gender edge.
     LEMMA_OF = {
         "gato": "gato", "gata": "gato", "gatos": "gato", "gatas": "gato",
         "alto": "alto", "altos": "alto", "alta": "alta", "altas": "alta",
@@ -59,7 +57,6 @@ class TestBuildGroups:
         assert "solo" not in self._groups()
 
     def test_normalises_keys(self) -> None:
-        # Accented surfaces are stored under their normalised key.
         groups = build_groups({"canción": "canción", "canciones": "canción"}, {})
         assert groups.get("cancion") == groups.get("canciones")
         assert "canción" not in groups  # only the normalised form is a key

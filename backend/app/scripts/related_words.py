@@ -13,7 +13,8 @@ word per line. Handy for eyeballing what a given seed and language produce
 without going through auth and HTTP.
 
 The vector pools are read from ``WORD_DATA_DIR`` (or the packaged
-``backend/data``); build them first with ``app.scripts.build_vectors``.
+``backend/data``); build them first with the word-assets tool
+(``just word-assets::vectors``).
 """
 
 from __future__ import annotations

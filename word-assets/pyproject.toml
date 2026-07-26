@@ -1,0 +1,51 @@
+[project]
+name = "flowfic-word-assets"
+version = "0.1.0"
+description = "Build-time generator for FLOWFIC's word artifacts (vector pools + match maps)."
+requires-python = ">=3.14"
+dependencies = [
+    "numpy>=2.0",
+    "wordfreq>=3.1.1",
+    "simplemma>=1.2.0",
+    "spacy>=3.8.13",
+    # spaCy's package imports its CLI (and thus click) at `import spacy`; nothing
+    # else in this lean env pulls click, so declare it explicitly.
+    "click>=8.0",
+    "en-core-web-md",
+    "es-core-news-md",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=2.1.0",
+    "pytest>=9.1.1",
+    "ruff>=0.15.20",
+]
+
+# Not an installable package — just a dependency env plus flat scripts run with
+# `uv run python -m <script>` (the working directory is on sys.path).
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+es-core-news-md = { url = "https://github.com/explosion/spacy-models/releases/download/es_core_news_md-3.8.0/es_core_news_md-3.8.0-py3-none-any.whl" }
+en-core-web-md = { url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.8.0/en_core_web_md-3.8.0-py3-none-any.whl" }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Source lives in src/ (grouped like tests/); put it on the import path.
+pythonpath = ["src"]
+
+[tool.ruff]
+target-version = "py314"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "B", "N", "C4", "UP", "BLE"]
+ignore = ["E501"]
+
+[tool.mypy]
+python_version = "3.14"
+ignore_missing_imports = true
+mypy_path = "src"
+explicit_package_bases = true

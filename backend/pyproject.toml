@@ -29,18 +29,10 @@ dev = [
     "respx>=0.23.1",
     "ruff>=0.15.20",
 ]
-# Heavy, build-time-only tooling for regenerating the committed word artifacts
-# (data/word_pool/*.npz via build_vectors, frontend/public/match-map/*.json via
-# build_match_map). Deliberately NOT a runtime dependency: `uv sync --no-dev`
-# (the Docker build) excludes it, so spaCy/wordfreq/simplemma never enter the
-# image. Install locally with `uv sync --group build` (what `just init` does).
-build = [
-    "en-core-web-md",
-    "es-core-news-md",
-    "simplemma>=1.2.0",
-    "spacy>=3.8.13",
-    "wordfreq>=3.1.1",
-]
+# The word artifacts (data/word_pool/*.npz and frontend/public/match-map/*.json)
+# are built by the top-level `word-assets` tool, which owns the heavy NLP
+# tooling (fastText/wordfreq/simplemma/spaCy). The backend only *reads* the pool
+# at runtime — numpy is the only dependency that involves.
 
 ### Test
 
@@ -137,7 +129,3 @@ runtime-evaluated-base-classes = ["pydantic.BaseModel", "sqlmodel.SQLModel"]
 python_version = "3.14"
 ignore_missing_imports = true
 exclude = [".venv/"]
-
-[tool.uv.sources]
-es-core-news-md = { url = "https://github.com/explosion/spacy-models/releases/download/es_core_news_md-3.8.0/es_core_news_md-3.8.0-py3-none-any.whl" }
-en-core-web-md = { url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.8.0/en_core_web_md-3.8.0-py3-none-any.whl" }

@@ -107,31 +107,27 @@ Language resolution is the same for both:
 2. `Accept-Language` header (q-values respected).
 3. Otherwise → **400**.
 
-Both are served from a precomputed, per-language, single-language artifact baked
-under `data/` — no model runs at request time. `app.word_engine` reads
-`data/word_pool/{lang}.npz`: the language's clean word pool plus mono-lingual
-fastText vectors. The pool is wordfreq's frequency list intersected with that
-language's simplemma dictionary (strips proper nouns like `john`/`juan`) and a
-frequency guard against loanwords, which keeps it single-language. `related`
-takes each seed's nearest neighbours and deliberately dilutes them with random
-pool words (tight relatedness is not a goal — a seed only nudges the pool), so
-`dog` may pull in `cat` but `plane` is fine too.
+Both are served from a precomputed, per-language, single-language artifact under
+`data/word_pool/{lang}.vN.npz` — no model runs at request time. `app.word_engine`
+only *reads* it (numpy is the only dependency that involves): the language's
+clean word pool plus mono-lingual fastText vectors. `related` takes each seed's
+nearest neighbours and deliberately dilutes them with random pool words (tight
+relatedness is not a goal — a seed only nudges the pool), so `dog` may pull in
+`cat` but `plane` is fine too.
 
 **Word matching runs entirely in the frontend** (does a typed word satisfy the
-required word — `gatos`/`gato` yes, `palo`/`pala` no). `app.scripts.build_match_map`
-turns the same pool into `frontend/public/match-map/{lang}.vN.json` (normalised
-surface → inflection-group id, via simplemma + spaCy connected components); the
-frontend loads it once and matches locally, with a small regular-plural rule for
-the rest. There is no backend match endpoint.
+required word — `gatos`/`gato` yes, `palo`/`pala` no), against a match map the
+frontend loads once. There is no backend match endpoint.
 
-Regenerating the artifacts (after a vocabulary/tuning change) needs the
-build-only dependency group; the vector pool also needs the mono-lingual
-fastText files:
+Both artifacts — the vector pool here and the frontend match map — are produced
+by the top-level **`word-assets`** tool, which owns the heavy build-only tooling
+(fastText, wordfreq, simplemma, spaCy). The backend carries none of it. The
+artifacts are gitignored (large); the image build fails if the pool is missing.
+See `../word-assets/README.md`. To regenerate:
 
 ```bash
-uv sync --group build   # or: just init
-just vectors --fasttext-dir ~/fasttext   # cc.en.300.vec.gz, cc.es.300.vec.gz
-just match-map                            # → frontend/public/match-map/*.json
+just word-assets::vectors --fasttext-dir ~/fasttext   # → backend/data/word_pool
+just word-assets::match-map                           # → frontend/public/match-map
 ```
 
 ### Meta

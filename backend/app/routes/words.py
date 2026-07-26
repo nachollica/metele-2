@@ -9,7 +9,7 @@ Two endpoints:
   enables required words but gives no categories).
 
 Required-word matching used to live here too, but it now runs entirely in the
-frontend against a precomputed match map (built by ``app.scripts.build_match_map``
+frontend against a precomputed match map (built by the top-level word-assets tool
 into ``frontend/public/match-map``), so there is no per-keystroke backend call.
 
 Both resolve the language the same way and never default silently:

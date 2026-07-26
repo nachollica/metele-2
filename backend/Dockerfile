@@ -54,10 +54,14 @@ WORKDIR ${APP_ROOT}
 
 COPY --from=builder ${VENV_PATH} ${VENV_PATH}
 
-# App code plus the committed per-language word artifacts (data/word_pool/*.npz
-# and data/lemma_maps/*.json). `default_data_dir()` resolves to ${APP_ROOT}/data.
+# App code plus the per-language vector pools (data/word_pool/*.npz).
+# `default_data_dir()` resolves to ${APP_ROOT}/data. The pools are built by the
+# top-level word-assets tool and are gitignored, so guard against building an
+# image without them (fail loudly rather than shipping degraded word features).
 COPY --chown=flowfic:flowfic app ${APP_ROOT}/app
 COPY --chown=flowfic:flowfic data ${APP_ROOT}/data
+RUN test -f data/word_pool/en.v1.npz && test -f data/word_pool/es.v1.npz \
+    || (echo "ERROR: missing data/word_pool/*.npz — run 'just word-assets::vectors' first" >&2; exit 1)
 
 # Writable data dir for the SQLite file in local/dev runs.
 RUN install -d -o flowfic -g flowfic /data

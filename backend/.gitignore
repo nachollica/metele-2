@@ -11,4 +11,8 @@ __pycache__/
 *.sqlite
 *.sqlite3
 
+# Generated vector pools (built by the top-level word-assets tool; large, so not
+# committed). The image build fails loudly if they are missing.
+/data/word_pool/
+
 !.python-version

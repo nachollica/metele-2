@@ -4,9 +4,9 @@
 help:
     @just --list
 
-[doc("Install / refresh dependencies into ./.venv/ (incl. the build group).")]
+[doc("Install / refresh dependencies into ./.venv/.")]
 init:
-    uv sync --group build
+    uv sync
 
 [group("development")]
 [doc("Run uvicorn with autoreload on port 8000. Loads .env into the shell.")]
@@ -54,18 +54,6 @@ ci: check tc test
 seed +USERNAMES:
     set -a; [ -f .env ] && . ./.env; set +a; \
     uv run python -m app.scripts.seed_dev_user {{USERNAMES}}
-
-[group("development")]
-[doc("Rebuild the per-language vector pools. Needs fastText files; see the script. \
-Usage: just vectors --fasttext-dir ~/fasttext")]
-vectors +ARGS:
-    uv run python -m app.scripts.build_vectors {{ARGS}}
-
-[group("development")]
-[doc("Rebuild the frontend match map (word matching) into frontend/public/match-map. \
-Usage: just match-map  (or: just match-map -l es)")]
-match-map *ARGS:
-    uv run python -m app.scripts.build_match_map {{ARGS}}
 
 [group("development")]
 [doc("Expand seed words into related words. Usage: just related kitchen food -l es -n 30")]

@@ -6,6 +6,9 @@
 
 mod backend
 mod frontend
+# Build-time generator for the word artifacts (vector pools + match maps) that
+# feed the backend and frontend. Its heavy NLP deps live only here.
+mod word-assets
 
 [doc("Print available commands.")]
 help:
@@ -52,10 +55,16 @@ dev: up
 # ----- Code checks --------------------------------------------
 
 [group("checks")]
-[doc("Run all checks across frontend and backend.")]
+[doc("Run all checks across frontend, backend, and the word-assets tool.")]
 cc:
     just frontend::cc
     just backend::cc
+    just word-assets::cc
+
+[group("checks")]
+[doc("Verify the generated word artifacts are present (pools + match maps).")]
+check-assets:
+    just word-assets::check
 
 # ----- Deploy ----------------------------------------------------------
 

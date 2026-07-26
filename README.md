@@ -8,13 +8,17 @@ over. Sessions can be saved to your account and replayed later.
 
 | Path | What lives there |
 | --- | --- |
-| [`frontend/`](frontend/) | Next.js app (static export). Game UI, Auth0 SPA flow, i18n. See [frontend/README.md](frontend/README.md). |
-| [`backend/`](backend/) | FastAPI service. Auth0 token validation, profile/preset/story APIs, WordNet word helpers. See [backend/README.md](backend/README.md). |
+| [`frontend/`](frontend/) | Next.js app (static export). Game UI, Auth0 SPA flow, i18n, client-side word matching. See [frontend/README.md](frontend/README.md). |
+| [`backend/`](backend/) | FastAPI service. Auth0 token validation, profile/preset/story APIs, and the related/random word helpers. See [backend/README.md](backend/README.md). |
+| [`word-assets/`](word-assets/) | Standalone build-time tool that generates the per-language word data (vector pools + match maps) consumed by the backend and frontend. See [word-assets/README.md](word-assets/README.md). |
 | [`prod/`](prod/) | Production deployment bundle: Caddy reverse proxy, Postgres, and the API in `docker-compose.yaml`. |
 | `justfile`, `docker-compose.yaml` | Cross-cutting glue only. Per-project commands live in each subdirectory's `justfile`. |
 
 The game is fully client-side and ships as static assets; the backend is
-consulted only at session start (word pools) and for saving/loading stories.
+consulted only at session start (word pools) and for saving/loading stories,
+while word matching runs entirely in the browser. The word data the game relies
+on is built by `word-assets/` and is **gitignored** — regenerate it before
+building (both builds fail loudly if it is missing). See its README.
 
 ## Quickstart
 
@@ -37,7 +41,8 @@ just backend::dev    # uvicorn on :8000 (loads backend/.env)
 ```bash
 just help            # list root commands
 just help-all        # include backend:: / frontend:: subcommands
-just cc              # run all checks (lint + types + tests) for both projects
+just cc              # run all checks (lint + types + tests) across all projects
+just check-assets    # verify the generated word data is present
 just up / down / logs   # full docker stack (caddy + api + db)
 ```
 

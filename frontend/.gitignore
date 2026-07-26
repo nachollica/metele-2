@@ -7,6 +7,10 @@ pnpm-workspace.yaml
 out/
 *.gz
 
+# Generated word match maps (built by the top-level word-assets tool; large, so
+# not committed). The prebuild guard fails loudly if they are missing.
+/public/match-map/
+
 # Playwright e2e artifacts
 test-results/
 playwright-report/

@@ -1,0 +1,80 @@
+"""
+The small, stable contract this tool shares with its two consumers.
+
+There is intentionally no shared package: the word-assets tool is standalone, so
+the few items below are duplicated in the code that READS the artifacts and MUST
+be kept in sync. Counterparts:
+
+- ``POOL_VERSION`` / ``pool_path`` / ``NPZ_*`` / ``DEFAULT_MIN_ZIPF`` mirror the
+  backend reader in ``backend/app/word_engine.py`` (``_POOL_VERSION``,
+  ``_pool_path``, ``_load_pool``, ``is_common``).
+- ``MATCH_MAP_VERSION`` / ``match_map_path`` / :func:`normalize_for_match` mirror
+  the frontend in ``frontend/lib/flowfic/match-map.ts`` and
+  ``frontend/lib/flowfic/words.ts``.
+
+These change ~never; when one does, bump it here and in the named counterpart.
+"""
+
+from __future__ import annotations
+
+import os
+import re
+import unicodedata
+
+# Languages we build for (mirror backend `Language` / frontend `Locale`).
+LANGUAGES: tuple[str, ...] = ("en", "es")
+
+# ---- word_pool artifact (consumed by the backend runtime) --------------
+
+POOL_VERSION = 1
+# Minimum wordfreq zipf a word must clear to enter the pool (backend's
+# is_common uses the same default value).
+DEFAULT_MIN_ZIPF = 2.5
+# npz array keys — must match backend `_load_pool`.
+NPZ_WORDS = "words"
+NPZ_VECTORS = "vectors"
+NPZ_ZIPF = "zipf"
+
+# ---- match-map artifact (consumed by the frontend) ---------------------
+
+MATCH_MAP_VERSION = 1
+
+
+# ---- Output locations --------------------------------------------------
+
+
+def _repo_root() -> str:
+    """Repo root — this file lives at ``<repo>/word-assets/src/contract.py``."""
+    return os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+def pool_path(lang: str) -> str:
+    """``backend/data/word_pool/{lang}.vN.npz`` (matches backend ``_pool_path``)."""
+    return os.path.join(_repo_root(), "backend", "data", "word_pool", f"{lang}.v{POOL_VERSION}.npz")
+
+
+def match_map_path(lang: str) -> str:
+    """``frontend/public/match-map/{lang}.vN.json`` (matches the frontend loader)."""
+    return os.path.join(
+        _repo_root(), "frontend", "public", "match-map", f"{lang}.v{MATCH_MAP_VERSION}.json"
+    )
+
+
+# ---- Normalisation -----------------------------------------------------
+# MUST mirror ``normalizeForMatch`` in frontend/lib/flowfic/words.ts so the
+# match-map keys line up with what the frontend looks up.
+
+_SPECIAL_LETTER_MAP = {
+    "ł": "l", "ø": "o", "đ": "d", "ð": "d", "þ": "th", "ß": "ss",
+    "æ": "ae", "œ": "oe", "ı": "i", "ħ": "h", "ŧ": "t", "ƀ": "b",
+}  # fmt: skip
+_SPECIAL_LETTER_RE = re.compile("[" + "".join(_SPECIAL_LETTER_MAP) + "]")
+_COMBINING_RE = re.compile(r"[̀-ͯ]")
+
+
+def normalize_for_match(text: str) -> str:
+    """Lowercase, fold special letters, and strip diacritics (see words.ts)."""
+    lowered = text.lower()
+    replaced = _SPECIAL_LETTER_RE.sub(lambda m: _SPECIAL_LETTER_MAP[m.group()], lowered)
+    decomposed = unicodedata.normalize("NFD", replaced)
+    return _COMBINING_RE.sub("", decomposed)

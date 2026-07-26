@@ -1,0 +1,52 @@
+# word-assets — build-time generator for FLOWFIC's word artifacts.
+#
+# Produces two per-language artifacts, each written into its consumer's tree
+# (both are gitignored; regenerate as below):
+#   - backend/data/word_pool/{lang}.vN.npz   (backend runtime: related/random)
+#   - frontend/public/match-map/{lang}.vN.json  (frontend: word matching)
+
+[doc("Print available commands.")]
+help:
+    @just --list
+
+[doc("Install / refresh dependencies into ./.venv/.")]
+init:
+    uv sync
+
+[group("build")]
+[doc("Rebuild the vector pools → backend/data. Needs fastText files. \
+Usage: just vectors --fasttext-dir ~/fasttext")]
+vectors +ARGS:
+    uv run python src/build_vectors.py {{ARGS}}
+
+[group("build")]
+[doc("Rebuild the match maps → frontend/public/match-map. Needs the pools first.")]
+match-map *ARGS:
+    uv run python src/build_match_map.py {{ARGS}}
+
+[group("build")]
+[doc("Rebuild everything: vector pools then match maps. Usage: just all --fasttext-dir ~/fasttext")]
+all +ARGS:
+    uv run python src/build_vectors.py {{ARGS}}
+    uv run python src/build_match_map.py
+
+[group("build")]
+[doc("Verify all expected artifacts exist (non-zero exit if any are missing).")]
+check:
+    uv run python src/check_assets.py
+
+[group("development")]
+[doc("Check-only lint + format + type + test (CI entry point).")]
+ci:
+    uv run ruff check .
+    uv run ruff format --check .
+    uv run mypy .
+    uv run pytest
+
+[group("development")]
+[doc("Autofix lint + format, then type + test.")]
+cc:
+    uv run ruff check --fix .
+    uv run ruff format .
+    uv run mypy .
+    uv run pytest

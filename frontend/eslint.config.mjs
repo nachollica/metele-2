@@ -19,6 +19,14 @@ export default [
   react.configs.flat.recommended,
   react.configs.flat["jsx-runtime"],
   {
+    // Node build/util scripts (e.g. the match-map prebuild guard).
+    files: ["scripts/**/*.mjs"],
+    languageOptions: {
+      sourceType: "module",
+      globals: { ...globals.node },
+    },
+  },
+  {
     files: ["**/*.ts", "**/*.tsx"],
     languageOptions: {
       parser: tsParser,
