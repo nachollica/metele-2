@@ -12,7 +12,6 @@ dependencies = [
     "pydantic-settings>=2.14.2",
     "pydantic>=2.13.4",
     "pyjwt[crypto]>=2.13.0",
-    "simplemma>=1.2.0",
     "sqlalchemy>=2.0.51",
     "sqlmodel>=0.0.39",
     "tzdata>=2026.3",
@@ -31,13 +30,14 @@ dev = [
     "ruff>=0.15.20",
 ]
 # Heavy, build-time-only tooling for regenerating the committed word artifacts
-# (data/word_pool/*.npz via build_vectors, data/lemma_maps/*.json via
-# build_lemma_maps). Deliberately NOT a runtime dependency: `uv sync --no-dev`
-# (the Docker build) excludes it, so torch/spaCy/wordfreq never enter the image.
-# Install locally with `uv sync --group build` (what `just init` does).
+# (data/word_pool/*.npz via build_vectors, frontend/public/match-map/*.json via
+# build_match_map). Deliberately NOT a runtime dependency: `uv sync --no-dev`
+# (the Docker build) excludes it, so spaCy/wordfreq/simplemma never enter the
+# image. Install locally with `uv sync --group build` (what `just init` does).
 build = [
     "en-core-web-md",
     "es-core-news-md",
+    "simplemma>=1.2.0",
     "spacy>=3.8.13",
     "wordfreq>=3.1.1",
 ]

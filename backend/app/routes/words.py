@@ -1,17 +1,18 @@
 """
-Words API — HTTP layer over the embedding word logic in :mod:`app.word_engine`.
+Words API — HTTP layer over the word logic in :mod:`app.word_engine`.
 
-Three endpoints:
+Two endpoints:
 
 - ``POST /words/related`` expands user-supplied "category" seeds into a pool of
   related words.
 - ``POST /words/random`` samples an unseeded random pool (used when the player
   enables required words but gives no categories).
-- ``POST /words/match`` judges whether a typed word is a close enough match for a
-  required word (the frontend pre-filters on spelling; the backend decides
-  meaning, so "planes" matches "plane" but "planet" does not).
 
-All resolve the language the same way and never default silently:
+Required-word matching used to live here too, but it now runs entirely in the
+frontend against a precomputed match map (built by ``app.scripts.build_match_map``
+into ``frontend/public/match-map``), so there is no per-keystroke backend call.
+
+Both resolve the language the same way and never default silently:
 
 1. Explicit ``language`` field in the request body.
 2. ``Accept-Language`` header — parsed with q-values, first supported wins.
@@ -28,7 +29,6 @@ from app.word_engine import (
     parse_accept_language,
     random_words,
 )
-from app.word_match import is_match
 
 router = APIRouter(prefix="/words", tags=["words"])
 
@@ -55,18 +55,6 @@ class RandomWordsRequest(BaseModel):
 class RandomWordsResponse(BaseModel):
     language: Language
     words: list[str]
-
-
-class MatchRequest(BaseModel):
-    # The word the player typed and the required word it should satisfy.
-    word: str = Field(..., min_length=1, max_length=100)
-    required: str = Field(..., min_length=1, max_length=100)
-    language: Language | None = None
-
-
-class MatchResponse(BaseModel):
-    language: Language
-    valid: bool
 
 
 # ---- Route -------------------------------------------------------------
@@ -116,20 +104,3 @@ def random_words_route(
     language = _resolve_language(payload.language, accept_language)
     words = random_words(language, limit=payload.limit)
     return RandomWordsResponse(language=language, words=words)
-
-
-@router.post(
-    "/match",
-    response_model=MatchResponse,
-    summary="Judge whether a typed word is an inflection of a required word.",
-)
-def match_word(
-    payload: MatchRequest,
-    _user: CurrentUser,
-    accept_language: AcceptLanguageHeader = None,
-) -> MatchResponse:
-    language = _resolve_language(payload.language, accept_language)
-    return MatchResponse(
-        language=language,
-        valid=is_match(payload.word, payload.required, language),
-    )

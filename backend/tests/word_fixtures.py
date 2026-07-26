@@ -1,20 +1,18 @@
 """
 Helpers for wiring the word engine to tiny synthetic artifacts in tests.
 
-The real pools/maps are built offline from fastText + spaCy and committed; the
-suite instead writes a handful of words (with deterministic unit vectors) and a
-small lemma map into a temp dir and points the engine there, so tests stay fast,
-offline, and free of the heavy build-only dependencies.
+The real vector pools are built offline from fastText and committed; the suite
+instead writes a handful of words (with deterministic unit vectors) into a temp
+dir and points the engine there, so tests stay fast, offline, and free of the
+heavy build-only dependencies.
 """
 
 from __future__ import annotations
 
-import json
 import os
 
 import numpy as np
 
-from app import word_match
 from app.word_engine import Language, WordConfig, _pool_path, configure
 
 # Default per-language pools — enough common words for the random/route tests.
@@ -51,15 +49,6 @@ def write_pool(
     )
 
 
-def write_lemma_map(data_dir: str, language: Language, mapping: dict[str, str]) -> None:
-    """Write a ``lemma_maps/{lang}.json`` (casefolded surface → lemma)."""
-    path = word_match._map_path(data_dir, language)
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w", encoding="utf-8") as handle:
-        json.dump(mapping, handle, ensure_ascii=False)
-
-
 def reconfigure(data_dir: str, **overrides: object) -> None:
-    """Point the engine at ``data_dir`` and drop the matcher's map cache."""
+    """Point the engine at ``data_dir`` (dropping any cached pools)."""
     configure(WordConfig(data_dir=data_dir, **overrides))  # type: ignore[arg-type]
-    word_match._map_cache.clear()

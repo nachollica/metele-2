@@ -9,8 +9,9 @@ vector matrix; the neighbours are then deliberately diluted with random pool
 words (:data:`WordConfig.random_fraction`) and shuffled, so the result stays
 varied rather than a tight synonym cluster.
 
-The required-word matcher — deciding whether "planes" satisfies "plane" — lives
-in :mod:`app.word_match`; it is a lemma question, not a semantic one.
+The required-word matcher — deciding whether "planes" satisfies "plane" — is a
+lemma question, not a semantic one; it runs in the frontend against the match map
+built by :mod:`app.scripts.build_match_map`.
 
 Everything is per-language and single-language. The pool is wordfreq's frequency
 list, intersected with the language's simplemma dictionary (strips proper nouns

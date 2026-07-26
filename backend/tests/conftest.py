@@ -17,36 +17,32 @@ from fastapi.testclient import TestClient
 from sqlalchemy import Engine
 from sqlmodel import Session, SQLModel, create_engine
 
-from app import word_engine, word_match
+from app import word_engine
 from app.db import get_db
 from app.db_models import User
 from app.dependencies import get_current_user
 from app.main import create_app
 from app.settings import Settings, get_settings
 from app.word_engine import Language, WordConfig, configure
-from tests.word_fixtures import DEFAULT_EN, DEFAULT_ES, reconfigure, write_lemma_map, write_pool
+from tests.word_fixtures import DEFAULT_EN, DEFAULT_ES, reconfigure, write_pool
 
 
 @pytest.fixture(autouse=True)
 def word_data_dir(tmp_path_factory) -> Iterator[str]:
     """
-    Point the word engine at a temp dir seeded with tiny synthetic artifacts.
+    Point the word engine at a temp dir seeded with tiny synthetic pools.
 
-    The real fastText pools + spaCy lemma maps are built offline and committed;
-    the suite writes a handful of words with deterministic unit vectors and an
-    empty lemma map, so related/random/match run fast and offline with no
-    build-only deps. Tests needing specific pools request this fixture and call
-    ``write_pool`` / ``write_lemma_map`` + ``reconfigure`` to override.
+    The real fastText pools are built offline and committed; the suite writes a
+    handful of words with deterministic unit vectors, so related/random run fast
+    and offline with no build-only deps. Tests needing specific pools request
+    this fixture and call ``write_pool`` + ``reconfigure`` to override.
     """
     data_dir = str(tmp_path_factory.mktemp("word_data"))
     write_pool(data_dir, Language.ES, DEFAULT_ES)
     write_pool(data_dir, Language.EN, DEFAULT_EN)
-    write_lemma_map(data_dir, Language.ES, {})
-    write_lemma_map(data_dir, Language.EN, {})
     reconfigure(data_dir)
     yield data_dir
     configure(WordConfig(data_dir="/nonexistent-flowfic-word-data"))
-    word_match._map_cache.clear()
     word_engine._pool_cache.clear()
 
 

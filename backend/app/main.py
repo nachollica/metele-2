@@ -18,8 +18,7 @@ from app.routes.stats import router as stats_router
 from app.routes.stories import router as stories_router
 from app.routes.words import router as words_router
 from app.settings import get_settings
-from app.word_engine import LANGUAGES, WordConfig, configure, default_data_dir, ensure_ready
-from app.word_match import preload as preload_matchers
+from app.word_engine import WordConfig, configure, default_data_dir, ensure_ready
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
@@ -46,9 +45,8 @@ async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
     if settings.environment != "testing":
         configure(_word_config(settings))
         try:
-            # Load the baked per-language vector pools and lemma maps into RAM.
+            # Load the baked per-language vector pools into RAM.
             ensure_ready()
-            preload_matchers(LANGUAGES)
         except Exception:
             # Don't take the whole app down if an artifact can't be prepared;
             # word features degrade until it is available.

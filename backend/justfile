@@ -62,17 +62,12 @@ vectors +ARGS:
     uv run python -m app.scripts.build_vectors {{ARGS}}
 
 [group("development")]
-[doc("Rebuild the per-language spaCy lemma maps used by the matcher. \
-Usage: just lemma-maps  (or: just lemma-maps -l es)")]
-lemma-maps *ARGS:
-    uv run python -m app.scripts.build_lemma_maps {{ARGS}}
+[doc("Rebuild the frontend match map (word matching) into frontend/public/match-map. \
+Usage: just match-map  (or: just match-map -l es)")]
+match-map *ARGS:
+    uv run python -m app.scripts.build_match_map {{ARGS}}
 
 [group("development")]
 [doc("Expand seed words into related words. Usage: just related kitchen food -l es -n 30")]
 related +ARGS:
     uv run python -m app.scripts.related_words {{ARGS}}
-
-[group("development")]
-[doc("Match every pair among a list of words. Usage: just match palo pala palos -l es")]
-match +WORDS:
-    uv run python -m app.scripts.match_word {{WORDS}}

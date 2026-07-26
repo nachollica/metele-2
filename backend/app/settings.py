@@ -38,14 +38,14 @@ class Settings(BaseSettings):
     )
 
     # ---- Words -----------------------------------------------------------
-    # The related-words + match features load precomputed per-language artifacts
-    # (fastText vector matrices and spaCy lemma maps) baked into the image under
-    # `dir`. No model is loaded at runtime — only numpy + simplemma. The build
-    # knobs (vocab size, vector dim, fastText source) live in the build scripts,
-    # not here, since they only matter when regenerating the committed artifacts.
+    # Related/random words load a precomputed per-language fastText vector pool
+    # baked into the image under `dir`. No model is loaded at runtime — only
+    # numpy. The build knobs (vocab size, vector dim, fastText source) live in the
+    # build scripts, not here, since they only matter when regenerating the pool.
+    # (Word matching is a separate, frontend-only concern — see build_match_map.)
     word_data_dir: str = Field(
         default="",
-        description="Directory holding the baked word_pool/ + lemma_maps/ artifacts "
+        description="Directory holding the baked word_pool/ artifacts "
         "(blank = the packaged backend/data).",
     )
     word_related_per_seed: int = Field(

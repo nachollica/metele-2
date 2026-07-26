@@ -34,11 +34,6 @@ WORKDIR ${APP_ROOT}
 COPY pyproject.toml uv.lock ./
 RUN uv sync --no-dev --frozen
 
-# Drop simplemma's bundled dictionaries for languages we don't serve (each is a
-# self-contained .plzma loaded on demand), keeping only en/es. Saves ~50MB.
-RUN find "${VENV_PATH}"/lib/python*/site-packages/simplemma/strategies/dictionaries/data \
-        -name '*.plzma' ! -name 'en.plzma' ! -name 'es.plzma' -delete
-
 
 # ----- Runtime ---------------------------------------------------------------
 FROM python:${PYTHON_DOCKER_TAG}

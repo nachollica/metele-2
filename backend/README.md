@@ -96,43 +96,42 @@ table. It is unused and safe to drop manually
 | --- | --- |
 | `POST /words/related` | Expand seed words into a loosely-themed game word pool. |
 | `POST /words/random` | Sample an unseeded random pool (used when required words are on but no categories are given). |
-| `POST /words/match` | Judge whether a typed word is an inflection of a required word. |
 
-All require auth. Body for `/words/related`:
+Both require auth. Body for `/words/related`:
 `{ "words": ["animal"], "language": "en", "limit": 300 }` (`limit` caps at
-2000). `/words/random` takes `{ "language": "en", "limit": 300 }`; `/words/match`
-takes `{ "word": "planes", "required": "plane", "language": "en" }`.
+2000). `/words/random` takes `{ "language": "en", "limit": 300 }`.
 
-Language resolution is the same for all three:
+Language resolution is the same for both:
 
 1. Explicit `language` field in the body.
 2. `Accept-Language` header (q-values respected).
 3. Otherwise → **400**.
 
-Everything is served from precomputed, per-language, single-language artifacts
-baked under `data/` — no model runs at request time:
+Both are served from a precomputed, per-language, single-language artifact baked
+under `data/` — no model runs at request time. `app.word_engine` reads
+`data/word_pool/{lang}.npz`: the language's clean word pool plus mono-lingual
+fastText vectors. The pool is wordfreq's frequency list intersected with that
+language's simplemma dictionary (strips proper nouns like `john`/`juan`) and a
+frequency guard against loanwords, which keeps it single-language. `related`
+takes each seed's nearest neighbours and deliberately dilutes them with random
+pool words (tight relatedness is not a goal — a seed only nudges the pool), so
+`dog` may pull in `cat` but `plane` is fine too.
 
-- **Related / random** (`app.word_engine`) read `data/word_pool/{lang}.npz`: the
-  language's clean word pool plus mono-lingual fastText vectors. The pool is
-  wordfreq's frequency list intersected with that language's simplemma
-  dictionary, which strips proper nouns (`john`, `juan`) and makes
-  cross-language leakage impossible. `related` takes each seed's nearest
-  neighbours and deliberately dilutes them with random pool words (tight
-  relatedness is not a goal — a seed only nudges the pool), so `dog` may pull in
-  `cat` but `plane` is fine too.
-- **Match** (`app.word_match`) reduces both words to a base form and compares:
-  simplemma for noun gender (`gato`/`gata`) and a baked spaCy lemma map
-  (`data/lemma_maps/{lang}.json`) for adjective gender (`alto`/`alta`), plus a
-  regular-plural rule. Distinct look-alikes (`palo`/`pala`, `banco`/`banca`)
-  never collapse. spaCy runs only at build time; the runtime does a dict lookup.
+**Word matching runs entirely in the frontend** (does a typed word satisfy the
+required word — `gatos`/`gato` yes, `palo`/`pala` no). `app.scripts.build_match_map`
+turns the same pool into `frontend/public/match-map/{lang}.vN.json` (normalised
+surface → inflection-group id, via simplemma + spaCy connected components); the
+frontend loads it once and matches locally, with a small regular-plural rule for
+the rest. There is no backend match endpoint.
 
 Regenerating the artifacts (after a vocabulary/tuning change) needs the
-build-only dependency group and, for vectors, the mono-lingual fastText files:
+build-only dependency group; the vector pool also needs the mono-lingual
+fastText files:
 
 ```bash
 uv sync --group build   # or: just init
 just vectors --fasttext-dir ~/fasttext   # cc.en.300.vec.gz, cc.es.300.vec.gz
-just lemma-maps
+just match-map                            # → frontend/public/match-map/*.json
 ```
 
 ### Meta

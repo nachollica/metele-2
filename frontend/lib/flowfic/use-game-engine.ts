@@ -14,7 +14,12 @@ import { useLocale } from "@/lib/i18n"
 import { usePreferences } from "@/lib/preferences"
 import { playBell, primeAudio } from "@/lib/flowfic/sound"
 import { randomIntervalMs } from "@/lib/flowfic/random"
-import { pickRequiredWord, matchesWord, normalizeForMatch } from "@/lib/flowfic/words"
+import { pickRequiredWord, normalizeForMatch } from "@/lib/flowfic/words"
+import {
+  isInflectionMatch,
+  loadMatchMap,
+  type MatchMap,
+} from "@/lib/flowfic/match-map"
 import {
   fetchRandomWords,
   fetchRelatedWords,
@@ -90,6 +95,8 @@ export function useGameEngine() {
   const currentWordRef = useRef<string | null>(null)
   const settingsRef = useRef<GameSettings>(DEFAULT_SETTINGS)
   const customPoolRef = useRef<readonly string[] | null>(null)
+  // Required-word match map for the active locale (null until loaded / offline).
+  const matchMapRef = useRef<MatchMap | null>(null)
 
   const idleTimeoutRef = useRef<number | null>(null)
   const globalTimeoutRef = useRef<number | null>(null)
@@ -109,6 +116,19 @@ export function useGameEngine() {
   useEffect(() => {
     settingsRef.current = settings
   }, [settings])
+
+  // Prefetch the required-word match map for the active locale so it is warm
+  // before a game starts. It is versioned/immutable, so this is effectively a
+  // one-time fetch per browser; startGame also awaits it before playing.
+  useEffect(() => {
+    let active = true
+    void loadMatchMap(locale).then((map) => {
+      if (active) matchMapRef.current = map
+    })
+    return () => {
+      active = false
+    }
+  }, [locale])
 
   // Bell pref hydrates from localStorage; mirror it into the active settings.
   useEffect(() => {
@@ -384,9 +404,15 @@ export function useGameEngine() {
           ? fetchRelatedWords(token, seeds, locale)
           : fetchRandomWords(token, locale)
       })()
-      void Promise.race([fetchPool, timeout]).then((pool) => {
+      // Wait for both the word pool (time-boxed) and the match map before
+      // playing, so the spinner covers matching being ready too.
+      void Promise.all([
+        Promise.race([fetchPool, timeout]),
+        loadMatchMap(locale),
+      ]).then(([pool, map]) => {
         if (resolved) return
         resolved = true
+        matchMapRef.current = map
         beginPlaying(newSettings, pool)
       })
     },
@@ -456,7 +482,7 @@ export function useGameEngine() {
       if (start === end) return
 
       const justFinished = newText.slice(start, end)
-      if (!matchesWord(justFinished, required)) return
+      if (!isInflectionMatch(justFinished, required, locale, matchMapRef.current)) return
 
       setMatches((prev) => [...prev, { start, end }])
       setCurrentRequiredWord(null)
@@ -469,7 +495,7 @@ export function useGameEngine() {
       }
       armSpawnTimer()
     },
-    [armSpawnTimer],
+    [armSpawnTimer, locale],
   )
 
   const handleChange = useCallback(
