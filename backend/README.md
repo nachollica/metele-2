@@ -1,9 +1,10 @@
 # FLOWFIC backend
 
 FastAPI service handling Auth0-backed user identity (social login only),
-per-user profile state (presets, etc.), the game's WordNet-based word
-helpers, and persistence for finished stories. Pairs with the Next.js
-frontend at `./frontend/`.
+per-user profile state (presets, etc.), the game's word helpers (related /
+random / match, served from precomputed per-language artifacts), and
+persistence for finished stories. Pairs with the Next.js frontend at
+`./frontend/`.
 
 ## Quickstart
 
@@ -93,29 +94,41 @@ table. It is unused and safe to drop manually
 
 | Route | Description |
 | --- | --- |
-| `POST /words/related` | Expand seed words into related words via a BFS over WordNet. |
+| `POST /words/related` | Expand seed words into a loosely-themed game word pool. |
 | `POST /words/random` | Sample an unseeded random pool (used when required words are on but no categories are given). |
 
 Both require auth. Body for `/words/related`:
-`{ "words": ["animal"], "language": "en", "depth": 3, "limit": 300, "include_partonomy": true }`
-(`limit` caps at 2000). `/words/random` takes just `{ "language": "en", "limit": 300 }`.
+`{ "words": ["animal"], "language": "en", "limit": 300 }` (`limit` caps at
+2000). `/words/random` takes `{ "language": "en", "limit": 300 }`.
 
-Language resolution is unchanged from before:
+Language resolution is the same for both:
 
 1. Explicit `language` field in the body.
 2. `Accept-Language` header (q-values respected).
 3. Otherwise → **400**.
 
-The expansion is a breadth-first walk of each seed's WordNet synsets,
-descending hyponyms, instance-hyponyms, and adjective `similar_tos`. With
-`include_partonomy=true` (the default) we also follow holonym/meronym
-edges so e.g. `flower` surfaces `petal`, `stem`, etc. Multi-token,
-hyphenated, and proper-noun lemmas are dropped — see `_is_usable_word` for why.
+Both are served from a precomputed, per-language, single-language artifact under
+`data/word_pool/{lang}.vN.npz` — no model runs at request time. `app.word_engine`
+only *reads* it (numpy is the only dependency that involves): the language's
+clean word pool plus mono-lingual fastText vectors. `related` takes each seed's
+nearest neighbours and deliberately dilutes them with random pool words (tight
+relatedness is not a goal — a seed only nudges the pool), so `dog` may pull in
+`cat` but `plane` is fine too.
 
-There is also an internal helper `is_morphological_variant(candidate,
-target, language)` in `app.wordnet` that decides whether two words
-share a root (e.g. `loving`/`love` → yes, `romance`/`love` → no). Not
-exposed via HTTP yet; will be wired into the required-word matcher later.
+**Word matching runs entirely in the frontend** (does a typed word satisfy the
+required word — `gatos`/`gato` yes, `palo`/`pala` no), against a match map the
+frontend loads once. There is no backend match endpoint.
+
+Both artifacts — the vector pool here and the frontend match map — are produced
+by the top-level **`word-assets`** tool, which owns the heavy build-only tooling
+(fastText, wordfreq, simplemma, spaCy). The backend carries none of it. The
+artifacts are gitignored (large); the image build fails if the pool is missing.
+See `../word-assets/README.md`. To regenerate:
+
+```bash
+just word-assets::vectors --fasttext-dir ~/fasttext   # → backend/data/word_pool
+just word-assets::match-map                           # → frontend/public/match-map
+```
 
 ### Meta
 

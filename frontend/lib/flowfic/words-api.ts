@@ -1,9 +1,9 @@
 // Client for the backend `/words/related` endpoint.
 //
 // Given user-supplied "category" seed words (e.g. "kitchen, food, restaurants")
-// and the active locale, calls the backend to expand them into a pool of
-// related words via WordNet hyponyms. Returns the parsed list, or null on any
-// error so callers can fall back to the hardcoded pool.
+// and the active locale, calls the backend to expand them into a loosely-themed
+// pool of related words. Returns the parsed list, or null on any error so
+// callers can fall back to the hardcoded pool.
 
 import { apiFetch } from "@/lib/auth/client"
 import type { Locale } from "@/lib/i18n/config"
@@ -20,7 +20,7 @@ const MAX_INPUT_WORDS = 50
  * - Splits on commas
  * - Trims whitespace
  * - Drops empty entries
- * - Lowercases (WordNet lookup is case-insensitive — frees the user from caring)
+ * - Lowercases (the backend lookup is case-insensitive — frees the user from caring)
  * - De-duplicates while preserving first occurrence
  * - Caps to the backend's max length
  */
