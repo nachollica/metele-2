@@ -28,9 +28,9 @@ describe("findMatchingPreset", () => {
     expect(findMatchingPreset(tweaked)).toBeNull()
   })
 
-  it("ignores non-preset keys (e.g. bellEnabled) when matching", () => {
-    const settings: GameSettings = { ...DEFAULT_SETTINGS, bellEnabled: false }
+  it("ignores non-preset keys (e.g. soundEnabled) when matching", () => {
+    const settings: GameSettings = { ...DEFAULT_SETTINGS, soundEnabled: false }
     expect(findMatchingPreset(settings)).toBe("classic")
-    expect(PRESET_KEYS).not.toContain("bellEnabled")
+    expect(PRESET_KEYS).not.toContain("soundEnabled")
   })
 })

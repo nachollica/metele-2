@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { AlertTriangle, ArrowLeft, Loader2, PanelLeft, Plus, Sparkles, X } from "lucide-react"
+import { AlertTriangle, ArrowLeft, Loader2, PanelLeft, Pencil, Sparkles, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -18,12 +18,12 @@ import { DevLoginButton } from "@/components/auth/dev-login-button"
 import { useAuth } from "@/lib/auth"
 import { useBackendStatus } from "@/lib/backend"
 import { useTranslations } from "@/lib/i18n"
-import { deriveTitle } from "@/lib/flowfic/gamification"
 import { useGameEngine } from "@/lib/flowfic/use-game-engine"
 import { useStories } from "@/lib/flowfic/use-stories"
 import type { Story } from "@/lib/flowfic/stories-api"
 
 import { type Section } from "./dashboard-nav"
+import { AccountMenu } from "./account-menu"
 import { DashboardSidebar } from "./dashboard-sidebar"
 import { DashboardHome } from "./dashboard-home"
 import { AchievementsSection } from "./achievements-section"
@@ -32,7 +32,6 @@ import { GamificationProvider } from "./gamification-context"
 import { GameHud } from "./game-hud"
 import { ProfilePanel } from "./profile-panel"
 import { ResultsModal } from "./results-modal"
-import { SettingsSection } from "./settings-section"
 import { StatsSection } from "./stats-section"
 import { StoriesSection } from "./stories-section"
 import { WelcomeModal } from "./welcome-modal"
@@ -42,12 +41,17 @@ const WELCOME_STORAGE_KEY = "flowfic.welcome.dismissed"
 
 export function Dashboard() {
   const t = useTranslations()
-  const { status: authStatus, user } = useAuth()
+  const { status: authStatus } = useAuth()
   const { devUserEnabled } = useBackendStatus()
   const engine = useGameEngine()
   const isMobile = useIsMobile()
 
-  const { stories, error: storiesError, remove: removeStory } = useStories(engine.storiesRefreshKey)
+  const {
+    stories,
+    error: storiesError,
+    remove: removeStory,
+    update: updateStoryTitle,
+  } = useStories(engine.storiesRefreshKey)
 
   const [section, setSection] = useState<Section>("home")
   const [viewingStory, setViewingStory] = useState<Story | null>(null)
@@ -121,17 +125,6 @@ export function Dashboard() {
     setProfileOpen(true)
   }
 
-  function startWithMinutes(minutes: number) {
-    engine.saveCurrentStoryIfNeeded()
-    setViewingStory(null)
-    setProfileOpen(false)
-    engine.startGame({
-      ...engine.settings,
-      globalTimerEnabled: true,
-      globalTimerSeconds: minutes * 60,
-    })
-  }
-
   function startNewStory() {
     engine.saveCurrentStoryIfNeeded()
     setViewingStory(null)
@@ -146,30 +139,10 @@ export function Dashboard() {
     setSection("home")
   }
 
-  // ---- Header + primary action -------------------------------------------
-  const header = headerFor()
+  // ---- Primary action ----------------------------------------------------
+  // The top bar carries no text on any screen — just the game action (left)
+  // and the account control (right).
   const primaryAction = primaryActionFor()
-
-  function headerFor(): { title: string; subtitle?: string } {
-    if (loading || engine.isPlaying) {
-      return { title: t.dashboard.writingTitle, subtitle: t.dashboard.writingSubtitle }
-    }
-    if (engine.gameState === "ended") return { title: t.results.title }
-    if (profileOpen) return { title: t.profile.title, subtitle: t.profile.description }
-    if (viewingStory) {
-      return {
-        title: viewingStory.title?.trim() || deriveTitle(viewingStory.text, t.dashboard.untitledStory),
-        subtitle: t.game.viewingStory,
-      }
-    }
-    if (section === "home") {
-      return {
-        title: user ? t.dashboard.greetingNamed.replace("{name}", user.name) : t.dashboard.greeting,
-        subtitle: t.dashboard.subtitle,
-      }
-    }
-    return { title: t.nav[section], subtitle: t.sections[section] }
-  }
 
   function primaryActionFor() {
     if (engine.isPlaying) {
@@ -189,8 +162,8 @@ export function Dashboard() {
     if (loading) return null
     return (
       <ActionButton
-        icon={<Plus className="size-4" aria-hidden />}
-        label={t.dashboard.newStory}
+        icon={<Pencil className="size-4" aria-hidden />}
+        label={t.settings.start}
         onClick={startNewStory}
       />
     )
@@ -200,7 +173,6 @@ export function Dashboard() {
     <DashboardSidebar
       active={section}
       onSelect={selectSection}
-      onOpenProfile={openProfile}
       disabled={engine.isPlaying || loading}
     />
   )
@@ -240,21 +212,19 @@ export function Dashboard() {
                   <PanelLeft className="size-4" aria-hidden />
                 </Button>
               ) : null}
-              <div className="min-w-0">
-                <h1 className="truncate text-lg font-bold sm:text-xl">{header.title}</h1>
-                {header.subtitle ? (
-                  <p className="text-muted-foreground truncate text-xs sm:text-sm">{header.subtitle}</p>
-                ) : null}
-              </div>
+              {/* Primary action (Start / Quit / Create a story) anchors the
+                  top-left, same slot on every screen. No title text. */}
+              {primaryAction}
             </div>
             <div className="flex shrink-0 items-center gap-2">
               {/* Dev-user backdoor stays a header-only shortcut (never in the
-                  sidebar account control); shown only while anonymous and only
-                  when the backend reports it enabled. */}
+                  account menu); shown only while anonymous and only when the
+                  backend reports it enabled. */}
               {authStatus === "anonymous" && devUserEnabled ? (
                 <DevLoginButton disabled={engine.isPlaying || loading} />
               ) : null}
-              {primaryAction}
+              {/* Login / avatar-menu, top-right. */}
+              <AccountMenu onOpenProfile={openProfile} disabled={engine.isPlaying || loading} />
             </div>
           </header>
 
@@ -303,7 +273,7 @@ export function Dashboard() {
                 className="flex flex-1 flex-col items-center justify-center gap-4"
               >
                 <Loader2 className="text-primary size-10 animate-spin" aria-hidden />
-                <span className="text-muted-foreground text-sm">{t.settings.categoryWordsLoading}</span>
+                <span className="text-muted-foreground text-sm">{t.settings.loadingWords}</span>
               </div>
             ) : inGame ? (
               <>
@@ -351,11 +321,10 @@ export function Dashboard() {
                 engine={engine}
                 stories={stories}
                 storiesError={storiesError}
-                onStart={startWithMinutes}
                 onNewStory={startNewStory}
-                onNavigate={selectSection}
                 onViewStory={onViewStory}
                 onDeleteStory={removeStory}
+                onUpdateStoryTitle={updateStoryTitle}
               />
             )}
           </div>
@@ -377,34 +346,24 @@ function SectionContent({
   engine,
   stories,
   storiesError,
-  onStart,
   onNewStory,
-  onNavigate,
   onViewStory,
   onDeleteStory,
+  onUpdateStoryTitle,
 }: {
   section: Section
   engine: ReturnType<typeof useGameEngine>
   stories: Story[] | null
   storiesError: boolean
-  onStart: (minutes: number) => void
   onNewStory: () => void
-  onNavigate: (section: Section) => void
   onViewStory: (story: Story) => void
   onDeleteStory: (id: number) => Promise<boolean>
+  onUpdateStoryTitle: (id: number, title: string | null) => Promise<boolean>
 }) {
   switch (section) {
     case "home":
       return (
-        <DashboardHome
-          settings={engine.settings}
-          onStart={onStart}
-          onNewStory={onNewStory}
-          onNavigate={onNavigate}
-          onViewStory={onViewStory}
-          stories={stories}
-          onDeleteStory={onDeleteStory}
-        />
+        <DashboardHome settings={engine.settings} onSettingsChange={engine.setSettings} />
       )
     case "stories":
       return (
@@ -413,6 +372,7 @@ function SectionContent({
           error={storiesError}
           onViewStory={onViewStory}
           onDeleteStory={onDeleteStory}
+          onUpdateTitle={onUpdateStoryTitle}
         />
       )
     case "challenges":
@@ -421,14 +381,6 @@ function SectionContent({
       return <StatsSection />
     case "achievements":
       return <AchievementsSection />
-    case "settings":
-      return (
-        <SettingsSection
-          settings={engine.settings}
-          onSettingsChange={engine.setSettings}
-          onStart={onNewStory}
-        />
-      )
   }
 }
 
@@ -442,7 +394,10 @@ function ActionButton({
   onClick: () => void
 }) {
   return (
-    <Button onClick={onClick} size="sm" className="justify-center gap-1.5">
+    // Fixed generous width so every state's label (Start writing / Quit
+    // session / Create a story, in either language) fits without the button
+    // resizing between states.
+    <Button onClick={onClick} size="sm" className="w-48 justify-center gap-1.5">
       {icon}
       {label}
     </Button>

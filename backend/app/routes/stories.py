@@ -45,6 +45,16 @@ class StoryCreate(BaseModel):
     stats: StoryStatsStrict
 
 
+class StoryUpdate(BaseModel):
+    """
+    Editable fields on a saved story. Only the title can change — the text,
+    settings and stats are immutable session artifacts."""
+
+    title: str | None = Field(default=None, max_length=200)
+
+    model_config = {"extra": "forbid"}
+
+
 class StoryListResponse(BaseModel):
     items: list[StoryRead]
     total: int
@@ -151,6 +161,36 @@ def create_story(
         stats=payload.stats,
         user_id=user.id,
     )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return StoryRead.model_validate(row)
+
+
+# ---- Update ---------------------------------------------------------------
+
+
+@router.patch(
+    "/{story_id}",
+    response_model=StoryRead,
+    summary="Update a story's title (the only editable field).",
+)
+def update_story(
+    story_id: int,
+    payload: StoryUpdate,
+    db: DbSession,
+    user: CurrentUser,
+) -> StoryRead:
+    row = db.get(Story, story_id)
+    if row is None or row.user_id != user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Story {story_id} not found.",
+        )
+    # Normalize a blank title to NULL so the client falls back to the derived
+    # title instead of persisting an empty string.
+    title = payload.title.strip() if payload.title is not None else None
+    row.title = title or None
     db.add(row)
     db.commit()
     db.refresh(row)

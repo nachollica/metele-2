@@ -113,6 +113,33 @@ export async function createStory(
   }
 }
 
+/**
+ * Update a story's title (the only editable field). Pass null to clear it back
+ * to the client-derived title. Returns the updated story, or null on failure.
+ */
+export async function updateStory(
+  token: string,
+  id: number,
+  title: string | null,
+): Promise<Story | null> {
+  try {
+    const res = await apiFetch(token, `/stories/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title }),
+    })
+    if (!res.ok) {
+      console.warn(`[stories-api] update failed ${res.status}`)
+      return null
+    }
+    const data = (await res.json()) as StoryWire
+    return fromWire(data)
+  } catch (err) {
+    console.warn("[stories-api] update unreachable", err)
+    return null
+  }
+}
+
 export async function deleteStory(token: string, id: number): Promise<boolean> {
   try {
     const res = await apiFetch(token, `/stories/${id}`, { method: "DELETE" })

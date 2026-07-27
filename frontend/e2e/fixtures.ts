@@ -70,6 +70,39 @@ export type BackendMock = {
   stories: StoryWire[]
 }
 
+// Settings-shape contract the real backend enforces on POST /stories (mirrors
+// StorySettingsStrict in backend/app/models.py: exactly these keys, no extras).
+// Duplicated here on purpose so a frontend/backend settings drift also fails
+// the e2e stub, instead of the stub silently "saving" a payload the real API
+// would reject with 422. Keep in sync with the model + GameSettings.
+const REQUIRED_SETTINGS_KEYS = [
+  "mainTimerSeconds",
+  "globalTimerEnabled",
+  "globalTimerSeconds",
+  "requiredWordIntervalEnabled",
+  "requiredWordIntervalSeconds",
+  "requiredWordUseTimerEnabled",
+  "requiredWordUseTimerSeconds",
+] as const
+const OPTIONAL_SETTINGS_KEYS = ["soundEnabled", "soundMode", "wordSource", "wordSourceSeeds"] as const
+const ALLOWED_SETTINGS_KEYS = new Set<string>([
+  ...REQUIRED_SETTINGS_KEYS,
+  ...OPTIONAL_SETTINGS_KEYS,
+])
+
+/** Returns an error string if the posted settings drift from the backend
+ *  contract (missing a required key or carrying an unknown one), else null. */
+function validateStorySettings(settings: unknown): string | null {
+  if (typeof settings !== "object" || settings === null) return "settings missing"
+  const keys = Object.keys(settings as Record<string, unknown>)
+  const missing = REQUIRED_SETTINGS_KEYS.filter((k) => !keys.includes(k))
+  const unknown = keys.filter((k) => !ALLOWED_SETTINGS_KEYS.has(k))
+  if (missing.length > 0 || unknown.length > 0) {
+    return `settings contract mismatch (missing: ${missing.join(",") || "none"}; unknown: ${unknown.join(",") || "none"})`
+  }
+  return null
+}
+
 // Intercept all backend (`/api/**`) traffic and answer it in-process. Returns
 // a live handle whose `postedStories` array is appended to as the frontend
 // POSTs, and whose `stories` list grows so a follow-up GET reflects the save.
@@ -175,6 +208,13 @@ export async function mockBackend(
 
     if (path === "/stories" && method === "POST") {
       const body = (request.postDataJSON() ?? {}) as Record<string, unknown>
+      // Enforce the settings contract the real backend would (422 on drift),
+      // so a shape mismatch fails the save journey instead of passing silently.
+      const settingsError = validateStorySettings(body.settings)
+      if (settingsError !== null) {
+        await route.fulfill({ status: 422, json: { detail: settingsError } })
+        return
+      }
       handle.postedStories.push(body)
       const created: StoryWire = {
         id: handle.stories.length + 1,

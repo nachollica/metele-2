@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel, Field
 
@@ -53,7 +53,10 @@ class StorySettings(BaseModel):
     Mirrors ``GameSettings`` in ``lib/flowfic/types.ts`` (the complete set,
     not just the preset-covered subset). Lenient on read: unknown keys are
     ignored so a story written by a newer frontend never breaks an older
-    backend. The strict create-time variant is ``StorySettingsStrict``.
+    backend. The sound/word-source fields carry defaults so rows saved by the
+    pre-rename frontend (which stored ``bellEnabled`` / ``categoryWords*``, now
+    ignored) still validate on read. The strict create-time variant is
+    ``StorySettingsStrict``.
     """
 
     mainTimerSeconds: int  # noqa: N815
@@ -63,9 +66,10 @@ class StorySettings(BaseModel):
     requiredWordIntervalSeconds: int  # noqa: N815
     requiredWordUseTimerEnabled: bool  # noqa: N815
     requiredWordUseTimerSeconds: int  # noqa: N815
-    bellEnabled: bool  # noqa: N815
-    categoryWordsEnabled: bool  # noqa: N815
-    categoryWordsInput: str  # noqa: N815
+    soundEnabled: bool = True  # noqa: N815
+    soundMode: Literal["bell", "speak"] = "bell"  # noqa: N815
+    wordSource: Literal["free", "universe"] = "free"  # noqa: N815
+    wordSourceSeeds: str = ""  # noqa: N815
 
     model_config = {"extra": "ignore"}
 

@@ -19,9 +19,10 @@ _SETTINGS: dict[str, object] = {
     "requiredWordIntervalSeconds": 30,
     "requiredWordUseTimerEnabled": False,
     "requiredWordUseTimerSeconds": 20,
-    "bellEnabled": True,
-    "categoryWordsEnabled": False,
-    "categoryWordsInput": "",
+    "soundEnabled": True,
+    "soundMode": "bell",
+    "wordSource": "free",
+    "wordSourceSeeds": "",
 }
 
 

@@ -20,16 +20,9 @@ test("a required word spawns and is cleared by typing it", async ({ page }) => {
   await page.clock.install()
   await page.goto("/")
 
-  // Session config lives in the Settings section now.
-  await page.getByRole("button", { name: "Settings" }).click()
-
-  // Turn on custom categories and give a seed so startGame fetches the pool.
-  await page
-    .getByRole("switch", { name: "Use custom word categories" })
-    .click()
-  await page
-    .getByRole("textbox", { name: "Custom word categories" })
-    .fill("fruit")
+  // Session config lives on the Home screen now. The word source defaults to
+  // "Free words"; typing a seed makes startGame fetch the related pool.
+  await page.getByRole("textbox", { name: "Word seeds" }).fill("fruit")
 
   // Drive "New required word every" to its minimum (5s) so a word spawns
   // quickly. The slider thumb carries the setting's label as its accessible

@@ -82,8 +82,8 @@ describe("SettingsPanel", () => {
   it("emits a preset-merged settings object without touching personal settings", async () => {
     authState.current = makeAuth()
     const onChange = vi.fn()
-    // Personal setting (bellEnabled=false) must survive the preset application.
-    const initial = { ...DEFAULT_SETTINGS, bellEnabled: false }
+    // Personal setting (soundEnabled=false) must survive the preset application.
+    const initial = { ...DEFAULT_SETTINGS, soundEnabled: false }
     renderWithLocale(<Harness initial={initial} onChange={onChange} />)
 
     const user = userEvent.setup()
@@ -93,19 +93,34 @@ describe("SettingsPanel", () => {
     expect(onChange).toHaveBeenCalledOnce()
     const out = onChange.mock.calls[0]?.[0]
     expect(out).toMatchObject(nolimit.settings)
-    expect(out.bellEnabled).toBe(false)
+    expect(out.soundEnabled).toBe(false)
   })
 
-  it("hides the required-word sub-settings when the interval toggle is off", () => {
+  it("hides the required-word sub-settings when the master toggle is off, keeping the word source visible but disabled", () => {
     authState.current = makeAuth()
     renderWithLocale(
       <Harness initial={{ ...DEFAULT_SETTINGS, requiredWordIntervalEnabled: false }} />,
     )
+    // Sub-rows (deadline + sound) collapse away entirely.
     expect(
       screen.queryByLabelText(/enforce required-word deadline/i),
     ).not.toBeInTheDocument()
-    expect(
-      screen.queryByLabelText(/use custom word categories/i),
-    ).not.toBeInTheDocument()
+    expect(screen.queryByLabelText(/enable word sound/i)).not.toBeInTheDocument()
+    // The word-source dropdown stays in the master row, but disabled.
+    expect(screen.getByLabelText(/word source/i)).toBeDisabled()
+  })
+
+  it("shows the sound mode dropdown when required words are on, disabled while sound is off", () => {
+    authState.current = makeAuth()
+    renderWithLocale(
+      <Harness
+        initial={{
+          ...DEFAULT_SETTINGS,
+          requiredWordIntervalEnabled: true,
+          soundEnabled: false,
+        }}
+      />,
+    )
+    expect(screen.getByLabelText(/sound type/i)).toBeDisabled()
   })
 })
