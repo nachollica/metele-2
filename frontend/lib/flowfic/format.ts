@@ -22,3 +22,27 @@ export function formatDurationMs(ms: number): string {
   const s = total % 60
   return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
 }
+
+function bcp47(locale: string): string {
+  return locale === "es" ? "es-ES" : "en-US"
+}
+
+/**
+ * Created-at label for a saved story: `todayLabel` for the current calendar
+ * day, otherwise an absolute, locale-aware date that always includes the year
+ * (e.g. "Jul 27, 2026" / "27 jul 2026").
+ */
+export function formatStoryDate(iso: string, locale: string, todayLabel: string): string {
+  const then = new Date(iso)
+  const now = new Date()
+  const sameDay =
+    then.getFullYear() === now.getFullYear() &&
+    then.getMonth() === now.getMonth() &&
+    then.getDate() === now.getDate()
+  if (sameDay) return todayLabel
+  return then.toLocaleDateString(bcp47(locale), {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  })
+}

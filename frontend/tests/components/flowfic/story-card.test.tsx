@@ -1,4 +1,5 @@
 import { fireEvent, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 
 import { StoryCard } from "@/components/flowfic/story-card"
@@ -33,17 +34,32 @@ describe("StoryCard", () => {
     expect(screen.getByText("My Tale")).toBeInTheDocument()
   })
 
-  it("calls onSelect when the card is clicked", () => {
+  it("calls onSelect when the row is clicked", () => {
     const onSelect = vi.fn()
     renderWithLocale(<StoryCard story={makeStory()} onSelect={onSelect} />)
     fireEvent.click(screen.getByRole("button", { name: /lighthouse keeper/i }))
     expect(onSelect).toHaveBeenCalledTimes(1)
   })
 
-  it("hides the options menu when no delete handler is given", () => {
+  it("hides the options menu when no delete/rename handler is given", () => {
     renderWithLocale(<StoryCard story={makeStory()} />)
     expect(
       screen.queryByRole("button", { name: "Story options" }),
     ).not.toBeInTheDocument()
+  })
+
+  it("renames inline through the options menu", async () => {
+    const onUpdateTitle = vi.fn().mockResolvedValue(true)
+    const user = userEvent.setup()
+    renderWithLocale(<StoryCard story={makeStory()} onUpdateTitle={onUpdateTitle} />)
+
+    await user.click(screen.getByRole("button", { name: "Story options" }))
+    await user.click(screen.getByRole("menuitem", { name: /rename/i }))
+
+    const input = screen.getByRole("textbox", { name: /story title/i })
+    await user.type(input, "Coastal Nights")
+    await user.click(screen.getByRole("button", { name: /save title/i }))
+
+    expect(onUpdateTitle).toHaveBeenCalledWith(3, "Coastal Nights")
   })
 })

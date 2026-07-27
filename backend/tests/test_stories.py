@@ -20,9 +20,10 @@ VALID_SETTINGS: dict[str, object] = {
     "requiredWordIntervalSeconds": 30,
     "requiredWordUseTimerEnabled": False,
     "requiredWordUseTimerSeconds": 20,
-    "bellEnabled": True,
-    "categoryWordsEnabled": False,
-    "categoryWordsInput": "",
+    "soundEnabled": True,
+    "soundMode": "bell",
+    "wordSource": "free",
+    "wordSourceSeeds": "",
 }
 VALID_STATS: dict[str, object] = {
     "reason": "idle",
@@ -174,6 +175,54 @@ def test_create_rejects_unknown_settings_key(auth_client) -> None:
             "stats": VALID_STATS,
         },
     )
+    assert res.status_code == 422
+
+
+# ---- Update --------------------------------------------------------------
+
+
+def test_update_requires_auth(client) -> None:
+    assert client.patch(f"{URL}/1", json={"title": "x"}).status_code == 401
+
+
+def test_update_sets_and_trims_title(auth_client, db_engine, test_user) -> None:
+    sid = _seed_story(db_engine, test_user.id, text="body")
+    res = auth_client.patch(f"{URL}/{sid}", json={"title": "  My Tale  "})
+    assert res.status_code == 200, res.text
+    assert res.json()["title"] == "My Tale"
+
+
+def test_update_blank_title_clears_to_null(auth_client, db_engine, test_user) -> None:
+    sid = _seed_story(db_engine, test_user.id, text="body")
+    auth_client.patch(f"{URL}/{sid}", json={"title": "Named"})
+    res = auth_client.patch(f"{URL}/{sid}", json={"title": "   "})
+    assert res.status_code == 200
+    assert res.json()["title"] is None
+
+
+def test_update_404s_on_other_users_story(auth_client, db_engine) -> None:
+    other = User(id="auth0|other", email=None, name="Other", picture=None)
+    with Session(db_engine) as s:
+        s.add(other)
+        s.commit()
+    sid = _seed_story(db_engine, "auth0|other")
+    assert auth_client.patch(f"{URL}/{sid}", json={"title": "x"}).status_code == 404
+
+
+def test_update_404s_on_unknown_id(auth_client) -> None:
+    assert auth_client.patch(f"{URL}/9999", json={"title": "x"}).status_code == 404
+
+
+def test_update_rejects_overlong_title(auth_client, db_engine, test_user) -> None:
+    sid = _seed_story(db_engine, test_user.id)
+    res = auth_client.patch(f"{URL}/{sid}", json={"title": "x" * 201})
+    assert res.status_code == 422
+
+
+def test_update_rejects_unknown_field(auth_client, db_engine, test_user) -> None:
+    # Strict update: only the title is editable — other keys are a 422.
+    sid = _seed_story(db_engine, test_user.id)
+    res = auth_client.patch(f"{URL}/{sid}", json={"text": "hacked"})
     assert res.status_code == 422
 
 

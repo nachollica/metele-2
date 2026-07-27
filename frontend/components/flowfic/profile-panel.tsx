@@ -153,7 +153,7 @@ export function ProfilePanel({ onProfileUpdated }: Props) {
   return (
     <section
       aria-labelledby="profile-heading"
-      className="bg-card text-card-foreground flex flex-col gap-6 rounded-lg border p-6 shadow-sm"
+      className="bg-card text-card-foreground mx-auto flex w-full max-w-4xl flex-col gap-6 rounded-lg border p-6 shadow-sm"
     >
       <header>
         <h2

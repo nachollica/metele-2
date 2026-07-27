@@ -3,11 +3,17 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 
 import { useAuth } from "@/lib/auth"
-import { deleteStory, fetchStories, type Story } from "@/lib/flowfic/stories-api"
+import {
+  deleteStory,
+  fetchStories,
+  updateStory,
+  type Story,
+} from "@/lib/flowfic/stories-api"
 
-// Pull this many stories at a time; the sections scroll within their own
-// viewport. A larger page is a cheap follow-up if needed.
-const PAGE_SIZE = 50
+// Pull this many stories at a time (the backend's max). My Stories filters and
+// searches client-side over the loaded set; a proper backend search is a
+// follow-up if libraries outgrow one page.
+const PAGE_SIZE = 100
 
 // A silent token refresh can transiently fail on resume-after-inactivity.
 // Retry a few times with short backoff so the list self-heals.
@@ -25,6 +31,9 @@ export type UseStories = {
   error: boolean
   /** Optimistically remove a story; resolves false if the delete failed. */
   remove: (id: number) => Promise<boolean>
+  /** Rename a story (title only; null clears to the derived title). Updates
+   *  the list in place; resolves false if the update failed. */
+  update: (id: number, title: string | null) => Promise<boolean>
 }
 
 /**
@@ -109,5 +118,19 @@ export function useStories(refreshKey = 0): UseStories {
     [getAccessToken],
   )
 
-  return { stories, error, remove }
+  const update = useCallback(
+    async (id: number, title: string | null): Promise<boolean> => {
+      const token = await getAccessToken()
+      if (token === null) return false
+      const updated = await updateStory(token, id, title)
+      if (updated === null) return false
+      setStories((prev) =>
+        prev === null ? prev : prev.map((s) => (s.id === id ? updated : s)),
+      )
+      return true
+    },
+    [getAccessToken],
+  )
+
+  return { stories, error, remove, update }
 }

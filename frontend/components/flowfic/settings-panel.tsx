@@ -1,10 +1,17 @@
 "use client"
 
 import { type ReactNode } from "react"
-import { Bell, Tags } from "lucide-react"
+import { Sparkles, Volume2 } from "lucide-react"
 
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
@@ -12,7 +19,12 @@ import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 import { useTranslations } from "@/lib/i18n"
 import { formatSeconds } from "@/lib/flowfic/format"
-import { type GameSettings, type PresetSettings } from "@/lib/flowfic/types"
+import {
+  type GameSettings,
+  type PresetSettings,
+  type SoundMode,
+  type WordSource,
+} from "@/lib/flowfic/types"
 
 import { PresetGrid } from "./preset-grid"
 
@@ -22,8 +34,9 @@ type Props = {
 }
 
 /**
- * The landing screen: preset picker (see `PresetGrid`) on top, then one row
- * per game setting. Purely controlled — the parent owns the settings object.
+ * Session configurator embedded in the Home screen: preset picker (see
+ * `PresetGrid`) on top, then one row per game setting. Purely controlled — the
+ * parent owns the settings object and the surrounding scroll.
  */
 export function SettingsPanel({ settings, onChange }: Props) {
   const t = useTranslations()
@@ -45,7 +58,7 @@ export function SettingsPanel({ settings, onChange }: Props) {
   return (
     <section
       aria-labelledby="settings-title"
-      className="bg-card text-card-foreground flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto rounded-lg border p-4 shadow-sm sm:p-6"
+      className="bg-card text-card-foreground flex flex-col gap-6 rounded-lg border p-4 shadow-sm sm:p-6"
     >
       <div className="flex flex-col gap-1.5">
         <h2 id="settings-title" className="text-2xl font-semibold">
@@ -106,10 +119,18 @@ export function SettingsPanel({ settings, onChange }: Props) {
           }
         />
 
+        {/* Required words — master row: enable toggle plus the word source
+            (dropdown) and its seed/hint input, inline on wide screens and
+            stacked when narrow. */}
         <SettingRow
-          id="word-interval"
-          label={t.settings.requiredWordIntervalLabel}
-          description={t.settings.requiredWordIntervalHelp}
+          id="word-source"
+          label={
+            <span className="flex items-center gap-2">
+              <Sparkles className="size-4" aria-hidden />
+              {t.settings.requiredWordsLabel}
+            </span>
+          }
+          description={t.settings.requiredWordsHelp}
           toggleId="word-interval-toggle"
           toggle={
             <Switch
@@ -120,16 +141,40 @@ export function SettingsPanel({ settings, onChange }: Props) {
             />
           }
           control={
-            <ValueSlider
-              id="word-interval"
-              ariaLabel={t.settings.requiredWordIntervalLabel}
-              value={settings.requiredWordIntervalSeconds}
-              min={5}
-              max={120}
-              disabled={!requiredWordsOn}
-              onChange={(v) => update("requiredWordIntervalSeconds", v)}
-              format={fmtSeconds}
-            />
+            <div
+              className={cn(
+                "flex flex-col gap-2 py-2 transition-opacity sm:flex-row",
+                !requiredWordsOn && "opacity-50",
+              )}
+            >
+              <Select
+                value={settings.wordSource}
+                onValueChange={(v) => update("wordSource", v as WordSource)}
+                disabled={!requiredWordsOn}
+              >
+                <SelectTrigger className="shrink-0 sm:w-40" aria-label={t.settings.wordSourceLabel}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="free">{t.settings.wordSourceFree}</SelectItem>
+                  <SelectItem value="universe">{t.settings.wordSourceUniverse}</SelectItem>
+                </SelectContent>
+              </Select>
+              <Input
+                id="word-source"
+                type="text"
+                value={settings.wordSourceSeeds}
+                onChange={(e) => update("wordSourceSeeds", e.target.value)}
+                placeholder={
+                  settings.wordSource === "universe"
+                    ? t.settings.wordSourceUniversePlaceholder
+                    : t.settings.wordSourceSeedsPlaceholder
+                }
+                disabled={!requiredWordsOn}
+                aria-label={t.settings.wordSourceSeedsLabel}
+                className="flex-1 text-sm"
+              />
+            </div>
           }
         />
 
@@ -137,6 +182,23 @@ export function SettingsPanel({ settings, onChange }: Props) {
             is off, so the panel collapses instead of showing dimmed rows. */}
         {requiredWordsOn ? (
           <>
+            <SettingRow
+              id="word-interval"
+              label={t.settings.requiredWordIntervalLabel}
+              description={t.settings.requiredWordIntervalHelp}
+              control={
+                <ValueSlider
+                  id="word-interval"
+                  ariaLabel={t.settings.requiredWordIntervalLabel}
+                  value={settings.requiredWordIntervalSeconds}
+                  min={5}
+                  max={120}
+                  onChange={(v) => update("requiredWordIntervalSeconds", v)}
+                  format={fmtSeconds}
+                />
+              }
+            />
+
             <SettingRow
               id="use-timer"
               label={t.settings.requiredWordUseTimerLabel}
@@ -164,54 +226,52 @@ export function SettingsPanel({ settings, onChange }: Props) {
               }
             />
 
+            {/* Word sound: toggle plus the bell/speak mode dropdown, which
+                grays out (like a disabled slider) when sound is off. Personal
+                setting — never saved into presets. */}
             <SettingRow
-              id="category-words"
+              id="sound-mode"
               label={
                 <span className="flex items-center gap-2">
-                  <Tags className="size-4" aria-hidden />
-                  {t.settings.categoryWordsLabel}
+                  <Volume2 className="size-4" aria-hidden />
+                  {t.settings.soundLabel}
                 </span>
               }
-              description={t.settings.categoryWordsHelp}
-              toggleId="category-words-toggle"
+              description={t.settings.soundHelp}
+              toggleId="sound-toggle"
               toggle={
                 <Switch
-                  id="category-words-toggle"
-                  checked={settings.categoryWordsEnabled}
-                  onCheckedChange={(v) => update("categoryWordsEnabled", v)}
-                  aria-label={t.settings.categoryWordsEnable}
+                  id="sound-toggle"
+                  checked={settings.soundEnabled}
+                  onCheckedChange={(v) => update("soundEnabled", v)}
+                  aria-label={t.settings.soundEnable}
                 />
               }
               control={
-                <Input
-                  id="category-words"
-                  type="text"
-                  value={settings.categoryWordsInput}
-                  onChange={(e) => update("categoryWordsInput", e.target.value)}
-                  placeholder={t.settings.categoryWordsPlaceholder}
-                  disabled={!settings.categoryWordsEnabled}
-                  aria-label={t.settings.categoryWordsLabel}
-                  className="text-sm"
-                />
-              }
-            />
-
-            <SettingRow
-              id="bell-toggle"
-              label={
-                <span className="flex items-center gap-2">
-                  <Bell className="size-4" aria-hidden />
-                  {t.settings.bellLabel}
-                </span>
-              }
-              toggleId="bell-toggle"
-              toggle={
-                <Switch
-                  id="bell-toggle"
-                  checked={settings.bellEnabled}
-                  onCheckedChange={(v) => update("bellEnabled", v)}
-                  aria-label={t.settings.bellLabel}
-                />
+                <div
+                  className={cn(
+                    "flex py-2 transition-opacity",
+                    !settings.soundEnabled && "opacity-50",
+                  )}
+                >
+                  <Select
+                    value={settings.soundMode}
+                    onValueChange={(v) => update("soundMode", v as SoundMode)}
+                    disabled={!settings.soundEnabled}
+                  >
+                    <SelectTrigger
+                      id="sound-mode"
+                      className="w-full sm:w-48"
+                      aria-label={t.settings.soundModeLabel}
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="bell">{t.settings.soundBell}</SelectItem>
+                      <SelectItem value="speak">{t.settings.soundSpeak}</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               }
             />
           </>

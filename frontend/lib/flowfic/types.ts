@@ -1,5 +1,11 @@
 // Shared types for the FLOWFIC game.
 
+/** How a new required word is announced when sound is enabled. */
+export type SoundMode = "bell" | "speak"
+
+/** Where required words are drawn from. */
+export type WordSource = "free" | "universe"
+
 export type GameSettings = {
   /** Seconds without keystrokes before the session ends. */
   mainTimerSeconds: number
@@ -18,15 +24,22 @@ export type GameSettings = {
   requiredWordUseTimerEnabled: boolean
   /** Seconds allotted to actually use the latest required word (when enabled). */
   requiredWordUseTimerSeconds: number
-  /** Play a bell sound when a new required word appears. */
-  bellEnabled: boolean
-  /** Whether to draw required words from a custom pool generated from
-   *  user-supplied categories (via the backend `/words/related` endpoint).
-   *  When false, the game uses the hardcoded per-locale pool. */
-  categoryWordsEnabled: boolean
-  /** Raw, comma-separated category/seed words the user typed
-   *  (e.g. "kitchen, food, restaurants"). Parsed at game start. */
-  categoryWordsInput: string
+  /** Whether a sound plays when a new required word appears. */
+  soundEnabled: boolean
+  /** How the required word is announced when `soundEnabled`: a synthesized
+   *  bell, or the browser speaking the word aloud (SpeechSynthesis). */
+  soundMode: SoundMode
+  /** Where required words are drawn from:
+   *  - "free": the backend pool — `/words/related` when `wordSourceSeeds` has
+   *    seeds, `/words/random` when empty.
+   *  - "universe": always the hardcoded per-locale fallback pool. The
+   *    author-driven backend integration is future work; for now the seed
+   *    input is accepted but ignored. */
+  wordSource: WordSource
+  /** Raw, comma-separated seed words for the "free" source
+   *  (e.g. "kitchen, food, restaurants"). Parsed at game start; ignored for
+   *  the "universe" source. */
+  wordSourceSeeds: string
 }
 
 export type EndReason = "idle" | "global" | "unused-word" | "manual"
@@ -55,9 +68,10 @@ export const DEFAULT_SETTINGS: GameSettings = {
   requiredWordIntervalSeconds: 30,
   requiredWordUseTimerEnabled: false,
   requiredWordUseTimerSeconds: 20,
-  bellEnabled: true,
-  categoryWordsEnabled: false,
-  categoryWordsInput: "",
+  soundEnabled: true,
+  soundMode: "bell",
+  wordSource: "free",
+  wordSourceSeeds: "",
 }
 
 // ---------------------------------------------------------------------------
@@ -65,7 +79,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
 // Curated session profiles the user can apply with one click. Each preset
 // specifies only the "preset-covered" keys (PRESET_KEYS below). Applying a
 // preset merges these into the current settings, leaving everything else
-// ("personal" settings such as bellEnabled) untouched.
+// ("personal" settings such as soundEnabled) untouched.
 //
 // To add a new personal setting (not controlled by presets):
 //   1. Add its key to GameSettings and DEFAULT_SETTINGS.

@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { MoreHorizontal, Trash2 } from "lucide-react"
+import { useState, type KeyboardEvent } from "react"
+import { Check, MoreHorizontal, Pencil, Trash2, X } from "lucide-react"
 
 import {
   AlertDialog,
@@ -20,9 +20,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Input } from "@/components/ui/input"
 
 import { cn } from "@/lib/utils"
 import { useLocale, useTranslations } from "@/lib/i18n"
+import { formatStoryDate } from "@/lib/flowfic/format"
 import { deriveTitle, formatCount, storyVisual } from "@/lib/flowfic/gamification"
 import type { Story } from "@/lib/flowfic/stories-api"
 
@@ -33,40 +35,40 @@ function readNumber(obj: Record<string, unknown>, key: string): number {
   return typeof v === "number" && Number.isFinite(v) ? v : 0
 }
 
-// "Today" / "Yesterday" / "N days ago" for recent stories, absolute date beyond
-// a week. Uses local calendar days.
-function relativeDay(iso: string, t: ReturnType<typeof useTranslations>, locale: string): string {
-  const then = new Date(iso)
-  const now = new Date()
-  const startThen = new Date(then.getFullYear(), then.getMonth(), then.getDate())
-  const startNow = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const days = Math.round((startNow.getTime() - startThen.getTime()) / 86_400_000)
-  if (days <= 0) return t.dashboard.today
-  if (days === 1) return t.dashboard.yesterday
-  if (days < 7) return t.dashboard.daysAgo.replace("{n}", String(days))
-  return then.toLocaleDateString(locale === "es" ? "es-ES" : "en-US", {
-    day: "numeric",
-    month: "short",
-  })
-}
-
 type Props = {
   story: Story
   onSelect?: (story: Story) => void
   onDelete?: (id: number) => Promise<boolean>
+  /** Rename handler (title only; null clears back to the derived title). */
+  onUpdateTitle?: (id: number, title: string | null) => Promise<boolean>
 }
 
-export function StoryCard({ story, onSelect, onDelete }: Props) {
+/**
+ * One story as a full-width row: cover icon, title, a two-line text preview,
+ * and a words + date meta line. The overflow menu offers Rename (inline
+ * editing) and Delete when the respective handlers are provided.
+ */
+export function StoryCard({ story, onSelect, onDelete, onUpdateTitle }: Props) {
   const t = useTranslations()
   const locale = useLocale()
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(false)
 
+  const [renaming, setRenaming] = useState(false)
+  const [draft, setDraft] = useState("")
+  const [renameBusy, setRenameBusy] = useState(false)
+
   const { icon, tone } = storyVisual(story.id)
   const title = story.title?.trim() || deriveTitle(story.text, t.dashboard.untitledStory)
   const words = readNumber(story.stats, "words")
-  const meta = `${formatCount(words, locale)} ${t.dashboard.words} · ${relativeDay(story.createdAt, t, locale)}`
+  const meta = `${formatCount(words, locale)} ${t.dashboard.words} · ${formatStoryDate(
+    story.createdAt,
+    locale,
+    t.dashboard.today,
+  )}`
+
+  const hasMenu = Boolean(onDelete || onUpdateTitle)
 
   async function handleConfirm() {
     if (!onDelete) return
@@ -81,23 +83,87 @@ export function StoryCard({ story, onSelect, onDelete }: Props) {
     setConfirmOpen(false)
   }
 
-  return (
-    <div className="group bg-card relative rounded-2xl border p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-      <button
-        type="button"
-        onClick={onSelect ? () => onSelect(story) : undefined}
-        className={cn(
-          "focus-visible:ring-ring/50 flex w-full flex-col gap-2 rounded-md text-left focus-visible:ring-2 focus-visible:outline-none",
-          onSelect && "cursor-pointer",
-        )}
-        aria-label={`${title} — ${meta}`}
-      >
-        <IconChip icon={icon} tone={tone} className="size-11" />
-        <div className="truncate pr-6 text-sm font-bold">{title}</div>
-        <div className="text-muted-foreground text-xs">{meta}</div>
-      </button>
+  function startRename() {
+    setDraft(story.title ?? "")
+    setRenaming(true)
+  }
 
-      {onDelete ? (
+  async function submitRename() {
+    if (!onUpdateTitle) return
+    const next = draft.trim()
+    setRenameBusy(true)
+    const ok = await onUpdateTitle(story.id, next.length > 0 ? next : null)
+    setRenameBusy(false)
+    if (ok) setRenaming(false)
+  }
+
+  function onRenameKey(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") {
+      e.preventDefault()
+      void submitRename()
+    } else if (e.key === "Escape") {
+      e.preventDefault()
+      setRenaming(false)
+    }
+  }
+
+  return (
+    <div className="group bg-card relative flex gap-4 rounded-2xl border p-4 shadow-sm transition hover:shadow-md">
+      <IconChip icon={icon} tone={tone} className="size-12 shrink-0" />
+
+      <div className="min-w-0 flex-1">
+        {renaming ? (
+          <div className="flex items-center gap-1.5">
+            <Input
+              autoFocus
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={onRenameKey}
+              maxLength={200}
+              placeholder={title}
+              aria-label={t.sidebar.renameStoryLabel}
+              className="h-8 text-sm font-semibold"
+              disabled={renameBusy}
+            />
+            <button
+              type="button"
+              onClick={() => void submitRename()}
+              aria-label={t.sidebar.renameSave}
+              disabled={renameBusy}
+              className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex size-7 shrink-0 items-center justify-center rounded-md disabled:opacity-50"
+            >
+              <Check className="size-4" aria-hidden />
+            </button>
+            <button
+              type="button"
+              onClick={() => setRenaming(false)}
+              aria-label={t.sidebar.renameCancel}
+              disabled={renameBusy}
+              className="hover:bg-accent text-muted-foreground inline-flex size-7 shrink-0 items-center justify-center rounded-md"
+            >
+              <X className="size-4" aria-hidden />
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={onSelect ? () => onSelect(story) : undefined}
+            className={cn(
+              "focus-visible:ring-ring/50 block w-full rounded-md text-left focus-visible:ring-2 focus-visible:outline-none",
+              onSelect && "cursor-pointer",
+            )}
+            aria-label={`${title} — ${meta}`}
+          >
+            <div className="truncate pr-8 text-sm font-bold">{title}</div>
+            <p className="text-muted-foreground mt-1 line-clamp-2 text-sm leading-relaxed">
+              {story.text}
+            </p>
+            <div className="text-muted-foreground mt-2 text-xs">{meta}</div>
+          </button>
+        )}
+      </div>
+
+      {hasMenu && !renaming ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -111,17 +177,30 @@ export function StoryCard({ story, onSelect, onDelete }: Props) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-40">
-            <DropdownMenuItem
-              variant="destructive"
-              onSelect={(e) => {
-                e.preventDefault()
-                setError(false)
-                setConfirmOpen(true)
-              }}
-            >
-              <Trash2 className="size-4" aria-hidden />
-              {t.sidebar.deleteStory}
-            </DropdownMenuItem>
+            {onUpdateTitle ? (
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault()
+                  startRename()
+                }}
+              >
+                <Pencil className="size-4" aria-hidden />
+                {t.sidebar.renameStory}
+              </DropdownMenuItem>
+            ) : null}
+            {onDelete ? (
+              <DropdownMenuItem
+                variant="destructive"
+                onSelect={(e) => {
+                  e.preventDefault()
+                  setError(false)
+                  setConfirmOpen(true)
+                }}
+              >
+                <Trash2 className="size-4" aria-hidden />
+                {t.sidebar.deleteStory}
+              </DropdownMenuItem>
+            ) : null}
           </DropdownMenuContent>
         </DropdownMenu>
       ) : null}

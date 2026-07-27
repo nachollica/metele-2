@@ -15,8 +15,8 @@ test.describe("English locale", () => {
     await dismissWelcomeBeforeLoad(page)
     await page.goto("/")
 
-    await expect(page.getByRole("heading", { name: "Write non-stop" })).toBeVisible()
-    await expect(page.getByRole("button", { name: "Start", exact: true })).toBeVisible()
+    await expect(page.getByRole("heading", { name: "Session settings" })).toBeVisible()
+    await expect(page.getByRole("button", { name: "Start writing" })).toBeVisible()
   })
 })
 
@@ -28,7 +28,7 @@ test.describe("Spanish locale", () => {
     await dismissWelcomeBeforeLoad(page)
     await page.goto("/")
 
-    await expect(page.getByRole("heading", { name: "Escribí sin parar" })).toBeVisible()
-    await expect(page.getByRole("button", { name: "Comenzar", exact: true })).toBeVisible()
+    await expect(page.getByRole("heading", { name: "Configuración de sesión" })).toBeVisible()
+    await expect(page.getByRole("button", { name: "Empezar a escribir" })).toBeVisible()
   })
 })

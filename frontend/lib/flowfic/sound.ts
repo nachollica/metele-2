@@ -63,3 +63,23 @@ export function playBell(): void {
     osc.stop(now + 1.4)
   })
 }
+
+/**
+ * Speaks a word aloud using the browser's built-in SpeechSynthesis. Used as an
+ * alternative to the bell when the sound mode is "speak": the required word is
+ * read out as it appears. No-op when the API is unavailable (SSR, jsdom, or
+ * unsupported browsers). `lang` is a locale code (e.g. "en", "es") so the
+ * synthesizer picks a matching voice.
+ */
+export function speakWord(word: string, lang: string): void {
+  if (typeof window === "undefined") return
+  const synth = window.speechSynthesis
+  if (!synth || typeof window.SpeechSynthesisUtterance !== "function") return
+  const trimmed = word.trim()
+  if (!trimmed) return
+  // Drop any queued/leftover speech so rapid spawns don't stack up.
+  synth.cancel()
+  const utterance = new window.SpeechSynthesisUtterance(trimmed)
+  utterance.lang = lang
+  synth.speak(utterance)
+}

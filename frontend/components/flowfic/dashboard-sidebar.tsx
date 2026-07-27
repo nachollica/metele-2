@@ -1,28 +1,21 @@
 "use client"
 
-import { Flame } from "lucide-react"
-
 import { cn } from "@/lib/utils"
 
 import { useTranslations } from "@/lib/i18n"
 
 import { NAV_ITEMS, type Section } from "./dashboard-nav"
 import { PrefsControls } from "./prefs-controls"
-import { SidebarAccount } from "./sidebar-account"
-import { useGamification } from "./gamification-context"
 
 type Props = {
   active: Section
   onSelect: (section: Section) => void
-  /** Opens the profile screen from the account menu. */
-  onOpenProfile?: () => void
-  /** While a sprint is running, nav + account are present but not actionable. */
+  /** While a sprint is running, nav is present but not actionable. */
   disabled?: boolean
 }
 
-export function DashboardSidebar({ active, onSelect, onOpenProfile, disabled = false }: Props) {
+export function DashboardSidebar({ active, onSelect, disabled = false }: Props) {
   const t = useTranslations()
-  const { overview } = useGamification()
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 p-4">
@@ -64,24 +57,8 @@ export function DashboardSidebar({ active, onSelect, onOpenProfile, disabled = f
 
       <div className="flex-1" />
 
-      {/* Streak card */}
-      <div className="flex items-center gap-3 rounded-2xl border border-orange-300/50 bg-orange-50 p-3 dark:border-orange-500/25 dark:bg-orange-500/10">
-        <Flame className="size-5 shrink-0 text-orange-500" aria-hidden />
-        <div className="min-w-0">
-          <div className="text-sm font-bold text-orange-700 dark:text-orange-300">
-            {overview?.streak ?? 0} {t.dashboard.streakDaysShort}
-          </div>
-          <div className="text-xs leading-snug text-orange-800/80 dark:text-orange-200/70">
-            {t.dashboard.streakHint}
-          </div>
-        </div>
-      </div>
-
-      {/* Account (login / profile+logout) — sits with the language + theme
-          controls in the bottom-left corner. */}
-      <SidebarAccount onOpenProfile={onOpenProfile} disabled={disabled} />
-
-      {/* Prefs */}
+      {/* Language + light/dark controls sit alone in the bottom-left corner;
+          login and profile moved to the top-right header. */}
       <PrefsControls />
     </div>
   )

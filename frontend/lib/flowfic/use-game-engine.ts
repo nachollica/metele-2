@@ -12,7 +12,7 @@ import {
 import { useAuth } from "@/lib/auth"
 import { useLocale } from "@/lib/i18n"
 import { usePreferences } from "@/lib/preferences"
-import { playBell, primeAudio } from "@/lib/flowfic/sound"
+import { playBell, primeAudio, speakWord } from "@/lib/flowfic/sound"
 import { randomIntervalMs } from "@/lib/flowfic/random"
 import { pickRequiredWord, normalizeForMatch } from "@/lib/flowfic/words"
 import {
@@ -57,7 +57,7 @@ const UI_TICK_MS = 100
 
 // When the "use word in N seconds" deadline is disabled, required words still
 // disappear automatically after this many seconds. No game-over is triggered.
-const WORD_AUTO_DISMISS_MS = 7_000
+const WORD_AUTO_DISMISS_MS = 10_000
 
 /**
  * The FLOWFIC writing engine as a hook. Ported verbatim from the original
@@ -68,7 +68,12 @@ const WORD_AUTO_DISMISS_MS = 7_000
 export function useGameEngine() {
   const locale = useLocale()
   const { getAccessToken, status: authStatus } = useAuth()
-  const { bellEnabled: bellPref, setBellEnabled: setBellPref } = usePreferences()
+  const {
+    soundEnabled: soundPref,
+    setSoundEnabled: setSoundPref,
+    soundMode: soundModePref,
+    setSoundMode: setSoundModePref,
+  } = usePreferences()
 
   const [gameState, setGameState] = useState<GameState>("idle")
   const [settings, setSettings] = useState<GameSettings>(DEFAULT_SETTINGS)
@@ -130,19 +135,27 @@ export function useGameEngine() {
     }
   }, [locale])
 
-  // Bell pref hydrates from localStorage; mirror it into the active settings.
+  // Sound prefs hydrate from localStorage; mirror them into the active
+  // settings. Enabled + mode are independent keys (with a legacy boolean
+  // `bellEnabled` migrated in the preferences layer).
   useEffect(() => {
-    if (bellPref === null) return
-    setSettings((s) => (s.bellEnabled === bellPref ? s : { ...s, bellEnabled: bellPref }))
-    settingsRef.current = { ...settingsRef.current, bellEnabled: bellPref }
-  }, [bellPref])
+    if (soundPref === null) return
+    setSettings((s) => (s.soundEnabled === soundPref ? s : { ...s, soundEnabled: soundPref }))
+    settingsRef.current = { ...settingsRef.current, soundEnabled: soundPref }
+  }, [soundPref])
+  useEffect(() => {
+    if (soundModePref === null) return
+    setSettings((s) => (s.soundMode === soundModePref ? s : { ...s, soundMode: soundModePref }))
+    settingsRef.current = { ...settingsRef.current, soundMode: soundModePref }
+  }, [soundModePref])
 
   const handleSettingsChange = useCallback(
     (next: GameSettings) => {
       setSettings(next)
-      if (next.bellEnabled !== bellPref) setBellPref(next.bellEnabled)
+      if (next.soundEnabled !== soundPref) setSoundPref(next.soundEnabled)
+      if (next.soundMode !== soundModePref) setSoundModePref(next.soundMode)
     },
-    [bellPref, setBellPref],
+    [soundPref, setSoundPref, soundModePref, setSoundModePref],
   )
 
   // ---- Timer helpers -----------------------------------------------------
@@ -296,8 +309,12 @@ export function useGameEngine() {
     currentWordRef.current = next
     wordSpawnedAtRef.current = Date.now()
 
-    if (currentSettings.bellEnabled) {
-      playBell()
+    if (currentSettings.soundEnabled && next !== null) {
+      if (currentSettings.soundMode === "speak") {
+        speakWord(next, locale)
+      } else {
+        playBell()
+      }
     }
 
     if (wordUseTimeoutRef.current !== null) {
@@ -371,7 +388,9 @@ export function useGameEngine() {
       setArmed(false)
       setGameState("playing")
 
-      if (newSettings.bellEnabled) {
+      // Only the bell uses the Web Audio context; "speak" mode drives
+      // SpeechSynthesis, which needs no priming here.
+      if (newSettings.soundEnabled && newSettings.soundMode === "bell") {
         primeAudio()
       }
 
@@ -387,11 +406,21 @@ export function useGameEngine() {
         return
       }
 
-      const seeds = newSettings.categoryWordsEnabled
-        ? parseCategoriesInput(newSettings.categoryWordsInput)
-        : []
-
       setGameState("loading")
+
+      // "Story world" always plays from the built-in fallback pool (the
+      // author-driven backend integration is future work); the seed input is
+      // ignored. We still await the match map so client-side matching is ready.
+      if (newSettings.wordSource === "universe") {
+        void loadMatchMap(locale).then((map) => {
+          matchMapRef.current = map
+          beginPlaying(newSettings, null)
+        })
+        return
+      }
+
+      // "Free words": seeds → related pool, empty input → random pool.
+      const seeds = parseCategoriesInput(newSettings.wordSourceSeeds)
 
       let resolved = false
       const timeout = new Promise<null>((resolve) =>

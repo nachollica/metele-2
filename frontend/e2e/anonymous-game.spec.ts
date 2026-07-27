@@ -19,8 +19,8 @@ test("first visit shows the welcome modal, which dismisses to the home dashboard
   await expect(skip).toBeVisible()
   await skip.click()
 
-  // Dismissed -> the home quick-start card is interactive.
-  await expect(page.getByRole("heading", { name: "Write non-stop" })).toBeVisible()
+  // Dismissed -> the home dashboard is shown; the header's Start action is ready.
+  await expect(page.getByRole("button", { name: "Start writing" })).toBeVisible()
   await expect(skip).toBeHidden()
 })
 
@@ -30,7 +30,7 @@ test("start -> type -> quit shows the results modal with session stats", async (
   await dismissWelcomeBeforeLoad(page)
   await page.goto("/")
 
-  await page.getByRole("button", { name: "Start", exact: true }).click()
+  await page.getByRole("button", { name: "Start writing" }).click()
 
   const textarea = page.getByRole("textbox")
   await expect(textarea).toBeVisible()
@@ -54,7 +54,7 @@ test("the idle timeout ends the session on its own", async ({ page }) => {
   await dismissWelcomeBeforeLoad(page)
   await page.goto("/")
 
-  await page.getByRole("button", { name: "Start", exact: true }).click()
+  await page.getByRole("button", { name: "Start writing" }).click()
 
   const textarea = page.getByRole("textbox")
   await expect(textarea).toBeVisible()

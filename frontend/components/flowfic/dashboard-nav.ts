@@ -6,7 +6,6 @@ import {
   BarChart3,
   BookOpen,
   Home,
-  Settings,
   Trophy,
   Zap,
   type LucideIcon,
@@ -15,14 +14,14 @@ import {
 import type { Translations } from "@/lib/i18n"
 
 // Main nav sections. "profile" is intentionally not here — it's reached from
-// the account menu, not the primary nav.
+// the account menu, not the primary nav. Session settings live on the Home
+// screen, so there is no dedicated "settings" section either.
 export type Section =
   | "home"
   | "stories"
   | "challenges"
   | "stats"
   | "achievements"
-  | "settings"
 
 export type NavItem = {
   id: Section
@@ -37,5 +36,4 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { id: "challenges", icon: Zap, label: (t) => t.nav.challenges },
   { id: "stats", icon: BarChart3, label: (t) => t.nav.stats },
   { id: "achievements", icon: Trophy, label: (t) => t.nav.achievements },
-  { id: "settings", icon: Settings, label: (t) => t.nav.settings },
 ] as const
