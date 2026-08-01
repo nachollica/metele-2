@@ -15,6 +15,10 @@ import { InspirationImage, PromptOfDay } from "./inspiration-panel"
 import { StatsSection } from "./stats-section"
 import { StoriesSection } from "./stories-section"
 
+// Landing order: inspiration image, prompt + weekly summary (half/half), the
+// full-width statistics widget, achievements + challenges (half/half), and the
+// full-width recent-stories list. Half-width rows stack on mobile.
+
 type Props = {
   /** Open an expanded subsection (from a "Show all" link). */
   onShowSection: (section: Section) => void
@@ -50,10 +54,10 @@ export function LandingHome({
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-5">
-      {/* Inspiration image — centered hero. */}
-      <InspirationImage className="mx-auto max-w-2xl" />
+      {/* Inspiration image — fills the container width. */}
+      <InspirationImage />
 
-      {/* Prompt of the day + this week's totals. */}
+      {/* Prompt of the day + this week's totals (half/half). */}
       <div className="grid gap-5 lg:grid-cols-2">
         <PromptOfDay />
         <Panel>
@@ -81,10 +85,16 @@ export function LandingHome({
         </Panel>
       </div>
 
-      {/* Subsection previews. */}
+      {/* Statistics — full width. */}
       <StatsSection preview onShowAll={() => onShowSection("stats")} />
-      <AchievementsSection preview onShowAll={() => onShowSection("achievements")} />
-      <ChallengesSection preview onNewStory={onNewStory} onShowAll={() => onShowSection("challenges")} />
+
+      {/* Achievements + challenges (half/half). */}
+      <div className="grid items-start gap-5 lg:grid-cols-2">
+        <AchievementsSection preview onShowAll={() => onShowSection("achievements")} />
+        <ChallengesSection preview onNewStory={onNewStory} onShowAll={() => onShowSection("challenges")} />
+      </div>
+
+      {/* Recent stories — full width. */}
       <StoriesSection
         preview
         onShowAll={() => onShowSection("stories")}

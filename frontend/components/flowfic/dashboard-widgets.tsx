@@ -94,7 +94,7 @@ export function SectionHeader({
 }) {
   return (
     <div className="mb-4 flex items-center justify-between gap-3">
-      <h3 className="text-base font-bold">{title}</h3>
+      <h3 className="text-lg font-bold">{title}</h3>
       {action}
     </div>
   )
@@ -148,9 +148,9 @@ export function StatTile({
 }) {
   return (
     <div className="flex flex-col items-center gap-1 text-center">
-      {Icon ? <IconChip icon={Icon} tone={tone} className="mb-1 size-9" iconClassName="size-4" /> : null}
+      {Icon ? <IconChip icon={Icon} tone={tone} className="mb-1 size-11" iconClassName="size-5" /> : null}
       <div className="flex items-baseline gap-1">
-        <span className="text-xl font-extrabold tabular-nums">{value}</span>
+        <span className="text-2xl font-extrabold tabular-nums">{value}</span>
         {delta ? (
           <span
             className={cn(
@@ -162,7 +162,7 @@ export function StatTile({
           </span>
         ) : null}
       </div>
-      <span className="text-muted-foreground text-xs">{label}</span>
+      <span className="text-muted-foreground text-sm">{label}</span>
     </div>
   )
 }
@@ -192,10 +192,10 @@ export function AchievementItem({
 }) {
   return (
     <div className="flex items-center gap-3">
-      <IconChip icon={icon} tone={tone} className="size-10" />
+      <IconChip icon={icon} tone={tone} className="size-11" iconClassName="size-6" />
       <div className="min-w-0 flex-1">
-        <div className="truncate text-sm font-semibold">{name}</div>
-        <div className="text-muted-foreground truncate text-xs">{description}</div>
+        <div className="truncate text-base font-semibold">{name}</div>
+        <div className="text-muted-foreground truncate text-sm">{description}</div>
         {showProgress && !unlocked ? (
           <ProgressMeter value={progress} tone={tone} label={name} className="mt-2" />
         ) : null}
@@ -241,10 +241,10 @@ export function ChallengeItem({
   return (
     <div className="bg-muted/40 flex flex-col rounded-xl border p-4">
       <div className="mb-2 flex items-center gap-2">
-        <IconChip icon={icon} tone={tone} className="size-9" iconClassName="size-4" />
-        <div className="text-sm font-bold">{name}</div>
+        <IconChip icon={icon} tone={tone} className="size-10" iconClassName="size-5" />
+        <div className="text-base font-bold">{name}</div>
       </div>
-      <p className="text-muted-foreground mb-3 text-xs leading-relaxed">{description}</p>
+      <p className="text-muted-foreground mb-3 text-sm leading-relaxed">{description}</p>
       <ProgressMeter value={progress} tone={tone} label={name} />
       <div className="text-muted-foreground mt-1.5 mb-3 text-xs tabular-nums">{progressLabel}</div>
       <div className="mt-auto">

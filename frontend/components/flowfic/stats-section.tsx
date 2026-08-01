@@ -71,7 +71,19 @@ export function StatsSection({ preview = false, onShowAll }: Props) {
             ) : null
           }
         />
-        {lifetimeTotals}
+        {/* Left half: two headline badges. Right half: the same weekly timeline
+            the full screen shows. Stacks on mobile. */}
+        <div className="grid gap-5 lg:grid-cols-2">
+          <div className="grid grid-cols-2 gap-4">
+            <Panel className="bg-muted/40 p-4 shadow-none">
+              <StatTile icon={Trophy} tone="amber" value={String(ov.level.level)} label={t.dashboard.level} />
+            </Panel>
+            <Panel className="bg-muted/40 p-4 shadow-none">
+              <StatTile icon={Flame} tone="orange" value={String(ov.streak)} label={t.dashboard.daysInARow} />
+            </Panel>
+          </div>
+          <WeeklyChart data={chart} wordsLabel={t.dashboard.words} caption={t.dashboard.chartCaption} />
+        </div>
       </Panel>
     )
   }

@@ -29,10 +29,10 @@ test("a finished session is saved to the backend and shows in My stories", async
   await page.getByRole("button", { name: "Quit session" }).click()
   await expect(page.getByRole("dialog").getByText("Session ended")).toBeVisible()
 
-  // Close the modal, then "Create a story" leaves the ended state — which is
+  // Close the modal, then "Back to home" leaves the ended state — which is
   // what triggers the save.
   await page.getByRole("button", { name: "Continue editing" }).click()
-  await page.getByRole("button", { name: "Create a story" }).click()
+  await page.getByRole("button", { name: "Back to home" }).click()
 
   // The frontend POSTed exactly one story with the expected contract.
   await expect.poll(() => backend.postedStories.length).toBe(1)

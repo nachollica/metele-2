@@ -2,11 +2,7 @@ import { screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 
-import {
-  InspirationImage,
-  InspirationPanel,
-  PromptOfDay,
-} from "@/components/flowfic/inspiration-panel"
+import { InspirationImage, PromptOfDay } from "@/components/flowfic/inspiration-panel"
 import { ShowAllButton } from "@/components/flowfic/dashboard-widgets"
 import { renderWithLocale } from "../../utils"
 
@@ -21,14 +17,6 @@ describe("InspirationImage", () => {
 describe("PromptOfDay", () => {
   it("shows the prompt-of-the-day header", () => {
     renderWithLocale(<PromptOfDay />)
-    expect(screen.getByText("Prompt of the day")).toBeInTheDocument()
-  })
-})
-
-describe("InspirationPanel", () => {
-  it("combines the image and the daily prompt", () => {
-    renderWithLocale(<InspirationPanel />)
-    expect(screen.getByRole("img", { name: "Inspiration image" })).toBeInTheDocument()
     expect(screen.getByText("Prompt of the day")).toBeInTheDocument()
   })
 })

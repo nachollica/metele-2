@@ -34,7 +34,7 @@ export function InspirationImage({ className }: { className?: string }) {
   )
 }
 
-/** Prompt-of-the-day card. */
+/** Prompt-of-the-day card (landing only; the split pane shows image alone). */
 export function PromptOfDay({ className }: { className?: string }) {
   const t = useTranslations()
   const locale = useLocale()
@@ -43,24 +43,9 @@ export function PromptOfDay({ className }: { className?: string }) {
   return (
     <Panel className={cn("flex flex-col", className)}>
       <SectionHeader title={t.dashboard.promptOfDay} />
-      <p className="text-foreground/80 flex-1 text-lg leading-snug font-medium italic">
+      <p className="text-foreground/80 flex-1 text-xl leading-snug font-medium italic">
         &ldquo;{prompt}&rdquo;
       </p>
     </Panel>
-  )
-}
-
-/**
- * Inspiration column shown on the right half of the desktop split while the
- * user configures or plays a session: the placeholder image on top, the daily
- * prompt beneath it. Hidden on mobile by the caller (space is too tight to keep
- * it visible during play).
- */
-export function InspirationPanel({ className }: { className?: string }) {
-  return (
-    <div className={cn("flex flex-col gap-4", className)}>
-      <InspirationImage />
-      <PromptOfDay />
-    </div>
   )
 }

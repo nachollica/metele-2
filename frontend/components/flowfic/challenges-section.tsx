@@ -9,8 +9,10 @@ import { challengeText, challengeVisual } from "@/lib/flowfic/gamification"
 import { ChallengeItem, Panel, SectionHeader, ShowAllButton } from "./dashboard-widgets"
 import { useGamification } from "./gamification-context"
 
-// How many challenges the landing preview card shows before "Show all".
-const PREVIEW_COUNT = 3
+// The single challenge the landing preview highlights. Fixed for now (a
+// per-day / featured pick can replace this later); falls back to the first
+// available challenge if this id isn't in the fetched list.
+const HOME_CHALLENGE_ID = "daily_600"
 
 type Props = {
   /** Begin the new-story flow (from a challenge card's call to action). */
@@ -27,39 +29,32 @@ export function ChallengesSection({ onNewStory, preview = false, onShowAll }: Pr
   const { challenges } = useGamification()
 
   const list = challenges ?? []
-  const shown = preview ? list.slice(0, PREVIEW_COUNT) : list
 
-  const grid =
-    status === "anonymous" ? (
-      <p className="text-muted-foreground py-6 text-center text-sm">{t.dashboard.signInHint}</p>
-    ) : (
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {shown.map((c) => {
-          const v = challengeVisual(c.id)
-          const text = challengeText(t, c.id)
-          return (
-            <ChallengeItem
-              key={c.id}
-              icon={v.icon}
-              tone={v.tone}
-              name={text.name}
-              description={text.description}
-              progress={c.progress}
-              completed={c.completed}
-              progressLabel={`${c.current}/${c.target}`}
-              completedLabel={t.challenges.completed}
-              action={
-                <Button size="sm" className="w-full" onClick={onNewStory}>
-                  {t.dashboard.writeNow}
-                </Button>
-              }
-            />
-          )
-        })}
-      </div>
+  function renderChallenge(c: (typeof list)[number]) {
+    const v = challengeVisual(c.id)
+    const text = challengeText(t, c.id)
+    return (
+      <ChallengeItem
+        key={c.id}
+        icon={v.icon}
+        tone={v.tone}
+        name={text.name}
+        description={text.description}
+        progress={c.progress}
+        completed={c.completed}
+        progressLabel={`${c.current}/${c.target}`}
+        completedLabel={t.challenges.completed}
+        action={
+          <Button size="sm" className="w-full" onClick={onNewStory}>
+            {t.dashboard.writeNow}
+          </Button>
+        }
+      />
     )
+  }
 
   if (preview) {
+    const featured = list.find((c) => c.id === HOME_CHALLENGE_ID) ?? list[0]
     return (
       <Panel>
         <SectionHeader
@@ -74,10 +69,22 @@ export function ChallengesSection({ onNewStory, preview = false, onShowAll }: Pr
             ) : null
           }
         />
-        {grid}
+        {status === "anonymous" || !featured ? (
+          <p className="text-muted-foreground py-6 text-center text-sm">{t.dashboard.signInHint}</p>
+        ) : (
+          renderChallenge(featured)
+        )}
       </Panel>
     )
   }
 
-  return <div className="flex flex-col gap-5">{grid}</div>
+  return (
+    <div className="flex flex-col gap-5">
+      {status === "anonymous" ? (
+        <p className="text-muted-foreground py-6 text-center text-sm">{t.dashboard.signInHint}</p>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{list.map(renderChallenge)}</div>
+      )}
+    </div>
+  )
 }

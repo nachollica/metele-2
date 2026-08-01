@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { AlertTriangle, Loader2, Pencil, Sparkles, X } from "lucide-react"
+import { AlertTriangle, Home, Loader2, Pencil, Sparkles, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -20,7 +20,7 @@ import { ChallengesSection } from "./challenges-section"
 import { DetailScreen } from "./detail-screen"
 import { GamificationProvider } from "./gamification-context"
 import { GameHud } from "./game-hud"
-import { InspirationPanel } from "./inspiration-panel"
+import { InspirationImage } from "./inspiration-panel"
 import { LandingHome } from "./landing"
 import { ProfilePanel } from "./profile-panel"
 import { ResultsModal } from "./results-modal"
@@ -153,10 +153,12 @@ export function Dashboard() {
       return <ActionButton icon={<X className="size-4" aria-hidden />} label={t.game.quit} onClick={engine.quit} />
     }
     if (engine.gameState === "ended") {
+      // Finished sprint, text still editable: the action just returns home
+      // (saving the story on the way out via finishStory -> leaveGame path).
       return (
         <ActionButton
-          icon={<Sparkles className="size-4" aria-hidden />}
-          label={t.game.createStory}
+          icon={<Home className="size-4" aria-hidden />}
+          label={t.nav.backToHome}
           onClick={finishStory}
         />
       )
@@ -212,9 +214,10 @@ export function Dashboard() {
                   <SettingsPanel settings={engine.settings} onChange={engine.setSettings} />
                 )}
               </div>
-              {/* Right: inspiration (image + prompt), desktop only. */}
-              <aside className="bg-card/40 hidden w-2/5 max-w-md shrink-0 overflow-y-auto border-l p-4 sm:p-6 md:block">
-                <InspirationPanel />
+              {/* Right: inspiration image only (5/12), desktop only. The image
+                  fills the width and is centered vertically in the column. */}
+              <aside className="bg-card/40 hidden w-5/12 shrink-0 flex-col justify-center overflow-y-auto border-l p-4 sm:p-6 md:flex">
+                <InspirationImage />
               </aside>
             </div>
           ) : (

@@ -8,7 +8,7 @@ import { AchievementItem, Panel, SectionHeader, ShowAllButton } from "./dashboar
 import { useGamification } from "./gamification-context"
 
 // How many achievements the landing preview card shows before "Show all".
-const PREVIEW_COUNT = 4
+const PREVIEW_COUNT = 3
 
 type Props = {
   /** Render a trimmed card for the landing dashboard instead of the full screen. */
@@ -42,7 +42,7 @@ export function AchievementsSection({ preview = false, onShowAll }: Props) {
         {signedOut ? (
           <p className="text-muted-foreground py-4 text-center text-sm">{t.dashboard.signInHint}</p>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="flex flex-col gap-4">
             {achievements.slice(0, PREVIEW_COUNT).map((a) => {
               const v = achievementVisual(a.id)
               const text = achievementText(t, a.id)

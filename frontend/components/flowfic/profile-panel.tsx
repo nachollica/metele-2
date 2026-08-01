@@ -151,21 +151,14 @@ export function ProfilePanel({ onProfileUpdated }: Props) {
     .toUpperCase()
 
   return (
+    // No in-card title/width of its own: the shared DetailScreen supplies the
+    // back-arrow + title and the container width, so this fills it and stays
+    // aligned with the other inner pages.
     <section
-      aria-labelledby="profile-heading"
-      className="bg-card text-card-foreground mx-auto flex w-full max-w-4xl flex-col gap-6 rounded-lg border p-6 shadow-sm"
+      aria-label={t.profile.title}
+      className="bg-card text-card-foreground flex w-full flex-col gap-6 rounded-lg border p-6 shadow-sm"
     >
-      <header>
-        <h2
-          id="profile-heading"
-          className="font-serif text-2xl font-semibold tracking-tight"
-        >
-          {t.profile.title}
-        </h2>
-        <p className="text-muted-foreground mt-1 text-sm">
-          {t.profile.description}
-        </p>
-      </header>
+      <p className="text-muted-foreground text-sm">{t.profile.description}</p>
 
       <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
         <Avatar className="size-24">

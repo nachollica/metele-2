@@ -38,18 +38,29 @@ export function AppHeader({
 }: Props) {
   const t = useTranslations()
   return (
-    <header className="bg-card/60 flex items-center justify-between gap-3 border-b px-4 py-3 sm:px-6">
-      <div className="flex min-w-0 items-center gap-3">
-        {/* Brand, far-left — doubles as a home link (locked during play). */}
+    // The full brand mark needs vertical room on wider screens, so the bar
+    // grows there (buttons stay centered in the extra space); on mobile it
+    // stays compact with just the icon so nothing is wasted.
+    <header className="bg-card/60 flex items-center justify-between gap-3 border-b px-4 py-2 sm:px-6 md:py-4">
+      <div className="flex min-w-0 items-center gap-3 md:gap-8">
+        {/* Brand, far-left — doubles as a home link (locked during play).
+            Icon-only on mobile, full logo + wordmark from md up. */}
         <button
           type="button"
           onClick={onGoHome}
           disabled={disabled}
-          aria-label={t.nav.backToHome}
+          aria-label={t.app.title}
           className="focus-visible:ring-ring/50 shrink-0 rounded-md transition-opacity focus-visible:ring-2 focus-visible:outline-none disabled:cursor-default disabled:opacity-100"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/flowfic-logo.png" alt={t.app.title} className="size-8 object-contain" />
+          <img src="/flowfic-logo.png" alt="" aria-hidden className="size-9 object-contain md:hidden" />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/flowfic-logo-full.png"
+            alt=""
+            aria-hidden
+            className="hidden h-[5.5rem] w-auto object-contain md:block"
+          />
         </button>
         {/* Primary action (New story / Start writing / Quit …). */}
         {primaryAction}
