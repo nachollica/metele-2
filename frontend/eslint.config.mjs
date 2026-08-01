@@ -19,8 +19,9 @@ export default [
   react.configs.flat.recommended,
   react.configs.flat["jsx-runtime"],
   {
-    // Node build/util scripts (e.g. the match-map prebuild guard).
-    files: ["scripts/**/*.mjs"],
+    // Node build/util scripts (e.g. the match-map prebuild guard, and the
+    // static server the Playwright integration lane uses).
+    files: ["scripts/**/*.mjs", "e2e-integration/**/*.mjs"],
     languageOptions: {
       sourceType: "module",
       globals: { ...globals.node },

@@ -50,6 +50,23 @@ cc: fix tc test
 ci: check tc test
 
 [group("development")]
+[doc("Boot an isolated backend for the frontend Playwright integration lane: a fresh SQLite DB under .e2e/, dev-login enabled, and a seeded 'e2e' user, on port 8001. Deliberately does NOT source .env so it can't touch a real local DB/Auth0.")]
+e2e-serve:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    export ENVIRONMENT=testing
+    export FRONTEND_ORIGIN=http://localhost:3100
+    export AUTH0_DOMAIN=e2e.invalid
+    export AUTH0_AUDIENCE=e2e
+    export DEV_USER_ENABLED=true
+    export DEV_USER_TOKEN=e2e-secret
+    export DATABASE_URL="sqlite:///$(pwd)/.e2e/e2e.db"
+    mkdir -p .e2e
+    rm -f .e2e/e2e.db
+    uv run python -m app.scripts.seed_dev_user e2e
+    exec uv run uvicorn app.main:app --port 8001
+
+[group("development")]
 [doc("Seed dev-user rows. Usage: just seed alice bob")]
 seed +USERNAMES:
     set -a; [ -f .env ] && . ./.env; set +a; \

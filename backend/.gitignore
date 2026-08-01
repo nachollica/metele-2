@@ -11,6 +11,9 @@ __pycache__/
 *.sqlite
 *.sqlite3
 
+# Throwaway DB (+ WAL/SHM siblings) for the Playwright integration lane.
+/.e2e/
+
 # Generated vector pools (built by the top-level word-assets tool; large, so not
 # committed). The image build fails loudly if they are missing.
 /data/word_pool/
