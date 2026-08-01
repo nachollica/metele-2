@@ -10,11 +10,14 @@ import { dismissWelcomeBeforeLoad, mockBackend } from "./fixtures"
 test.describe("English locale", () => {
   test.use({ locale: "en-US" })
 
-  test("renders the home dashboard in English", async ({ page }) => {
+  test("renders the dashboard and settings in English", async ({ page }) => {
     await mockBackend(page)
     await dismissWelcomeBeforeLoad(page)
     await page.goto("/")
 
+    // Landing action is localized; opening it shows the localized settings.
+    await expect(page.getByRole("button", { name: "New story" })).toBeVisible()
+    await page.getByRole("button", { name: "New story" }).click()
     await expect(page.getByRole("heading", { name: "Session settings" })).toBeVisible()
     await expect(page.getByRole("button", { name: "Start writing" })).toBeVisible()
   })
@@ -23,11 +26,13 @@ test.describe("English locale", () => {
 test.describe("Spanish locale", () => {
   test.use({ locale: "es-ES" })
 
-  test("renders the home dashboard in Spanish", async ({ page }) => {
+  test("renders the dashboard and settings in Spanish", async ({ page }) => {
     await mockBackend(page)
     await dismissWelcomeBeforeLoad(page)
     await page.goto("/")
 
+    await expect(page.getByRole("button", { name: "Nueva historia" })).toBeVisible()
+    await page.getByRole("button", { name: "Nueva historia" }).click()
     await expect(page.getByRole("heading", { name: "Configuración de sesión" })).toBeVisible()
     await expect(page.getByRole("button", { name: "Empezar a escribir" })).toBeVisible()
   })

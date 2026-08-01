@@ -4,7 +4,7 @@
 // All copy is passed in already-localized so these stay dumb and testable.
 
 import { type ReactNode } from "react"
-import { Check, CircleCheckBig, type LucideIcon } from "lucide-react"
+import { ChevronRight, Check, CircleCheckBig, type LucideIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { TONE_BAR, TONE_CHIP, type Tone } from "@/lib/flowfic/gamification"
@@ -97,6 +97,35 @@ export function SectionHeader({
       <h3 className="text-base font-bold">{title}</h3>
       {action}
     </div>
+  )
+}
+
+// ---- "Show all" link ------------------------------------------------------
+
+/**
+ * Compact link used as a section-header action on the landing dashboard. Opens
+ * the matching expanded subsection. `label` is the fully-localized "Show all"
+ * copy; `sectionName` names the target so screen readers get a unique name.
+ */
+export function ShowAllButton({
+  label,
+  sectionName,
+  onClick,
+}: {
+  label: string
+  sectionName: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={`${label}: ${sectionName}`}
+      className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 flex shrink-0 items-center gap-1 rounded-md text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none"
+    >
+      {label}
+      <ChevronRight className="size-4" aria-hidden />
+    </button>
   )
 }
 

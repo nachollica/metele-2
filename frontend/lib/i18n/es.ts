@@ -257,6 +257,9 @@ export const es = {
     challenges: "Desafíos",
     stats: "Estadísticas",
     achievements: "Logros",
+    newStory: "Nueva historia",
+    showAll: "Ver todo",
+    backToHome: "Volver al inicio",
   },
 
   dashboard: {
@@ -281,6 +284,9 @@ export const es = {
     sessionsCompleted: "Sesiones completadas",
     promptOfDay: "Prompt del día",
     writeNow: "Escribir ahora",
+    recentStories: "Historias recientes",
+    inspirationAlt: "Imagen de inspiración",
+    inspirationTitle: "Inspiración de hoy",
   },
 
   achievements: {

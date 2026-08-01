@@ -21,7 +21,11 @@ import { useLocale, useTranslations } from "@/lib/i18n"
 import type { Story } from "@/lib/flowfic/stories-api"
 import { filterAndSortStories, type SortOrder } from "@/lib/flowfic/story-search"
 
+import { Panel, SectionHeader, ShowAllButton } from "./dashboard-widgets"
 import { StoryCard } from "./story-card"
+
+// How many stories the landing preview card shows before "Show all".
+const PREVIEW_COUNT = 3
 
 type Props = {
   stories: Story[] | null
@@ -29,6 +33,10 @@ type Props = {
   onViewStory: (story: Story) => void
   onDeleteStory: (id: number) => Promise<boolean>
   onUpdateTitle: (id: number, title: string | null) => Promise<boolean>
+  /** Render a trimmed card for the landing dashboard instead of the full screen. */
+  preview?: boolean
+  /** Open the expanded My-stories screen (preview only). */
+  onShowAll?: () => void
 }
 
 function fmtDay(d: Date, locale: string): string {
@@ -45,6 +53,8 @@ export function StoriesSection({
   onViewStory,
   onDeleteStory,
   onUpdateTitle,
+  preview = false,
+  onShowAll,
 }: Props) {
   const t = useTranslations()
   const locale = useLocale()
@@ -64,10 +74,64 @@ export function StoriesSection({
     })
   }, [stories, query, range, sort])
 
+  // ---- Preview card (landing) ---------------------------------------------
+  if (preview) {
+    const recent = stories
+      ? filterAndSortStories(stories, { query: "", from: null, to: null, sort: "newest" }).slice(
+          0,
+          PREVIEW_COUNT,
+        )
+      : []
+    return (
+      <Panel>
+        <SectionHeader
+          title={t.dashboard.recentStories}
+          action={
+            onShowAll ? (
+              <ShowAllButton
+                label={t.nav.showAll}
+                sectionName={t.nav.stories}
+                onClick={onShowAll}
+              />
+            ) : null
+          }
+        />
+        {stories === null ? (
+          <div className="flex flex-col gap-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-24 rounded-2xl" />
+            ))}
+          </div>
+        ) : recent.length === 0 ? (
+          <p className="text-muted-foreground py-6 text-center text-sm">
+            {error
+              ? t.sidebar.error
+              : status === "anonymous"
+                ? t.sidebar.signUpPrompt
+                : t.dashboard.emptyStories}
+          </p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {recent.map((s) => (
+              <StoryCard
+                key={s.id}
+                story={s}
+                onSelect={onViewStory}
+                onDelete={onDeleteStory}
+                onUpdateTitle={onUpdateTitle}
+              />
+            ))}
+          </div>
+        )}
+      </Panel>
+    )
+  }
+
+  // ---- Full screen --------------------------------------------------------
   // First load.
   if (stories === null) {
     return (
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-3">
+      <div className="flex flex-col gap-3">
         {Array.from({ length: 5 }).map((_, i) => (
           <Skeleton key={i} className="h-24 rounded-2xl" />
         ))}
@@ -78,7 +142,7 @@ export function StoriesSection({
   // No stories at all — the search bar would have nothing to act on.
   if (stories.length === 0) {
     return (
-      <p className="text-muted-foreground mx-auto w-full max-w-4xl py-12 text-center text-sm">
+      <p className="text-muted-foreground py-12 text-center text-sm">
         {error
           ? t.sidebar.error
           : status === "anonymous"
@@ -98,7 +162,7 @@ export function StoriesSection({
   const results = filtered ?? []
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-4">
+    <div className="flex flex-col gap-4">
       {/* Search + date filter + sort */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <div className="relative flex-1">

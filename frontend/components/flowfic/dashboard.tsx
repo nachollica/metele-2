@@ -1,20 +1,11 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { AlertTriangle, ArrowLeft, Loader2, PanelLeft, Pencil, Sparkles, X } from "lucide-react"
+import { AlertTriangle, Loader2, Pencil, Sparkles, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet"
-import { useIsMobile } from "@/components/ui/use-mobile"
 import { cn } from "@/lib/utils"
 
-import { DevLoginButton } from "@/components/auth/dev-login-button"
 import { useAuth } from "@/lib/auth"
 import { useBackendStatus } from "@/lib/backend"
 import { useTranslations } from "@/lib/i18n"
@@ -22,16 +13,18 @@ import { useGameEngine } from "@/lib/flowfic/use-game-engine"
 import { useStories } from "@/lib/flowfic/use-stories"
 import type { Story } from "@/lib/flowfic/stories-api"
 
-import { type Section } from "./dashboard-nav"
-import { AccountMenu } from "./account-menu"
-import { DashboardSidebar } from "./dashboard-sidebar"
-import { DashboardHome } from "./dashboard-home"
+import { SECTION_META, type Section } from "./dashboard-nav"
+import { AppHeader } from "./app-header"
 import { AchievementsSection } from "./achievements-section"
 import { ChallengesSection } from "./challenges-section"
+import { DetailScreen } from "./detail-screen"
 import { GamificationProvider } from "./gamification-context"
 import { GameHud } from "./game-hud"
+import { InspirationPanel } from "./inspiration-panel"
+import { LandingHome } from "./landing"
 import { ProfilePanel } from "./profile-panel"
 import { ResultsModal } from "./results-modal"
+import { SettingsPanel } from "./settings-panel"
 import { StatsSection } from "./stats-section"
 import { StoriesSection } from "./stories-section"
 import { WelcomeModal } from "./welcome-modal"
@@ -39,12 +32,21 @@ import { WritingArea } from "./writing-area"
 
 const WELCOME_STORAGE_KEY = "flowfic.welcome.dismissed"
 
+// The single-route app has no URL-driven navigation: the visible main-area
+// screen is this local state. Engine states (loading/playing/ended) take
+// precedence over it and render the game.
+type Screen =
+  | { name: "landing" }
+  | { name: "configuring" } // session settings shown, engine still idle
+  | { name: "section"; section: Section }
+  | { name: "profile" }
+  | { name: "story"; story: Story }
+
 export function Dashboard() {
   const t = useTranslations()
   const { status: authStatus } = useAuth()
   const { devUserEnabled } = useBackendStatus()
   const engine = useGameEngine()
-  const isMobile = useIsMobile()
 
   const {
     stories,
@@ -53,15 +55,15 @@ export function Dashboard() {
     update: updateStoryTitle,
   } = useStories(engine.storiesRefreshKey)
 
-  const [section, setSection] = useState<Section>("home")
-  const [viewingStory, setViewingStory] = useState<Story | null>(null)
-  const [profileOpen, setProfileOpen] = useState(false)
-  const [sheetOpen, setSheetOpen] = useState(false)
+  const [screen, setScreen] = useState<Screen>({ name: "landing" })
   const [welcomeOpen, setWelcomeOpen] = useState(false)
 
   const inGame = engine.gameState === "playing" || engine.gameState === "ended"
   const loading = engine.gameState === "loading"
-  const fillLayout = inGame || loading || viewingStory !== null
+  // Left/right split (settings or game on the left, inspiration on the right)
+  // is used whenever a session is being configured or played. Desktop only —
+  // the inspiration column is hidden on mobile.
+  const splitLayout = screen.name === "configuring" || loading || inGame
 
   // ---- First-visit welcome (anonymous only) ------------------------------
   useEffect(() => {
@@ -93,9 +95,7 @@ export function Dashboard() {
     const prev = prevAuthRef.current
     prevAuthRef.current = authStatus
     if (prev === "authenticated" && authStatus === "anonymous") {
-      setSection("home")
-      setViewingStory(null)
-      setProfileOpen(false)
+      setScreen({ name: "landing" })
     }
   }, [authStatus])
 
@@ -105,50 +105,52 @@ export function Dashboard() {
     if (engine.gameState === "ended") engine.finishAndReset()
   }
 
-  function selectSection(next: Section) {
+  function goHome() {
     leaveGame()
-    setProfileOpen(false)
-    setViewingStory(null)
-    setSection(next)
-    setSheetOpen(false)
+    setScreen({ name: "landing" })
   }
 
-  function onViewStory(story: Story) {
+  function showSection(section: Section) {
     leaveGame()
-    setProfileOpen(false)
-    setViewingStory(story)
+    setScreen({ name: "section", section })
   }
 
   function openProfile() {
     leaveGame()
-    setViewingStory(null)
-    setProfileOpen(true)
+    setScreen({ name: "profile" })
   }
 
-  function startNewStory() {
+  function onViewStory(story: Story) {
+    leaveGame()
+    setScreen({ name: "story", story })
+  }
+
+  // "New story": reveal the session configurator (engine stays idle).
+  function beginNewStory() {
+    leaveGame()
+    setScreen({ name: "configuring" })
+  }
+
+  // "Start writing": start the sprint with the configured settings.
+  function startWriting() {
     engine.saveCurrentStoryIfNeeded()
-    setViewingStory(null)
-    setProfileOpen(false)
     engine.startGame(engine.settings)
   }
 
+  // "Create a story" (ended state): finalize the finished sprint, back to home.
   function finishStory() {
     engine.finishAndReset()
-    setViewingStory(null)
-    setProfileOpen(false)
-    setSection("home")
+    setScreen({ name: "landing" })
   }
 
   // ---- Primary action ----------------------------------------------------
-  // The top bar carries no text on any screen — just the game action (left)
-  // and the account control (right).
+  // New story (Sparkles) → Start writing (Pencil, on the configuring screen)
+  // → Quit (X, while playing) → Create a story (Sparkles, ended state).
   const primaryAction = primaryActionFor()
 
   function primaryActionFor() {
     if (engine.isPlaying) {
-      return (
-        <ActionButton icon={<X className="size-4" aria-hidden />} label={t.game.quit} onClick={engine.quit} />
-      )
+      return <ActionButton icon={<X className="size-4" aria-hidden />} label={t.game.quit} onClick={engine.quit} />
     }
     if (engine.gameState === "ended") {
       return (
@@ -160,175 +162,78 @@ export function Dashboard() {
       )
     }
     if (loading) return null
+    if (screen.name === "configuring") {
+      return (
+        <ActionButton
+          icon={<Pencil className="size-4" aria-hidden />}
+          label={t.settings.start}
+          onClick={startWriting}
+        />
+      )
+    }
     return (
       <ActionButton
-        icon={<Pencil className="size-4" aria-hidden />}
-        label={t.settings.start}
-        onClick={startNewStory}
+        icon={<Sparkles className="size-4" aria-hidden />}
+        label={t.nav.newStory}
+        onClick={beginNewStory}
       />
     )
   }
 
-  const sidebar = (
-    <DashboardSidebar
-      active={section}
-      onSelect={selectSection}
-      disabled={engine.isPlaying || loading}
-    />
-  )
+  const controlsDisabled = engine.isPlaying || loading
 
   return (
     <GamificationProvider refreshKey={engine.storiesRefreshKey}>
-      <div className="bg-background text-foreground flex h-dvh">
-        {/* Desktop sidebar */}
-        <aside className="bg-card hidden w-64 shrink-0 border-r md:block" aria-label={t.nav.label}>
-          {sidebar}
-        </aside>
+      <div className="bg-background text-foreground flex h-dvh flex-col">
+        <AppHeader
+          primaryAction={primaryAction}
+          authStatus={authStatus}
+          devUserEnabled={devUserEnabled}
+          disabled={controlsDisabled}
+          onGoHome={goHome}
+          onOpenProfile={openProfile}
+        />
 
-        {/* Mobile sidebar */}
-        <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-          <SheetContent side="left" className="w-[85vw] max-w-sm p-0 sm:max-w-sm">
-            <SheetHeader className="sr-only">
-              <SheetTitle>{t.nav.label}</SheetTitle>
-              <SheetDescription>{t.dashboard.subtitle}</SheetDescription>
-            </SheetHeader>
-            {sidebar}
-          </SheetContent>
-        </Sheet>
-
-        {/* Main */}
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          <header className="bg-card/60 flex items-center justify-between gap-3 border-b px-4 py-3 sm:px-6">
-            <div className="flex min-w-0 items-center gap-3">
-              {isMobile ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setSheetOpen(true)}
-                  disabled={engine.isPlaying || loading}
-                  aria-label={t.nav.openMenu}
-                >
-                  <PanelLeft className="size-4" aria-hidden />
-                </Button>
-              ) : null}
-              {/* Primary action (Start / Quit / Create a story) anchors the
-                  top-left, same slot on every screen. No title text. */}
-              {primaryAction}
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              {/* Dev-user backdoor stays a header-only shortcut (never in the
-                  account menu); shown only while anonymous and only when the
-                  backend reports it enabled. */}
-              {authStatus === "anonymous" && devUserEnabled ? (
-                <DevLoginButton disabled={engine.isPlaying || loading} />
-              ) : null}
-              {/* Login / avatar-menu, top-right. */}
-              <AccountMenu onOpenProfile={openProfile} disabled={engine.isPlaying || loading} />
-            </div>
-          </header>
-
-          <div
-            className={cn(
-              "flex-1",
-              fillLayout
-                ? "flex min-h-0 flex-col gap-4 p-4 sm:p-6"
-                : "min-h-0 overflow-y-auto p-4 sm:p-6",
-            )}
-          >
-            {engine.failedSave !== null && inGame ? (
+        <main className="min-h-0 flex-1">
+          {splitLayout ? (
+            <div className="flex h-full min-h-0">
+              {/* Left: game area or session settings. */}
               <div
-                role="alert"
-                className="border-destructive/40 bg-destructive/10 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border p-3 text-sm"
+                className={cn(
+                  "flex min-w-0 flex-1 flex-col gap-4 p-4 sm:p-6",
+                  inGame || loading ? "overflow-hidden" : "overflow-y-auto",
+                )}
               >
-                <AlertTriangle className="text-destructive size-4 shrink-0" aria-hidden />
-                <span className="text-destructive flex-1">{t.game.saveFailed}</span>
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={engine.retryFailedSave}
-                    disabled={engine.retryingSave}
-                  >
-                    {engine.retryingSave ? t.game.saveRetrying : t.game.saveRetry}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    onClick={engine.dismissFailedSave}
-                    disabled={engine.retryingSave}
-                  >
-                    {t.game.saveDismiss}
-                  </Button>
-                </div>
+                {loading ? (
+                  <LoadingSplash />
+                ) : inGame ? (
+                  <GameArea engine={engine} />
+                ) : (
+                  <SettingsPanel settings={engine.settings} onChange={engine.setSettings} />
+                )}
               </div>
-            ) : null}
-
-            {loading ? (
-              <div
-                role="status"
-                aria-live="polite"
-                className="flex flex-1 flex-col items-center justify-center gap-4"
-              >
-                <Loader2 className="text-primary size-10 animate-spin" aria-hidden />
-                <span className="text-muted-foreground text-sm">{t.settings.loadingWords}</span>
-              </div>
-            ) : inGame ? (
-              <>
-                <GameHud
-                  idleSecondsLeft={engine.idleSecondsLeft}
-                  idleSecondsTotal={engine.settings.mainTimerSeconds}
-                  globalSecondsLeft={engine.globalSecondsLeft}
-                  globalSecondsTotal={engine.settings.globalTimerSeconds}
-                  requiredWordsEnabled={engine.settings.requiredWordIntervalEnabled}
-                  requiredWord={engine.currentRequiredWord}
-                  useWordIn={engine.useWordIn !== null ? Math.ceil(engine.useWordIn) : null}
-                  useWordTotal={
-                    engine.settings.requiredWordUseTimerEnabled
-                      ? engine.settings.requiredWordUseTimerSeconds
-                      : null
-                  }
-                />
-                <div className="flex min-h-0 flex-1">
-                  <WritingArea
-                    ref={engine.textareaRef}
-                    value={engine.text}
-                    onChange={engine.handleChange}
-                    matches={engine.matches}
-                  />
-                </div>
-              </>
-            ) : viewingStory ? (
-              <>
-                <div className="flex items-center gap-2">
-                  <Button type="button" variant="ghost" size="sm" onClick={() => setViewingStory(null)}>
-                    <ArrowLeft className="size-4" aria-hidden />
-                    {t.dashboard.back}
-                  </Button>
-                  <span className="text-muted-foreground text-xs italic">{t.game.viewingStory}</span>
-                </div>
-                <div className="flex min-h-0 flex-1">
-                  <WritingArea value={viewingStory.text} onChange={() => {}} matches={[]} readOnly />
-                </div>
-              </>
-            ) : profileOpen ? (
-              <ProfilePanel />
-            ) : (
-              <SectionContent
-                section={section}
-                engine={engine}
+              {/* Right: inspiration (image + prompt), desktop only. */}
+              <aside className="bg-card/40 hidden w-2/5 max-w-md shrink-0 overflow-y-auto border-l p-4 sm:p-6 md:block">
+                <InspirationPanel />
+              </aside>
+            </div>
+          ) : (
+            <div className="h-full min-h-0 overflow-y-auto p-4 sm:p-6">
+              <ScreenContent
+                screen={screen}
                 stories={stories}
                 storiesError={storiesError}
-                onNewStory={startNewStory}
+                onShowSection={showSection}
+                onNewStory={beginNewStory}
                 onViewStory={onViewStory}
                 onDeleteStory={removeStory}
                 onUpdateStoryTitle={updateStoryTitle}
+                onBackHome={goHome}
+                onBackToStories={() => showSection("stories")}
               />
-            )}
-          </div>
-        </div>
+            </div>
+          )}
+        </main>
       </div>
 
       <WelcomeModal open={welcomeOpen && authStatus !== "loading"} onContinue={dismissWelcome} />
@@ -341,9 +246,152 @@ export function Dashboard() {
   )
 }
 
-function SectionContent({
+// ---- Game area (left column while loading/playing/ended) -----------------
+
+function LoadingSplash() {
+  const t = useTranslations()
+  return (
+    <div role="status" aria-live="polite" className="flex flex-1 flex-col items-center justify-center gap-4">
+      <Loader2 className="text-primary size-10 animate-spin" aria-hidden />
+      <span className="text-muted-foreground text-sm">{t.settings.loadingWords}</span>
+    </div>
+  )
+}
+
+function GameArea({ engine }: { engine: ReturnType<typeof useGameEngine> }) {
+  const t = useTranslations()
+  return (
+    <>
+      {engine.failedSave !== null ? (
+        <div
+          role="alert"
+          className="border-destructive/40 bg-destructive/10 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border p-3 text-sm"
+        >
+          <AlertTriangle className="text-destructive size-4 shrink-0" aria-hidden />
+          <span className="text-destructive flex-1">{t.game.saveFailed}</span>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={engine.retryFailedSave}
+              disabled={engine.retryingSave}
+            >
+              {engine.retryingSave ? t.game.saveRetrying : t.game.saveRetry}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={engine.dismissFailedSave}
+              disabled={engine.retryingSave}
+            >
+              {t.game.saveDismiss}
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      <GameHud
+        idleSecondsLeft={engine.idleSecondsLeft}
+        idleSecondsTotal={engine.settings.mainTimerSeconds}
+        globalSecondsLeft={engine.globalSecondsLeft}
+        globalSecondsTotal={engine.settings.globalTimerSeconds}
+        requiredWordsEnabled={engine.settings.requiredWordIntervalEnabled}
+        requiredWord={engine.currentRequiredWord}
+        useWordIn={engine.useWordIn !== null ? Math.ceil(engine.useWordIn) : null}
+        useWordTotal={
+          engine.settings.requiredWordUseTimerEnabled ? engine.settings.requiredWordUseTimerSeconds : null
+        }
+      />
+      <div className="flex min-h-0 flex-1">
+        <WritingArea
+          ref={engine.textareaRef}
+          value={engine.text}
+          onChange={engine.handleChange}
+          matches={engine.matches}
+        />
+      </div>
+    </>
+  )
+}
+
+// ---- Non-split screens (landing / detail subsections / profile / story) --
+
+function ScreenContent({
+  screen,
+  stories,
+  storiesError,
+  onShowSection,
+  onNewStory,
+  onViewStory,
+  onDeleteStory,
+  onUpdateStoryTitle,
+  onBackHome,
+  onBackToStories,
+}: {
+  screen: Screen
+  stories: Story[] | null
+  storiesError: boolean
+  onShowSection: (section: Section) => void
+  onNewStory: () => void
+  onViewStory: (story: Story) => void
+  onDeleteStory: (id: number) => Promise<boolean>
+  onUpdateStoryTitle: (id: number, title: string | null) => Promise<boolean>
+  onBackHome: () => void
+  onBackToStories: () => void
+}) {
+  const t = useTranslations()
+
+  switch (screen.name) {
+    case "landing":
+      return (
+        <LandingHome
+          onShowSection={onShowSection}
+          onNewStory={onNewStory}
+          stories={stories}
+          storiesError={storiesError}
+          onViewStory={onViewStory}
+          onDeleteStory={onDeleteStory}
+          onUpdateStoryTitle={onUpdateStoryTitle}
+        />
+      )
+    case "section":
+      return (
+        <DetailScreen title={SECTION_META[screen.section].title(t)} onBack={onBackHome}>
+          <SectionDetail
+            section={screen.section}
+            stories={stories}
+            storiesError={storiesError}
+            onNewStory={onNewStory}
+            onViewStory={onViewStory}
+            onDeleteStory={onDeleteStory}
+            onUpdateStoryTitle={onUpdateStoryTitle}
+          />
+        </DetailScreen>
+      )
+    case "profile":
+      return (
+        <DetailScreen title={t.profile.title} onBack={onBackHome}>
+          <ProfilePanel />
+        </DetailScreen>
+      )
+    case "story":
+      return (
+        <DetailScreen title={t.game.viewingStory} onBack={onBackToStories}>
+          <div className="h-[65vh]">
+            <WritingArea value={screen.story.text} onChange={() => {}} matches={[]} readOnly />
+          </div>
+        </DetailScreen>
+      )
+    // `configuring` is rendered by the split layout, not here.
+    default:
+      return null
+  }
+}
+
+function SectionDetail({
   section,
-  engine,
   stories,
   storiesError,
   onNewStory,
@@ -352,7 +400,6 @@ function SectionContent({
   onUpdateStoryTitle,
 }: {
   section: Section
-  engine: ReturnType<typeof useGameEngine>
   stories: Story[] | null
   storiesError: boolean
   onNewStory: () => void
@@ -361,10 +408,6 @@ function SectionContent({
   onUpdateStoryTitle: (id: number, title: string | null) => Promise<boolean>
 }) {
   switch (section) {
-    case "home":
-      return (
-        <DashboardHome settings={engine.settings} onSettingsChange={engine.setSettings} />
-      )
     case "stories":
       return (
         <StoriesSection
@@ -394,9 +437,9 @@ function ActionButton({
   onClick: () => void
 }) {
   return (
-    // Fixed generous width so every state's label (Start writing / Quit
-    // session / Create a story, in either language) fits without the button
-    // resizing between states.
+    // Fixed generous width so every state's label (New story / Start writing /
+    // Quit session / Create a story, in either language) fits without the
+    // button resizing between states.
     <Button onClick={onClick} size="sm" className="w-48 justify-center gap-1.5">
       {icon}
       {label}

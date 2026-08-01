@@ -2,14 +2,14 @@ import { expect, test } from "@playwright/test"
 
 import { dismissWelcomeBeforeLoad, mockBackend } from "./fixtures"
 
-// Journeys playable without an account. The app boots into the Home dashboard
-// regardless of auth, so these don't depend on Auth0 resolving — but we still
-// stub /api/** so no stray request escapes to a real backend.
+// Journeys playable without an account. The app boots into the landing
+// dashboard regardless of auth, so these don't depend on Auth0 resolving — but
+// we still stub /api/** so no stray request escapes to a real backend.
 test.beforeEach(async ({ page }) => {
   await mockBackend(page)
 })
 
-test("first visit shows the welcome modal, which dismisses to the home dashboard", async ({
+test("first visit shows the welcome modal, which dismisses to the landing dashboard", async ({
   page,
 }) => {
   await page.goto("/")
@@ -19,8 +19,9 @@ test("first visit shows the welcome modal, which dismisses to the home dashboard
   await expect(skip).toBeVisible()
   await skip.click()
 
-  // Dismissed -> the home dashboard is shown; the header's Start action is ready.
-  await expect(page.getByRole("button", { name: "Start writing" })).toBeVisible()
+  // Dismissed -> the landing dashboard is shown; the header's New story action
+  // is ready (clicking it reveals the session settings).
+  await expect(page.getByRole("button", { name: "New story" })).toBeVisible()
   await expect(skip).toBeHidden()
 })
 
@@ -30,6 +31,8 @@ test("start -> type -> quit shows the results modal with session stats", async (
   await dismissWelcomeBeforeLoad(page)
   await page.goto("/")
 
+  // New story reveals the settings; Start writing begins the sprint.
+  await page.getByRole("button", { name: "New story" }).click()
   await page.getByRole("button", { name: "Start writing" }).click()
 
   const textarea = page.getByRole("textbox")
@@ -54,6 +57,7 @@ test("the idle timeout ends the session on its own", async ({ page }) => {
   await dismissWelcomeBeforeLoad(page)
   await page.goto("/")
 
+  await page.getByRole("button", { name: "New story" }).click()
   await page.getByRole("button", { name: "Start writing" }).click()
 
   const textarea = page.getByRole("textbox")

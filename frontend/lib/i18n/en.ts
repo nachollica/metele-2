@@ -252,6 +252,9 @@ export const en = {
     challenges: "Challenges",
     stats: "Statistics",
     achievements: "Achievements",
+    newStory: "New story",
+    showAll: "Show all",
+    backToHome: "Back to home",
   },
 
   // Home dashboard + shared gamification copy.
@@ -277,6 +280,9 @@ export const en = {
     sessionsCompleted: "Sessions completed",
     promptOfDay: "Prompt of the day",
     writeNow: "Write now",
+    recentStories: "Recent stories",
+    inspirationAlt: "Inspiration image",
+    inspirationTitle: "Today's inspiration",
   },
 
   achievements: {

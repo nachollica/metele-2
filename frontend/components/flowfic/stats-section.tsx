@@ -12,11 +12,18 @@ import {
   zeroWeek,
 } from "@/lib/flowfic/gamification"
 
-import { Panel, SectionHeader, StatTile } from "./dashboard-widgets"
+import { Panel, SectionHeader, ShowAllButton, StatTile } from "./dashboard-widgets"
 import { useGamification } from "./gamification-context"
 import { WeeklyChart } from "./weekly-chart"
 
-export function StatsSection() {
+type Props = {
+  /** Render a trimmed card for the landing dashboard instead of the full screen. */
+  preview?: boolean
+  /** Open the expanded Statistics screen (preview only). */
+  onShowAll?: () => void
+}
+
+export function StatsSection({ preview = false, onShowAll }: Props) {
   const t = useTranslations()
   const locale = useLocale()
   const { status } = useAuth()
@@ -25,37 +32,58 @@ export function StatsSection() {
   const ov = overview ?? emptyOverview()
   const chart = ov.chart.length > 0 ? ov.chart : zeroWeek()
 
+  // Lifetime totals — shown in both the preview card and the full screen.
+  const lifetimeTotals = (
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <Panel className="p-4">
+        <StatTile icon={Trophy} tone="amber" value={String(ov.level.level)} label={t.dashboard.level} />
+      </Panel>
+      <Panel className="p-4">
+        <StatTile icon={Flame} tone="orange" value={String(ov.streak)} label={t.dashboard.daysInARow} />
+      </Panel>
+      <Panel className="p-4">
+        <StatTile
+          icon={BookOpen}
+          tone="green"
+          value={formatCount(ov.totalWords, locale)}
+          label={t.dashboard.wordsWritten}
+        />
+      </Panel>
+      <Panel className="p-4">
+        <StatTile
+          icon={Clock}
+          tone="violet"
+          value={formatHoursMinutes(ov.totalDurationMs)}
+          label={t.dashboard.writingTime}
+        />
+      </Panel>
+    </div>
+  )
+
+  if (preview) {
+    return (
+      <Panel>
+        <SectionHeader
+          title={t.nav.stats}
+          action={
+            onShowAll ? (
+              <ShowAllButton label={t.nav.showAll} sectionName={t.nav.stats} onClick={onShowAll} />
+            ) : null
+          }
+        />
+        {lifetimeTotals}
+      </Panel>
+    )
+  }
+
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-5">
+    <div className="flex flex-col gap-5">
       {status === "anonymous" ? (
         <p className="text-muted-foreground text-sm">{t.dashboard.signInHint}</p>
       ) : null}
 
       {/* Lifetime totals */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Panel className="p-4">
-          <StatTile icon={Trophy} tone="amber" value={String(ov.level.level)} label={t.dashboard.level} />
-        </Panel>
-        <Panel className="p-4">
-          <StatTile icon={Flame} tone="orange" value={String(ov.streak)} label={t.dashboard.daysInARow} />
-        </Panel>
-        <Panel className="p-4">
-          <StatTile
-            icon={BookOpen}
-            tone="green"
-            value={formatCount(ov.totalWords, locale)}
-            label={t.dashboard.wordsWritten}
-          />
-        </Panel>
-        <Panel className="p-4">
-          <StatTile
-            icon={Clock}
-            tone="violet"
-            value={formatHoursMinutes(ov.totalDurationMs)}
-            label={t.dashboard.writingTime}
-          />
-        </Panel>
-      </div>
+      {lifetimeTotals}
 
       {/* Weekly chart */}
       <Panel>
