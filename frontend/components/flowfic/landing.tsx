@@ -6,18 +6,19 @@ import { useLocale, useTranslations } from "@/lib/i18n"
 import { emptyOverview, formatCount, formatHoursMinutes } from "@/lib/flowfic/gamification"
 import type { Story } from "@/lib/flowfic/stories-api"
 
-import { AchievementsSection } from "./achievements-section"
 import { ChallengesSection } from "./challenges-section"
 import { type Section } from "./dashboard-nav"
 import { Panel, SectionHeader, StatTile } from "./dashboard-widgets"
 import { useGamification } from "./gamification-context"
-import { InspirationImage, PromptOfDay } from "./inspiration-panel"
+import { InspirationImage, QuoteOfDay } from "./inspiration-panel"
 import { StatsSection } from "./stats-section"
 import { StoriesSection } from "./stories-section"
 
-// Landing order: inspiration image, prompt + weekly summary (half/half), the
-// full-width statistics widget, achievements + challenges (half/half), and the
-// full-width recent-stories list. Half-width rows stack on mobile.
+// Landing order: full-width quote of the day, the inspiration-image widget,
+// weekly summary + challenge of the day (half/half), the full-width statistics
+// widget, and the full-width recent-stories list. Half-width rows stack on
+// mobile. Achievements no longer has its own card — it lives inside the expanded
+// Challenges screen.
 
 type Props = {
   /** Open an expanded subsection (from a "Show all" link). */
@@ -58,12 +59,14 @@ export function LandingHome({
           assistive tech so the page still has a top-level heading. */}
       <h1 className="sr-only">{t.app.title}</h1>
 
-      {/* Inspiration image — fills the container width. */}
+      {/* Quote of the day — full width, top of the dashboard. */}
+      <QuoteOfDay />
+
+      {/* Inspiration image — full-width titled widget. */}
       <InspirationImage />
 
-      {/* Prompt of the day + this week's totals (half/half). */}
-      <div className="grid gap-5 lg:grid-cols-2">
-        <PromptOfDay />
+      {/* This week's totals + challenge of the day (half/half). */}
+      <div className="grid items-start gap-5 lg:grid-cols-2">
         <Panel>
           <SectionHeader title={t.dashboard.weeklySummary} />
           <div className="grid grid-cols-3 gap-2">
@@ -87,16 +90,11 @@ export function LandingHome({
             />
           </div>
         </Panel>
+        <ChallengesSection preview onNewStory={onNewStory} onShowAll={() => onShowSection("challenges")} />
       </div>
 
       {/* Statistics — full width. */}
       <StatsSection preview onShowAll={() => onShowSection("stats")} />
-
-      {/* Achievements + challenges (half/half). */}
-      <div className="grid items-start gap-5 lg:grid-cols-2">
-        <AchievementsSection preview onShowAll={() => onShowSection("achievements")} />
-        <ChallengesSection preview onNewStory={onNewStory} onShowAll={() => onShowSection("challenges")} />
-      </div>
 
       {/* Recent stories — full width. */}
       <StoriesSection

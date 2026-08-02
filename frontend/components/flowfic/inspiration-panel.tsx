@@ -4,10 +4,9 @@ import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPoi
 
 import { cn } from "@/lib/utils"
 import { useLocale, useTranslations } from "@/lib/i18n"
-import { DAILY_PROMPTS } from "@/lib/flowfic/prompts"
-import { dailyPromptIndex } from "@/lib/flowfic/gamification"
+import { loadQuotes, quoteBlocks, quoteOfTheDay, type Quote } from "@/lib/flowfic/quotes"
 
-import { Panel, SectionHeader } from "./dashboard-widgets"
+import { QuoteCard } from "./dashboard-widgets"
 
 // Placeholder inspiration image. The real feature (movie stills chosen per
 // session) comes later; for now we show a stable landscape placeholder so the
@@ -19,23 +18,33 @@ const PLACEHOLDER_IMAGE = "https://picsum.photos/seed/flowfic/1280/720"
 // across the range.
 const ZOOM_SENSITIVITY = 0.0015
 
-/** Landscape (16:9) inspiration image. Decorative placeholder for now. */
+/**
+ * Landscape (16:9) inspiration image, wrapped as a titled dashboard card like
+ * the other landing widgets. The title sits in a padded header; the image below
+ * bleeds to the card's edges (the card clips it to the rounded corners).
+ * Decorative placeholder for now.
+ */
 export function InspirationImage({ className }: { className?: string }) {
   const t = useTranslations()
   return (
     <div
       className={cn(
-        "bg-muted aspect-video w-full overflow-hidden rounded-2xl border shadow-sm",
+        "bg-card text-card-foreground overflow-hidden rounded-2xl border shadow-sm",
         className,
       )}
     >
-      {/* Plain <img>: the app is a static export. Real image logic lands later. */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={PLACEHOLDER_IMAGE}
-        alt={t.dashboard.inspirationAlt}
-        className="size-full object-cover"
-      />
+      <div className="px-5 pt-5 pb-4">
+        <h3 className="text-lg font-bold">{t.dashboard.inspirationTitle}</h3>
+      </div>
+      <div className="bg-muted aspect-video w-full">
+        {/* Plain <img>: the app is a static export. Real image logic lands later. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={PLACEHOLDER_IMAGE}
+          alt={t.dashboard.inspirationAlt}
+          className="size-full object-cover"
+        />
+      </div>
     </div>
   )
 }
@@ -188,18 +197,39 @@ export function ZoomableInspirationImage({ className }: { className?: string }) 
   )
 }
 
-/** Prompt-of-the-day card (landing only; the split pane shows image alone). */
-export function PromptOfDay({ className }: { className?: string }) {
+/**
+ * Full-width "quote of the day" card (landing only). Loads the curated quote pool
+ * once, picks today's deterministically, and renders it with attribution. Shows a
+ * skeleton until the pool loads; renders nothing if it is empty/unavailable.
+ */
+export function QuoteOfDay({ className }: { className?: string }) {
   const t = useTranslations()
   const locale = useLocale()
-  const prompt = DAILY_PROMPTS[locale][dailyPromptIndex(DAILY_PROMPTS[locale].length)]
+  const [quotes, setQuotes] = useState<readonly Quote[] | null | undefined>(undefined)
+
+  useEffect(() => {
+    let cancelled = false
+    void loadQuotes().then((q) => {
+      if (!cancelled) setQuotes(q)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  if (quotes === undefined) {
+    return <QuoteCard title={t.dashboard.quoteOfDay} skeleton className={className} />
+  }
+
+  const quote = quotes ? quoteOfTheDay(quotes) : null
+  if (!quote) return null
 
   return (
-    <Panel className={cn("flex flex-col", className)}>
-      <SectionHeader title={t.dashboard.promptOfDay} />
-      <p className="text-foreground/80 flex-1 text-xl leading-snug font-medium italic">
-        &ldquo;{prompt}&rdquo;
-      </p>
-    </Panel>
+    <QuoteCard
+      title={t.dashboard.quoteOfDay}
+      blocks={quoteBlocks(quote, locale)}
+      attribution={`${quote.author} · ${quote.source}`}
+      className={className}
+    />
   )
 }

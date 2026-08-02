@@ -15,7 +15,6 @@ import type { Story } from "@/lib/flowfic/stories-api"
 
 import { SECTION_META, type Section } from "./dashboard-nav"
 import { AppHeader } from "./app-header"
-import { AchievementsSection } from "./achievements-section"
 import { ChallengesSection } from "./challenges-section"
 import { DetailScreen } from "./detail-screen"
 import { GamificationProvider } from "./gamification-context"
@@ -435,8 +434,6 @@ function SectionDetail({
       return <ChallengesSection onNewStory={onNewStory} />
     case "stats":
       return <StatsSection />
-    case "achievements":
-      return <AchievementsSection />
   }
 }
 

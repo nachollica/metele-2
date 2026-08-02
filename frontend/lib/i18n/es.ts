@@ -287,7 +287,8 @@ export const es = {
     wordsWritten: "Palabras escritas",
     writingTime: "Tiempo de escritura",
     sessionsCompleted: "Sesiones completadas",
-    promptOfDay: "Prompt del día",
+    quoteOfDay: "Cita del día",
+    challengeOfDay: "Desafío del día",
     writeNow: "Escribir ahora",
     recentStories: "Historias recientes",
     inspirationAlt: "Imagen de inspiración",
@@ -310,6 +311,7 @@ export const es = {
 
   challenges: {
     completed: "Completado",
+    dailyGroup: "Desafíos diarios",
     items: {
       daily_600: { name: "Sesión diaria", description: "Escribí 600 palabras hoy" },
       weekly_5_sessions: { name: "Cinco por semana", description: "Completá 5 sesiones esta semana" },

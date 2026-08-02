@@ -257,16 +257,17 @@ export function deriveTitle(text: string, fallback: string): string {
     : words
 }
 
-// ---- Daily prompt ---------------------------------------------------------
+// ---- Daily rotation -------------------------------------------------------
 
-/** 1-based day of the year, used to rotate the daily prompt deterministically. */
+/** 1-based day of the year, used to rotate daily content deterministically. */
 export function dayOfYear(d: Date): number {
   const start = new Date(d.getFullYear(), 0, 0)
   return Math.floor((d.getTime() - start.getTime()) / 86_400_000)
 }
 
-/** Pick today's prompt index from a per-locale pool (stable across a day). */
-export function dailyPromptIndex(poolLength: number, d: Date = new Date()): number {
+/** Pick today's index into a pool (stable across a day). Used by the quote of
+ * the day and the featured challenge. */
+export function dailyIndex(poolLength: number, d: Date = new Date()): number {
   if (poolLength <= 0) return 0
   return dayOfYear(d) % poolLength
 }

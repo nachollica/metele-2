@@ -318,21 +318,135 @@ export function ChallengeItem({
   )
 }
 
+// ---- Featured challenge (the colorful "challenge of the day") --------------
+
+/**
+ * High-contrast, attention-grabbing challenge card for the landing "challenge of
+ * the day". Unlike the muted `ChallengeItem`, it wears a bold violet→fuchsia
+ * gradient with white content so it stands out among the neutral dashboard cards.
+ */
+export function FeaturedChallenge({
+  icon: Icon,
+  name,
+  description,
+  progress,
+  completed,
+  progressLabel,
+  completedLabel,
+  ctaLabel,
+  onCta,
+}: {
+  icon: LucideIcon
+  name: string
+  description: string
+  progress: number
+  completed: boolean
+  progressLabel: string
+  completedLabel: string
+  ctaLabel: string
+  onCta: () => void
+}) {
+  const pct = Math.round(Math.max(0, Math.min(1, progress)) * 100)
+  return (
+    <div className="relative flex flex-col overflow-hidden rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-600 p-5 text-white shadow-md">
+      <Icon
+        className="pointer-events-none absolute -top-3 -right-3 size-24 text-white/15"
+        aria-hidden
+      />
+      <div className="mb-2 flex items-center gap-2">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white/20">
+          <Icon className="size-5" aria-hidden />
+        </span>
+        <div className="text-lg font-bold">{name}</div>
+      </div>
+      <p className="mb-3 text-sm leading-relaxed text-white/90">{description}</p>
+      <div
+        className="h-1.5 w-full overflow-hidden rounded-full bg-white/25"
+        role="progressbar"
+        aria-label={name}
+        aria-valuenow={pct}
+        aria-valuemin={0}
+        aria-valuemax={100}
+      >
+        <div className="h-full rounded-full bg-white transition-[width] duration-500" style={{ width: `${pct}%` }} />
+      </div>
+      <div className="mt-1.5 mb-3 text-xs font-medium text-white/80 tabular-nums">{progressLabel}</div>
+      <div className="mt-auto">
+        {completed ? (
+          <span className="inline-flex items-center gap-1.5 text-sm font-semibold">
+            <CircleCheckBig className="size-4" aria-hidden />
+            {completedLabel}
+          </span>
+        ) : (
+          <Button
+            type="button"
+            onClick={onCta}
+            className="w-full bg-white font-semibold text-violet-700 hover:bg-white/90"
+          >
+            {ctaLabel}
+          </Button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ---- Quote card -----------------------------------------------------------
 
-export function QuoteCard({ quote }: { quote: string }) {
+/**
+ * Full-width "quote of the day" hero card. `blocks` are already-normalized
+ * paragraph blocks (one per line/turn), so a multi-block dialogue renders across
+ * several paragraphs. `title` is the localized section label; `attribution` is
+ * the localized "author · source" line. `skeleton` renders a muted placeholder
+ * while the pool loads.
+ */
+export function QuoteCard({
+  title,
+  blocks,
+  attribution,
+  skeleton = false,
+  className,
+}: {
+  title: string
+  blocks?: string[]
+  attribution?: string
+  skeleton?: boolean
+  className?: string
+}) {
   return (
-    <div className="rounded-2xl border border-amber-300/60 bg-amber-50 p-5 dark:border-amber-500/30 dark:bg-amber-500/10">
+    <figure
+      className={cn(
+        "relative overflow-hidden rounded-2xl border border-amber-300/60 bg-gradient-to-br from-amber-50 to-orange-50 p-6 shadow-sm dark:border-amber-500/30 dark:from-amber-500/10 dark:to-orange-500/10",
+        className,
+      )}
+    >
+      <div className="text-amber-700/80 mb-2 text-xs font-semibold tracking-wide uppercase dark:text-amber-300/80">
+        {title}
+      </div>
       <span
         aria-hidden
-        className="font-serif text-3xl leading-none text-amber-500 dark:text-amber-400"
+        className="pointer-events-none absolute top-3 right-5 font-serif text-7xl leading-none text-amber-400/40 select-none dark:text-amber-300/25"
       >
-        &ldquo;
+        &rdquo;
       </span>
-      <p className="mt-1 text-sm font-medium leading-relaxed text-amber-950 dark:text-amber-100">
-        {quote}
-      </p>
-      <div className="bg-primary mt-3 h-0.5 w-10 rounded-full" />
-    </div>
+      {skeleton ? (
+        <div className="space-y-2" aria-hidden>
+          <div className="bg-amber-500/15 h-4 w-full rounded" />
+          <div className="bg-amber-500/15 h-4 w-11/12 rounded" />
+          <div className="bg-amber-500/15 h-4 w-2/3 rounded" />
+        </div>
+      ) : (
+        <>
+          <blockquote className="space-y-3 font-serif text-lg leading-relaxed text-amber-950 italic sm:text-xl dark:text-amber-50">
+            {blocks?.map((block, i) => <p key={i}>{block}</p>)}
+          </blockquote>
+          {attribution ? (
+            <figcaption className="text-amber-800/90 mt-4 text-sm font-medium not-italic dark:text-amber-200/90">
+              — {attribution}
+            </figcaption>
+          ) : null}
+        </>
+      )}
+    </figure>
   )
 }
