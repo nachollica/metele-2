@@ -11,6 +11,11 @@ be kept in sync. Counterparts:
 - ``MATCH_MAP_VERSION`` / ``match_map_path`` / :func:`normalize_for_match` mirror
   the frontend in ``frontend/lib/flowfic/match-map.ts`` and
   ``frontend/lib/flowfic/words.ts``.
+- ``QUOTES_VERSION`` / ``quotes_path`` mirror the frontend quote loader in
+  ``frontend/lib/flowfic/quotes.ts``. Only the version + path shape are shared;
+  the soft-wrap normalizer that produces the stored text blocks is build-only
+  (see ``src/quotes.py``), because the frontend renders the pre-normalized blocks
+  verbatim and never needs it.
 
 These change ~never; when one does, bump it here and in the named counterpart.
 """
@@ -39,6 +44,13 @@ NPZ_ZIPF = "zipf"
 
 MATCH_MAP_VERSION = 1
 
+# ---- quotes artifact (consumed by the frontend, hand-curated) ----------
+# Unlike the pool/match-map artifacts (large, generated, gitignored), the quotes
+# file is small, hand-curated content and IS committed. Bump alongside
+# QUOTES_VERSION in frontend/lib/flowfic/quotes.ts.
+
+QUOTES_VERSION = 1
+
 
 # ---- Output locations --------------------------------------------------
 
@@ -57,6 +69,20 @@ def match_map_path(lang: str) -> str:
     """``frontend/public/match-map/{lang}.vN.json`` (matches the frontend loader)."""
     return os.path.join(
         _repo_root(), "frontend", "public", "match-map", f"{lang}.v{MATCH_MAP_VERSION}.json"
+    )
+
+
+def quotes_path() -> str:
+    """``frontend/public/quotes/quotes.vN.jsonl`` (matches the frontend loader)."""
+    return os.path.join(
+        _repo_root(), "frontend", "public", "quotes", f"quotes.v{QUOTES_VERSION}.jsonl"
+    )
+
+
+def datasets_dir() -> str:
+    """``word-assets/nlp_literature_datasets`` — the quote source corpus root."""
+    return os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "nlp_literature_datasets"
     )
 
 
