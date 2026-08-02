@@ -126,7 +126,6 @@ export const en = {
     pause: "Give up",
     quit: "Quit session",
     quitShort: "Quit",
-    createStory: "Create a story",
     viewingStory: "Viewing a previous story (read-only).",
     saveFailed: "Couldn't save your last story.",
     saveRetry: "Retry",

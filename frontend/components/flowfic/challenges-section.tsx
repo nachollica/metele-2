@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth"
 import { useTranslations } from "@/lib/i18n"
 import { challengeText, challengeVisual } from "@/lib/flowfic/gamification"
 
-import { ChallengeItem, Panel, SectionHeader, ShowAllButton } from "./dashboard-widgets"
+import { ChallengeItem, EmptyHint, Panel, SectionHeader, ShowAllButton } from "./dashboard-widgets"
 import { useGamification } from "./gamification-context"
 
 // The single challenge the landing preview highlights. Fixed for now (a
@@ -74,7 +74,7 @@ export function ChallengesSection({ onNewStory, preview = false, onShowAll }: Pr
           }
         />
         {isAnonymous ? (
-          <p className="text-muted-foreground py-6 text-center text-sm">{t.dashboard.signInHint}</p>
+          <EmptyHint className="py-6">{t.dashboard.signInHint}</EmptyHint>
         ) : featured ? (
           renderChallenge(featured)
         ) : null}
@@ -85,7 +85,7 @@ export function ChallengesSection({ onNewStory, preview = false, onShowAll }: Pr
   return (
     <div className="flex flex-col gap-5">
       {isAnonymous ? (
-        <p className="text-muted-foreground py-6 text-center text-sm">{t.dashboard.signInHint}</p>
+        <EmptyHint className="py-6">{t.dashboard.signInHint}</EmptyHint>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{list.map(renderChallenge)}</div>
       )}

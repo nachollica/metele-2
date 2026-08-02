@@ -101,6 +101,25 @@ export function SectionHeader({
   )
 }
 
+// ---- Empty / sign-in hint -------------------------------------------------
+
+/**
+ * Muted, centered hint shown in place of section content (empty lists, "sign in
+ * to see…"). One place for the shared styling; callers tune the vertical padding
+ * via `className` (tighter in preview cards, roomier on full screens).
+ */
+export function EmptyHint({
+  children,
+  className,
+}: {
+  children: ReactNode
+  className?: string
+}) {
+  return (
+    <p className={cn("text-muted-foreground py-12 text-center text-sm", className)}>{children}</p>
+  )
+}
+
 // ---- Level badge ----------------------------------------------------------
 
 /**

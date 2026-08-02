@@ -131,7 +131,6 @@ export const es = {
     pause: "Abandonar",
     quit: "Salir de sesión",
     quitShort: "Salir",
-    createStory: "Crear una historia",
     viewingStory: "Viendo una historia anterior (solo lectura).",
     saveFailed: "No se pudo guardar tu última historia.",
     saveRetry: "Reintentar",

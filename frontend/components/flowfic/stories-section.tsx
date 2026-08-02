@@ -21,7 +21,7 @@ import { useLocale, useTranslations } from "@/lib/i18n"
 import type { Story } from "@/lib/flowfic/stories-api"
 import { filterAndSortStories, type SortOrder } from "@/lib/flowfic/story-search"
 
-import { Panel, SectionHeader, ShowAllButton } from "./dashboard-widgets"
+import { EmptyHint, Panel, SectionHeader, ShowAllButton } from "./dashboard-widgets"
 import { StoryCard } from "./story-card"
 
 // How many stories the landing preview card shows before "Show all".
@@ -104,13 +104,13 @@ export function StoriesSection({
             ))}
           </div>
         ) : recent.length === 0 ? (
-          <p className="text-muted-foreground py-6 text-center text-sm">
+          <EmptyHint className="py-6">
             {error
               ? t.sidebar.error
               : status === "anonymous"
                 ? t.sidebar.signUpPrompt
                 : t.dashboard.emptyStories}
-          </p>
+          </EmptyHint>
         ) : (
           <div className="flex flex-col gap-3">
             {recent.map((s) => (
@@ -143,13 +143,13 @@ export function StoriesSection({
   // No stories at all — the search bar would have nothing to act on.
   if (stories.length === 0) {
     return (
-      <p className="text-muted-foreground py-12 text-center text-sm">
+      <EmptyHint>
         {error
           ? t.sidebar.error
           : status === "anonymous"
             ? t.sidebar.signUpPrompt
             : t.dashboard.emptyStories}
-      </p>
+      </EmptyHint>
     )
   }
 
@@ -239,9 +239,7 @@ export function StoriesSection({
           ))}
         </div>
       ) : (
-        <p className="text-muted-foreground py-12 text-center text-sm">
-          {hasFilters ? t.sidebar.noResults : t.dashboard.emptyStories}
-        </p>
+        <EmptyHint>{hasFilters ? t.sidebar.noResults : t.dashboard.emptyStories}</EmptyHint>
       )}
     </div>
   )

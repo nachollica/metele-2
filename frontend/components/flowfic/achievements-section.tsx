@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth"
 import { useTranslations } from "@/lib/i18n"
 import { achievementText, achievementVisual } from "@/lib/flowfic/gamification"
 
-import { AchievementItem, Panel, SectionHeader, ShowAllButton } from "./dashboard-widgets"
+import { AchievementItem, EmptyHint, Panel, SectionHeader, ShowAllButton } from "./dashboard-widgets"
 import { useGamification } from "./gamification-context"
 
 // How many achievements the landing preview card shows before "Show all".
@@ -44,7 +44,7 @@ export function AchievementsSection({ preview = false, onShowAll }: Props) {
           }
         />
         {isAnonymous ? (
-          <p className="text-muted-foreground py-4 text-center text-sm">{t.dashboard.signInHint}</p>
+          <EmptyHint className="py-4">{t.dashboard.signInHint}</EmptyHint>
         ) : (
           <div className="flex flex-col gap-4">
             {list.slice(0, PREVIEW_COUNT).map((a) => {
@@ -71,9 +71,7 @@ export function AchievementsSection({ preview = false, onShowAll }: Props) {
   }
 
   if (isAnonymous) {
-    return (
-      <p className="text-muted-foreground py-12 text-center text-sm">{t.dashboard.signInHint}</p>
-    )
+    return <EmptyHint>{t.dashboard.signInHint}</EmptyHint>
   }
 
   const unlockedCount = list.filter((a) => a.unlocked).length

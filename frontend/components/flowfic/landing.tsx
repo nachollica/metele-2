@@ -54,6 +54,10 @@ export function LandingHome({
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-5">
+      {/* The landing has no visible title by design; this names the screen for
+          assistive tech so the page still has a top-level heading. */}
+      <h1 className="sr-only">{t.app.title}</h1>
+
       {/* Inspiration image — fills the container width. */}
       <InspirationImage />
 
