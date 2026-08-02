@@ -11,6 +11,11 @@ out/
 # not committed). The prebuild guard fails loudly if they are missing.
 /public/match-map/
 
+# Inspiration image catalog (parsed from film-grab sitemaps by `just
+# inspiration`; a full dump is large and re-sliced freely, so not committed).
+# Optional/decorative: the card degrades gracefully when it is absent.
+/public/inspiration/
+
 # Playwright e2e artifacts
 test-results/
 playwright-report/

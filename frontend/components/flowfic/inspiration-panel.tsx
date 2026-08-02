@@ -1,31 +1,86 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
+import { ExternalLink, RotateCw } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
 import { useLocale, useTranslations } from "@/lib/i18n"
 import { loadQuotes, quoteBlocks, quoteOfTheDay, type Quote } from "@/lib/flowfic/quotes"
+import { useInspiration, type InspirationImageData } from "@/lib/flowfic/inspiration"
 
 import { QuoteCard } from "./dashboard-widgets"
-
-// Placeholder inspiration image. The real feature (movie stills chosen per
-// session) comes later; for now we show a stable landscape placeholder so the
-// layout is real. A fixed seed keeps the same image across renders instead of
-// flickering to a new one on every mount.
-const PLACEHOLDER_IMAGE = "https://picsum.photos/seed/flowfic/1280/720"
 
 // How fast the wheel zooms. Multiplicative per wheel delta so it feels even
 // across the range.
 const ZOOM_SENSITIVITY = 0.0015
 
 /**
+ * Cross-fade <img>: starts transparent and fades in once the (cross-origin)
+ * film-grab image has loaded, so a slow network reveals the picture softly into
+ * its already-reserved box instead of popping. Resets on every `src` change
+ * (e.g. a refresh) so each new image fades in too.
+ */
+function FadeInImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
+  const [loaded, setLoaded] = useState(false)
+  useEffect(() => {
+    setLoaded(false)
+  }, [src])
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt={alt}
+      onLoad={() => setLoaded(true)}
+      className={cn(
+        "size-full object-cover transition-opacity duration-500",
+        loaded ? "opacity-100" : "opacity-0",
+        className,
+      )}
+    />
+  )
+}
+
+/**
+ * External credit link to the film's film-grab page, styled like a section
+ * "Show all" action (ghost Button) but rendered as a real anchor that opens in a
+ * new tab. Responsive label: the full sentence on wide cards, just the domain at
+ * mid width, and the icon alone when narrow — the accessible name stays complete
+ * at every size.
+ */
+function InspirationCredit({ image }: { image: InspirationImageData }) {
+  const t = useTranslations()
+  const label = t.dashboard.inspirationCreditLabel.replace("{title}", image.title)
+  return (
+    <Button
+      asChild
+      variant="ghost"
+      size="sm"
+      className="text-muted-foreground hover:text-accent-foreground"
+    >
+      <a href={image.page} target="_blank" rel="noopener noreferrer" aria-label={label}>
+        <span className="hidden lg:inline">{t.dashboard.inspirationCredit}</span>
+        <span className="hidden md:inline lg:hidden">{t.dashboard.inspirationCreditShort}</span>
+        <ExternalLink className="size-3.5" aria-hidden />
+      </a>
+    </Button>
+  )
+}
+
+/**
  * Landscape (16:9) inspiration image, wrapped as a titled dashboard card like
- * the other landing widgets. The title sits in a padded header; the image below
- * bleeds to the card's edges (the card clips it to the rounded corners).
- * Decorative placeholder for now.
+ * the other landing widgets. The header holds the card title plus two distinct
+ * actions — a refresh control that re-rolls the shared pick, and the film-grab
+ * credit link. Below the header sits the centered film title, then the image in
+ * a reserved 16:9 box that fades in on load. Title, actions, and image appear
+ * only once a film is picked; while the (optional) catalog loads or is absent
+ * the card shows just its title and the empty box.
  */
 export function InspirationImage({ className }: { className?: string }) {
   const t = useTranslations()
+  const { state, refresh } = useInspiration()
+  const image = state.status === "ready" ? state.image : null
+
   return (
     <div
       className={cn(
@@ -33,17 +88,33 @@ export function InspirationImage({ className }: { className?: string }) {
         className,
       )}
     >
-      <div className="px-5 pt-5 pb-4">
+      <div className="flex items-center justify-between gap-2 px-5 pt-5 pb-3">
         <h3 className="text-lg font-bold">{t.dashboard.inspirationTitle}</h3>
+        {image ? (
+          <div className="flex items-center">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              onClick={refresh}
+              aria-label={t.dashboard.inspirationRefresh}
+              className="text-muted-foreground hover:text-accent-foreground"
+            >
+              <RotateCw className="size-4" aria-hidden />
+            </Button>
+            <InspirationCredit image={image} />
+          </div>
+        ) : null}
       </div>
+
+      {/* Centered film title (card content). Reserve its line height so the
+          layout doesn't jump when it appears. */}
+      <p className="text-muted-foreground min-h-5 px-5 pb-3 text-center text-sm font-medium">
+        {image?.title}
+      </p>
+
       <div className="bg-muted aspect-video w-full">
-        {/* Plain <img>: the app is a static export. Real image logic lands later. */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={PLACEHOLDER_IMAGE}
-          alt={t.dashboard.inspirationAlt}
-          className="size-full object-cover"
-        />
+        {image ? <FadeInImage src={image.image} alt="" /> : null}
       </div>
     </div>
   )
@@ -72,6 +143,14 @@ export function ZoomableInspirationImage({ className }: { className?: string }) 
   const [zoom, setZoom] = useState(1)
   const [offsetX, setOffsetX] = useState(0)
   const [dragging, setDragging] = useState(false)
+  const [loaded, setLoaded] = useState(false)
+  const { state } = useInspiration()
+  const image = state.status === "ready" ? state.image : null
+
+  // Fade a newly picked image (or the first arrival) back in from transparent.
+  useEffect(() => {
+    setLoaded(false)
+  }, [image?.image])
 
   useEffect(() => {
     zoomRef.current = zoom
@@ -171,7 +250,7 @@ export function ZoomableInspirationImage({ className }: { className?: string }) 
     <div
       ref={viewportRef}
       role="img"
-      aria-label={t.dashboard.inspirationAlt}
+      aria-label={image ? `${t.dashboard.inspirationAlt}: ${image.title}` : t.dashboard.inspirationAlt}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={endDrag}
@@ -182,17 +261,25 @@ export function ZoomableInspirationImage({ className }: { className?: string }) 
         className,
       )}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        ref={imgRef}
-        src={PLACEHOLDER_IMAGE}
-        alt=""
-        aria-hidden
-        draggable={false}
-        onLoad={recomputeMax}
-        style={{ transform: `translateX(${offsetX}px) scale(${zoom})` }}
-        className="h-full w-full origin-center object-contain will-change-transform"
-      />
+      {image ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          ref={imgRef}
+          src={image.image}
+          alt=""
+          aria-hidden
+          draggable={false}
+          onLoad={() => {
+            setLoaded(true)
+            recomputeMax()
+          }}
+          style={{
+            transform: `translateX(${offsetX}px) scale(${zoom})`,
+            opacity: loaded ? 1 : 0,
+          }}
+          className="h-full w-full origin-center object-contain transition-opacity duration-500 will-change-transform"
+        />
+      ) : null}
     </div>
   )
 }

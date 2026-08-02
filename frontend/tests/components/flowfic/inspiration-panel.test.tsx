@@ -6,14 +6,51 @@ import { InspirationImage, QuoteOfDay } from "@/components/flowfic/inspiration-p
 import { ShowAllButton } from "@/components/flowfic/dashboard-widgets"
 import * as quotesModule from "@/lib/flowfic/quotes"
 import type { Quote } from "@/lib/flowfic/quotes"
+import * as inspirationModule from "@/lib/flowfic/inspiration"
+import type { InspirationImageData, InspirationState } from "@/lib/flowfic/inspiration"
 import { renderWithLocale } from "../../utils"
 
+const IMAGE: InspirationImageData = {
+  title: "And The Ship Sails On",
+  page: "https://film-grab.com/2014/12/12/and-the-ship-sails-on/",
+  image: "https://film-grab.com/wp-content/uploads/And-The-Ship-01.jpg",
+}
+
 describe("InspirationImage", () => {
-  it("renders a titled card with a landscape placeholder image", () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  function mockPick(state: InspirationState, refresh = vi.fn()): ReturnType<typeof vi.fn> {
+    vi.spyOn(inspirationModule, "useInspiration").mockReturnValue({ state, refresh })
+    return refresh
+  }
+
+  it("shows the card title, the centered film title, the image, and the credit link", () => {
+    mockPick({ status: "ready", image: IMAGE })
+    const { container } = renderWithLocale(<InspirationImage />)
+    expect(screen.getByText("Inspiration")).toBeInTheDocument()
+    expect(screen.getByText("And The Ship Sails On")).toBeInTheDocument()
+    expect(container.querySelector("img")).toHaveAttribute("src", IMAGE.image)
+
+    const link = screen.getByRole("link", { name: /film-grab\.com/i })
+    expect(link).toHaveAttribute("href", IMAGE.page)
+    expect(link).toHaveAttribute("target", "_blank")
+    expect(link).toHaveAttribute("rel", "noopener noreferrer")
+  })
+
+  it("re-rolls the shared pick when the refresh control is clicked", async () => {
+    const refresh = mockPick({ status: "ready", image: IMAGE })
     renderWithLocale(<InspirationImage />)
-    expect(screen.getByText("Today's inspiration")).toBeInTheDocument()
-    const img = screen.getByRole("img", { name: "Inspiration image" })
-    expect(img).toHaveAttribute("src", expect.stringContaining("picsum"))
+    await userEvent.click(screen.getByRole("button", { name: "Show another image" }))
+    expect(refresh).toHaveBeenCalledOnce()
+  })
+
+  it("shows just the title (no image, link, or actions) while the catalog loads", () => {
+    mockPick({ status: "loading" })
+    const { container } = renderWithLocale(<InspirationImage />)
+    expect(screen.getByText("Inspiration")).toBeInTheDocument()
+    expect(container.querySelector("img")).toBeNull()
+    expect(screen.queryByRole("link")).toBeNull()
+    expect(screen.queryByRole("button")).toBeNull()
   })
 })
 

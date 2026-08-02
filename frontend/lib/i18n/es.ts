@@ -292,7 +292,11 @@ export const es = {
     writeNow: "Escribir ahora",
     recentStories: "Historias recientes",
     inspirationAlt: "Imagen de inspiración",
-    inspirationTitle: "Inspiración de hoy",
+    inspirationTitle: "Inspiración",
+    inspirationCredit: "Ver en film-grab.com",
+    inspirationCreditShort: "film-grab.com",
+    inspirationCreditLabel: "Ver {title} en film-grab.com (se abre en una pestaña nueva)",
+    inspirationRefresh: "Mostrar otra imagen",
   },
 
   achievements: {

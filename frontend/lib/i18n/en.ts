@@ -288,7 +288,11 @@ export const en = {
     writeNow: "Write now",
     recentStories: "Recent stories",
     inspirationAlt: "Inspiration image",
-    inspirationTitle: "Today's inspiration",
+    inspirationTitle: "Inspiration",
+    inspirationCredit: "View in film-grab.com",
+    inspirationCreditShort: "film-grab.com",
+    inspirationCreditLabel: "View {title} on film-grab.com (opens in a new tab)",
+    inspirationRefresh: "Show another image",
   },
 
   achievements: {
