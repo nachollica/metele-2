@@ -92,6 +92,7 @@ export function StoriesSection({
                 label={t.nav.showAll}
                 sectionName={t.nav.stories}
                 onClick={onShowAll}
+                disabled={status === "anonymous"}
               />
             ) : null
           }

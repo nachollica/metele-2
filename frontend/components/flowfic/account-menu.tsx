@@ -19,6 +19,7 @@ import { useAuth } from "@/lib/auth"
 import { useBackendStatus } from "@/lib/backend"
 import { useTranslations } from "@/lib/i18n"
 
+import { LevelBadge } from "./dashboard-widgets"
 import { useGamification } from "./gamification-context"
 
 type Props = {
@@ -83,13 +84,16 @@ export function AccountMenu({ onOpenProfile, disabled = false }: Props) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild disabled={disabled}>
-        <button
+        {/* Same outline Button shape as the other header controls; the avatar
+            sits inside it (circular) with the name on wider screens. */}
+        <Button
           type="button"
+          variant="outline"
           disabled={disabled}
           aria-label={t.auth.accountMenuLabel}
-          className="focus-visible:ring-ring/50 hover:bg-accent flex items-center gap-2 rounded-full py-0.5 pr-3 pl-0.5 transition-colors focus-visible:ring-2 focus-visible:outline-none disabled:opacity-60"
+          className="h-9 gap-2 px-1 sm:pr-3"
         >
-          <Avatar className="size-9">
+          <Avatar className="size-7">
             {user.avatarUrl ? <AvatarImage src={user.avatarUrl} alt="" /> : null}
             <AvatarFallback className="text-xs">
               {initials || <User className="size-4" aria-hidden />}
@@ -98,18 +102,18 @@ export function AccountMenu({ onOpenProfile, disabled = false }: Props) {
           <span className="hidden max-w-[10rem] truncate text-sm font-medium sm:inline">
             {user.name}
           </span>
-        </button>
+        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel>
-          <div className="flex flex-col gap-1">
-            <span className="truncate text-sm font-semibold">{user.name}</span>
-            {user.email ? (
-              <span className="text-muted-foreground truncate text-xs">{user.email}</span>
-            ) : null}
-            <span className="bg-primary/10 text-primary mt-1 w-fit rounded-full px-2 py-0.5 text-xs font-semibold">
-              {t.dashboard.level} {level}
-            </span>
+          <div className="flex items-center gap-2">
+            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+              <span className="truncate text-sm font-semibold">{user.name}</span>
+              {user.email ? (
+                <span className="text-muted-foreground truncate text-xs">{user.email}</span>
+              ) : null}
+            </div>
+            <LevelBadge level={level} label={t.dashboard.level} />
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />

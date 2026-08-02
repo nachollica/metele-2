@@ -20,7 +20,7 @@ import { ChallengesSection } from "./challenges-section"
 import { DetailScreen } from "./detail-screen"
 import { GamificationProvider } from "./gamification-context"
 import { GameHud } from "./game-hud"
-import { InspirationImage } from "./inspiration-panel"
+import { ZoomableInspirationImage } from "./inspiration-panel"
 import { LandingHome } from "./landing"
 import { ProfilePanel } from "./profile-panel"
 import { ResultsModal } from "./results-modal"
@@ -214,10 +214,10 @@ export function Dashboard() {
                   <SettingsPanel settings={engine.settings} onChange={engine.setSettings} />
                 )}
               </div>
-              {/* Right: inspiration image only (5/12), desktop only. The image
-                  fills the width and is centered vertically in the column. */}
-              <aside className="bg-card/40 hidden w-5/12 shrink-0 flex-col justify-center overflow-y-auto border-l p-4 sm:p-6 md:flex">
-                <InspirationImage />
+              {/* Right: inspiration image only (5/12), desktop only. Fills the
+                  pane height; scroll to zoom (see ZoomableInspirationImage). */}
+              <aside className="bg-card/40 hidden w-5/12 shrink-0 overflow-hidden border-l p-4 sm:p-6 md:block">
+                <ZoomableInspirationImage />
               </aside>
             </div>
           ) : (
@@ -440,12 +440,18 @@ function ActionButton({
   onClick: () => void
 }) {
   return (
-    // Fixed generous width so every state's label (New story / Start writing /
-    // Quit session / Create a story, in either language) fits without the
-    // button resizing between states.
-    <Button onClick={onClick} size="sm" className="w-48 justify-center gap-1.5">
+    // Icon-only on mobile to keep the crowded top bar from overflowing; from
+    // `sm` up it gets a fixed generous width so every state's label (Create a
+    // story / Start writing / Quit session / Back to home, in either language)
+    // fits without the button resizing between states.
+    <Button
+      onClick={onClick}
+      size="sm"
+      aria-label={label}
+      className="w-auto justify-center gap-1.5 sm:w-48"
+    >
       {icon}
-      {label}
+      <span className="hidden sm:inline">{label}</span>
     </Button>
   )
 }

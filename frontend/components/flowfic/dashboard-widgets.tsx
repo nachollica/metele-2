@@ -4,8 +4,9 @@
 // All copy is passed in already-localized so these stay dumb and testable.
 
 import { type ReactNode } from "react"
-import { ChevronRight, Check, CircleCheckBig, type LucideIcon } from "lucide-react"
+import { ChevronRight, Check, CircleCheckBig, Trophy, type LucideIcon } from "lucide-react"
 
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { TONE_BAR, TONE_CHIP, type Tone } from "@/lib/flowfic/gamification"
 
@@ -100,32 +101,69 @@ export function SectionHeader({
   )
 }
 
+// ---- Level badge ----------------------------------------------------------
+
+/**
+ * Compact level chip — the same amber Trophy tone the home level tile uses, in a
+ * small pill for tight spots like the account menu. `label` is the localized
+ * word (e.g. "Level").
+ */
+export function LevelBadge({
+  level,
+  label,
+  className,
+}: {
+  level: number
+  label: string
+  className?: string
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold",
+        TONE_CHIP.amber,
+        className,
+      )}
+    >
+      <Trophy className="size-3.5" aria-hidden />
+      {label} {level}
+    </span>
+  )
+}
+
 // ---- "Show all" link ------------------------------------------------------
 
 /**
- * Compact link used as a section-header action on the landing dashboard. Opens
- * the matching expanded subsection. `label` is the fully-localized "Show all"
+ * Compact section-header action on the landing dashboard that opens the matching
+ * expanded subsection. Uses the shared Button (ghost) so it matches every other
+ * control while staying soft/borderless. `label` is the localized "Show all"
  * copy; `sectionName` names the target so screen readers get a unique name.
+ * Disabled for anonymous users (the detail screens need an account).
  */
 export function ShowAllButton({
   label,
   sectionName,
   onClick,
+  disabled = false,
 }: {
   label: string
   sectionName: string
   onClick: () => void
+  disabled?: boolean
 }) {
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
+      size="sm"
       onClick={onClick}
+      disabled={disabled}
       aria-label={`${label}: ${sectionName}`}
-      className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/50 flex shrink-0 items-center gap-1 rounded-md text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:outline-none"
+      className="text-muted-foreground hover:text-accent-foreground disabled:opacity-40"
     >
       {label}
-      <ChevronRight className="size-4" aria-hidden />
-    </button>
+      <ChevronRight className="size-3.5" aria-hidden />
+    </Button>
   )
 }
 

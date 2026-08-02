@@ -16,7 +16,7 @@ test("hides the auth control when the backend is unreachable but keeps the game 
 
   // The dashboard is up; New story reveals the settings (they render without a
   // backend).
-  await page.getByRole("button", { name: "New story" }).click()
+  await page.getByRole("button", { name: "Create a story" }).click()
   await expect(page.getByRole("heading", { name: "Session settings" })).toBeVisible()
 
   // No auth control at all while /ping fails.

@@ -25,7 +25,7 @@ test("full session: required word satisfied (+1) and stats shown on finish", asy
   // New story reveals the session settings. Configure there: a seed makes
   // startGame fetch the (stubbed) related pool, and the minimum interval makes a
   // word spawn quickly.
-  await page.getByRole("button", { name: "New story" }).click()
+  await page.getByRole("button", { name: "Create a story" }).click()
   await page.getByRole("textbox", { name: "Word seeds" }).fill("fruit")
   const interval = page.getByRole("slider", { name: "New required word every" })
   await interval.focus()

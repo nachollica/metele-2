@@ -67,7 +67,12 @@ export function StatsSection({ preview = false, onShowAll }: Props) {
           title={t.nav.stats}
           action={
             onShowAll ? (
-              <ShowAllButton label={t.nav.showAll} sectionName={t.nav.stats} onClick={onShowAll} />
+              <ShowAllButton
+                label={t.nav.showAll}
+                sectionName={t.nav.stats}
+                onClick={onShowAll}
+                disabled={status === "anonymous"}
+              />
             ) : null
           }
         />

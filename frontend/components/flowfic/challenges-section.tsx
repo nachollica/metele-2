@@ -28,6 +28,9 @@ export function ChallengesSection({ onNewStory, preview = false, onShowAll }: Pr
   const { status } = useAuth()
   const { challenges } = useGamification()
 
+  // The sign-in prompt is for anonymous users only. A signed-in user with no
+  // data yet just renders nothing until it loads (never the prompt).
+  const isAnonymous = status === "anonymous"
   const list = challenges ?? []
 
   function renderChallenge(c: (typeof list)[number]) {
@@ -65,22 +68,23 @@ export function ChallengesSection({ onNewStory, preview = false, onShowAll }: Pr
                 label={t.nav.showAll}
                 sectionName={t.nav.challenges}
                 onClick={onShowAll}
+                disabled={isAnonymous}
               />
             ) : null
           }
         />
-        {status === "anonymous" || !featured ? (
+        {isAnonymous ? (
           <p className="text-muted-foreground py-6 text-center text-sm">{t.dashboard.signInHint}</p>
-        ) : (
+        ) : featured ? (
           renderChallenge(featured)
-        )}
+        ) : null}
       </Panel>
     )
   }
 
   return (
     <div className="flex flex-col gap-5">
-      {status === "anonymous" ? (
+      {isAnonymous ? (
         <p className="text-muted-foreground py-6 text-center text-sm">{t.dashboard.signInHint}</p>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{list.map(renderChallenge)}</div>

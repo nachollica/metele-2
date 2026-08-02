@@ -17,7 +17,7 @@ test("a finished session is saved to the backend and shows in My stories", async
 
   // Signed-in users skip the welcome modal and land on the dashboard; New story
   // reveals the settings, then Start writing begins the sprint.
-  await page.getByRole("button", { name: "New story" }).click()
+  await page.getByRole("button", { name: "Create a story" }).click()
   await page.getByRole("button", { name: "Start writing" }).click()
 
   const story = "Lighthouse keepers count the waves at dusk. "

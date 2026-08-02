@@ -61,7 +61,6 @@ export function DevLoginButton({ disabled = false }: Props) {
         <Button
           variant="outline"
           size="icon"
-          className="border-dashed"
           aria-label={t.auth.devUserLogin}
           disabled={disabled}
         >

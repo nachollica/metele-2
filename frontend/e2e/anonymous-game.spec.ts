@@ -21,7 +21,7 @@ test("first visit shows the welcome modal, which dismisses to the landing dashbo
 
   // Dismissed -> the landing dashboard is shown; the header's New story action
   // is ready (clicking it reveals the session settings).
-  await expect(page.getByRole("button", { name: "New story" })).toBeVisible()
+  await expect(page.getByRole("button", { name: "Create a story" })).toBeVisible()
   await expect(skip).toBeHidden()
 })
 
@@ -32,7 +32,7 @@ test("start -> type -> quit shows the results modal with session stats", async (
   await page.goto("/")
 
   // New story reveals the settings; Start writing begins the sprint.
-  await page.getByRole("button", { name: "New story" }).click()
+  await page.getByRole("button", { name: "Create a story" }).click()
   await page.getByRole("button", { name: "Start writing" }).click()
 
   const textarea = page.getByRole("textbox")
@@ -57,7 +57,7 @@ test("the idle timeout ends the session on its own", async ({ page }) => {
   await dismissWelcomeBeforeLoad(page)
   await page.goto("/")
 
-  await page.getByRole("button", { name: "New story" }).click()
+  await page.getByRole("button", { name: "Create a story" }).click()
   await page.getByRole("button", { name: "Start writing" }).click()
 
   const textarea = page.getByRole("textbox")

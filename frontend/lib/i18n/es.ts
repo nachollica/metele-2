@@ -1,4 +1,4 @@
-// Spanish translations for FLOWFIC.
+// Spanish translations for Flowfic.
 //
 // `satisfies Translations` (bottom of the file) makes drift a compile error in
 // BOTH directions: a key missing here or an extra key not present in en.ts
@@ -23,7 +23,7 @@ export const es = {
     goToStep: "Ir al paso {n}",
     items: {
       intro: {
-        title: "Bienvenido a FLOWFIC",
+        title: "Bienvenido a Flowfic",
         body: "Un juego de escritura donde tus manos no paran. Reglas rápidas antes de empezar.",
       },
       pickVelocity: {
@@ -186,7 +186,7 @@ export const es = {
     title: "Historias recientes",
     subtitle: "Tus últimas sesiones de escritura",
     empty: "Aún no hay historias — termina una sesión para verla aquí.",
-    signUpPrompt: "Regístrate para ver tus historias guardadas aquí.",
+    signUpPrompt: "Inicia sesión para ver tus historias guardadas aquí.",
     error: "No se pudieron cargar las historias.",
     toggle: "Abrir historias recientes",
     toggleShort: "Historias",
@@ -225,7 +225,7 @@ export const es = {
     signedIn: "Cuenta",
     logIn: "Iniciar sesión",
     logOut: "Cerrar sesión",
-    title: "Inicia sesión en FLOWFIC",
+    title: "Inicia sesión en Flowfic",
     description:
       "Puedes jugar sin cuenta. Inicia sesión para guardar tus historias y acceder a tablas de líderes (próximamente).",
     continueWith: "Continuar con {provider}",
@@ -257,7 +257,7 @@ export const es = {
     challenges: "Desafíos",
     stats: "Estadísticas",
     achievements: "Logros",
-    newStory: "Nueva historia",
+    newStory: "Crear una historia",
     showAll: "Ver todo",
     backToHome: "Volver al inicio",
   },

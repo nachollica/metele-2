@@ -22,7 +22,10 @@ export function AchievementsSection({ preview = false, onShowAll }: Props) {
   const { status } = useAuth()
   const { achievements } = useGamification()
 
-  const signedOut = status === "anonymous" || achievements === null
+  // The sign-in prompt is for anonymous users only. A signed-in user with no
+  // data yet just renders an empty list until it loads (never the prompt).
+  const isAnonymous = status === "anonymous"
+  const list = achievements ?? []
 
   if (preview) {
     return (
@@ -35,15 +38,16 @@ export function AchievementsSection({ preview = false, onShowAll }: Props) {
                 label={t.nav.showAll}
                 sectionName={t.nav.achievements}
                 onClick={onShowAll}
+                disabled={isAnonymous}
               />
             ) : null
           }
         />
-        {signedOut ? (
+        {isAnonymous ? (
           <p className="text-muted-foreground py-4 text-center text-sm">{t.dashboard.signInHint}</p>
         ) : (
           <div className="flex flex-col gap-4">
-            {achievements.slice(0, PREVIEW_COUNT).map((a) => {
+            {list.slice(0, PREVIEW_COUNT).map((a) => {
               const v = achievementVisual(a.id)
               const text = achievementText(t, a.id)
               return (
@@ -66,23 +70,23 @@ export function AchievementsSection({ preview = false, onShowAll }: Props) {
     )
   }
 
-  if (signedOut) {
+  if (isAnonymous) {
     return (
       <p className="text-muted-foreground py-12 text-center text-sm">{t.dashboard.signInHint}</p>
     )
   }
 
-  const unlockedCount = achievements.filter((a) => a.unlocked).length
+  const unlockedCount = list.filter((a) => a.unlocked).length
 
   return (
     <div className="flex flex-col gap-5">
       <p className="text-muted-foreground text-sm">
         {t.achievements.unlockedSummary
           .replace("{count}", String(unlockedCount))
-          .replace("{total}", String(achievements.length))}
+          .replace("{total}", String(list.length))}
       </p>
       <div className="grid gap-4 sm:grid-cols-2">
-        {achievements.map((a) => {
+        {list.map((a) => {
           const v = achievementVisual(a.id)
           const text = achievementText(t, a.id)
           return (

@@ -21,8 +21,8 @@ const lora = Lora({
 })
 
 export const metadata: Metadata = {
-  title: "FLOWFIC — A Writing Game",
-  description: "Train your storytelling under pressure. Keep typing, weave in surprise words, finish strong.",
+  title: "Flowfic",
+  description: "¡Escribe sin parar!",
   icons: { icon: "/icon.svg" },
   // The app ships its own light/dark themes, so opt out of dark-mode browser
   // extensions (Dark Reader et al.). They re-theme by parsing computed colors,

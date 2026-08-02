@@ -7,10 +7,11 @@ import { useTranslations } from "@/lib/i18n"
 import type { AuthContextValue } from "@/lib/auth"
 
 import { AccountMenu } from "./account-menu"
-import { PrefsMenu } from "./prefs-menu"
+import { LanguageMenu } from "./language-menu"
+import { ThemeToggle } from "./theme-toggle"
 
 type Props = {
-  /** Game action for the top-left slot (New story / Start writing / Quit …). */
+  /** Game action for the top-right slot (Create a story / Start writing / Quit …). */
   primaryAction: ReactNode
   authStatus: AuthContextValue["status"]
   /** Whether the backend advertises the dev-user backdoor. */
@@ -23,10 +24,10 @@ type Props = {
 }
 
 /**
- * The topmost app bar, unchanged in structure across every screen: brand logo
- * far-left, the primary game action beside it, and the account + preferences
- * controls far-right. (The brand + preferences moved here from the removed
- * sidebar.)
+ * The topmost app bar, same structure on every screen. Left: brand logo (a home
+ * link) with the language + light/dark controls beside it. Right: the dev-login
+ * shortcut, the account control (Log in / avatar), and the primary game action
+ * anchored to the far right.
  */
 export function AppHeader({
   primaryAction,
@@ -42,7 +43,7 @@ export function AppHeader({
     // grows there (buttons stay centered in the extra space); on mobile it
     // stays compact with just the icon so nothing is wasted.
     <header className="bg-card/60 flex items-center justify-between gap-3 border-b px-4 py-2 sm:px-6 md:py-4">
-      <div className="flex min-w-0 items-center gap-3 md:gap-8">
+      <div className="flex min-w-0 items-center gap-2 md:gap-3">
         {/* Brand, far-left — doubles as a home link (locked during play).
             Icon-only on mobile, full logo + wordmark from md up. */}
         <button
@@ -62,16 +63,19 @@ export function AppHeader({
             className="hidden h-[5.5rem] w-auto object-contain md:block"
           />
         </button>
-        {/* Primary action (New story / Start writing / Quit …). */}
-        {primaryAction}
+        {/* Language + light/dark sit next to the logo: full on desktop, square
+            icons on mobile. */}
+        <LanguageMenu disabled={disabled} />
+        <ThemeToggle disabled={disabled} />
       </div>
       <div className="flex shrink-0 items-center gap-2">
-        <PrefsMenu disabled={disabled} />
         {/* Dev-user backdoor: header-only shortcut, anonymous + backend-enabled. */}
         {authStatus === "anonymous" && devUserEnabled ? (
           <DevLoginButton disabled={disabled} />
         ) : null}
         <AccountMenu onOpenProfile={onOpenProfile} disabled={disabled} />
+        {/* Primary action (Create a story / Start writing / Quit …), far-right. */}
+        {primaryAction}
       </div>
     </header>
   )

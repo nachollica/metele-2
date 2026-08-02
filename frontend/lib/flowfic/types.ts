@@ -1,4 +1,4 @@
-// Shared types for the FLOWFIC game.
+// Shared types for the Flowfic game.
 
 /** How a new required word is announced when sound is enabled. */
 export type SoundMode = "bell" | "speak"
