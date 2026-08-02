@@ -1,6 +1,6 @@
 # word-assets
 
-Build-time generator for FLOWFIC's word artifacts. It is a standalone `uv`
+Build-time generator for Flowfic's word artifacts. It is a standalone `uv`
 project (its own `.venv`), neither backend nor frontend, because the artifacts it
 produces feed both:
 

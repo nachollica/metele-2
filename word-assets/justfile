@@ -1,4 +1,4 @@
-# word-assets — build-time generator for FLOWFIC's word artifacts.
+# word-assets — build-time generator for Flowfic's word artifacts.
 #
 # Produces two per-language artifacts, each written into its consumer's tree
 # (both are gitignored; regenerate as below):
