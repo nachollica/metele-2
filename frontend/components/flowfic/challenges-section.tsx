@@ -1,18 +1,19 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
-
 import { useAuth } from "@/lib/auth"
 import { useTranslations } from "@/lib/i18n"
-import { challengeText, challengeVisual } from "@/lib/flowfic/gamification"
+import { challengeText, challengeVisual, dailyIndex } from "@/lib/flowfic/gamification"
 
-import { ChallengeItem, EmptyHint, Panel, SectionHeader, ShowAllButton } from "./dashboard-widgets"
+import { AchievementsSection } from "./achievements-section"
+import {
+  ChallengeItem,
+  EmptyHint,
+  FeaturedChallenge,
+  Panel,
+  SectionHeader,
+  ShowAllButton,
+} from "./dashboard-widgets"
 import { useGamification } from "./gamification-context"
-
-// The single challenge the landing preview highlights. Fixed for now (a
-// per-day / featured pick can replace this later); falls back to the first
-// available challenge if this id isn't in the fetched list.
-const HOME_CHALLENGE_ID = "daily_600"
 
 type Props = {
   /** Begin the new-story flow (from a challenge card's call to action). */
@@ -23,6 +24,11 @@ type Props = {
   onShowAll?: () => void
 }
 
+/**
+ * Challenges. The landing preview shows a single, colorful "challenge of the day"
+ * (rotating daily through the live set). The expanded screen groups the full
+ * challenge set with the achievements — the two were merged into one section.
+ */
 export function ChallengesSection({ onNewStory, preview = false, onShowAll }: Props) {
   const t = useTranslations()
   const { status } = useAuth()
@@ -33,35 +39,13 @@ export function ChallengesSection({ onNewStory, preview = false, onShowAll }: Pr
   const isAnonymous = status === "anonymous"
   const list = challenges ?? []
 
-  function renderChallenge(c: (typeof list)[number]) {
-    const v = challengeVisual(c.id)
-    const text = challengeText(t, c.id)
-    return (
-      <ChallengeItem
-        key={c.id}
-        icon={v.icon}
-        tone={v.tone}
-        name={text.name}
-        description={text.description}
-        progress={c.progress}
-        completed={c.completed}
-        progressLabel={`${c.current}/${c.target}`}
-        completedLabel={t.challenges.completed}
-        action={
-          <Button size="sm" className="w-full" onClick={onNewStory}>
-            {t.dashboard.writeNow}
-          </Button>
-        }
-      />
-    )
-  }
-
   if (preview) {
-    const featured = list.find((c) => c.id === HOME_CHALLENGE_ID) ?? list[0]
+    // "Challenge of the day": rotate through the live set so it changes daily.
+    const featured = list.length > 0 ? list[dailyIndex(list.length)] : null
     return (
       <Panel>
         <SectionHeader
-          title={t.nav.challenges}
+          title={t.dashboard.challengeOfDay}
           action={
             onShowAll ? (
               <ShowAllButton
@@ -76,19 +60,64 @@ export function ChallengesSection({ onNewStory, preview = false, onShowAll }: Pr
         {isAnonymous ? (
           <EmptyHint className="py-6">{t.dashboard.signInHint}</EmptyHint>
         ) : featured ? (
-          renderChallenge(featured)
+          (() => {
+            const v = challengeVisual(featured.id)
+            const text = challengeText(t, featured.id)
+            return (
+              <FeaturedChallenge
+                icon={v.icon}
+                name={text.name}
+                description={text.description}
+                progress={featured.progress}
+                completed={featured.completed}
+                progressLabel={`${featured.current}/${featured.target}`}
+                completedLabel={t.challenges.completed}
+                ctaLabel={t.dashboard.writeNow}
+                onCta={onNewStory}
+              />
+            )
+          })()
         ) : null}
       </Panel>
     )
   }
 
+  // Expanded screen: the merged section — challenges then achievements, each
+  // under its own sub-heading. Reached only when signed in (Show all is disabled
+  // for anonymous users), but the guard keeps it safe if that ever changes.
+  if (isAnonymous) {
+    return <EmptyHint>{t.dashboard.signInHint}</EmptyHint>
+  }
+
   return (
-    <div className="flex flex-col gap-5">
-      {isAnonymous ? (
-        <EmptyHint className="py-6">{t.dashboard.signInHint}</EmptyHint>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{list.map(renderChallenge)}</div>
-      )}
+    <div className="flex flex-col gap-8">
+      <section className="flex flex-col gap-4">
+        <h2 className="text-base font-semibold">{t.challenges.dailyGroup}</h2>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {list.map((c) => {
+            const v = challengeVisual(c.id)
+            const text = challengeText(t, c.id)
+            return (
+              <ChallengeItem
+                key={c.id}
+                icon={v.icon}
+                tone={v.tone}
+                name={text.name}
+                description={text.description}
+                progress={c.progress}
+                completed={c.completed}
+                progressLabel={`${c.current}/${c.target}`}
+                completedLabel={t.challenges.completed}
+              />
+            )
+          })}
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-4">
+        <h2 className="text-base font-semibold">{t.nav.achievements}</h2>
+        <AchievementsSection />
+      </section>
     </div>
   )
 }

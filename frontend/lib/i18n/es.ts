@@ -287,11 +287,16 @@ export const es = {
     wordsWritten: "Palabras escritas",
     writingTime: "Tiempo de escritura",
     sessionsCompleted: "Sesiones completadas",
-    promptOfDay: "Prompt del día",
+    quoteOfDay: "Cita del día",
+    challengeOfDay: "Desafío del día",
     writeNow: "Escribir ahora",
     recentStories: "Historias recientes",
     inspirationAlt: "Imagen de inspiración",
-    inspirationTitle: "Inspiración de hoy",
+    inspirationTitle: "Inspiración",
+    inspirationCredit: "Ver en film-grab.com",
+    inspirationCreditShort: "film-grab.com",
+    inspirationCreditLabel: "Ver {title} en film-grab.com (se abre en una pestaña nueva)",
+    inspirationRefresh: "Mostrar otra imagen",
   },
 
   achievements: {
@@ -310,6 +315,7 @@ export const es = {
 
   challenges: {
     completed: "Completado",
+    dailyGroup: "Desafíos diarios",
     items: {
       daily_600: { name: "Sesión diaria", description: "Escribí 600 palabras hoy" },
       weekly_5_sessions: { name: "Cinco por semana", description: "Completá 5 sesiones esta semana" },

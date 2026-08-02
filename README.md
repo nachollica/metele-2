@@ -1,4 +1,4 @@
-# FLOWFIC
+# Flowfic
 
 A browser game about writing stories under time pressure. Two timers and a
 stream of "required words" keep you typing — stay idle too long and it's game

@@ -4,20 +4,14 @@ import { useAuth } from "@/lib/auth"
 import { useTranslations } from "@/lib/i18n"
 import { achievementText, achievementVisual } from "@/lib/flowfic/gamification"
 
-import { AchievementItem, EmptyHint, Panel, SectionHeader, ShowAllButton } from "./dashboard-widgets"
+import { AchievementItem, EmptyHint, Panel } from "./dashboard-widgets"
 import { useGamification } from "./gamification-context"
 
-// How many achievements the landing preview card shows before "Show all".
-const PREVIEW_COUNT = 3
-
-type Props = {
-  /** Render a trimmed card for the landing dashboard instead of the full screen. */
-  preview?: boolean
-  /** Open the expanded Achievements screen (preview only). */
-  onShowAll?: () => void
-}
-
-export function AchievementsSection({ preview = false, onShowAll }: Props) {
+/**
+ * Achievements grid. No longer a standalone landing card or detail screen — it
+ * renders inside the expanded Challenges screen (the two sections were merged).
+ */
+export function AchievementsSection() {
   const t = useTranslations()
   const { status } = useAuth()
   const { achievements } = useGamification()
@@ -26,49 +20,6 @@ export function AchievementsSection({ preview = false, onShowAll }: Props) {
   // data yet just renders an empty list until it loads (never the prompt).
   const isAnonymous = status === "anonymous"
   const list = achievements ?? []
-
-  if (preview) {
-    return (
-      <Panel>
-        <SectionHeader
-          title={t.nav.achievements}
-          action={
-            onShowAll ? (
-              <ShowAllButton
-                label={t.nav.showAll}
-                sectionName={t.nav.achievements}
-                onClick={onShowAll}
-                disabled={isAnonymous}
-              />
-            ) : null
-          }
-        />
-        {isAnonymous ? (
-          <EmptyHint className="py-4">{t.dashboard.signInHint}</EmptyHint>
-        ) : (
-          <div className="flex flex-col gap-4">
-            {list.slice(0, PREVIEW_COUNT).map((a) => {
-              const v = achievementVisual(a.id)
-              const text = achievementText(t, a.id)
-              return (
-                <AchievementItem
-                  key={a.id}
-                  icon={v.icon}
-                  tone={v.tone}
-                  name={text.name}
-                  description={text.description}
-                  unlocked={a.unlocked}
-                  current={a.current}
-                  target={a.target}
-                  progress={a.progress}
-                />
-              )
-            })}
-          </div>
-        )}
-      </Panel>
-    )
-  }
 
   if (isAnonymous) {
     return <EmptyHint>{t.dashboard.signInHint}</EmptyHint>

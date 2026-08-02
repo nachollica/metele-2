@@ -125,9 +125,20 @@ export async function mockBackend(
     stories: [...(options.initialStories ?? [])],
   }
 
-  // Stub the placeholder inspiration image (a remote picsum URL for now) so the
-  // suite never reaches the public internet or depends on picsum being up.
-  await page.route("**/picsum.photos/**", async (route) => {
+  // Stub the inspiration catalog and its film-grab images so the suite never
+  // reaches the public internet. A single deterministic film keeps the shared
+  // pick (and any assertions on it) stable across runs.
+  await page.route("**/inspiration/images.v*.jsonl", async (route) => {
+    await route.fulfill({
+      contentType: "text/plain; charset=utf-8",
+      body: JSON.stringify({
+        title: "And The Ship Sails On",
+        page: "https://film-grab.com/2014/12/12/and-the-ship-sails-on/",
+        image: "https://film-grab.com/wp-content/uploads/And-The-Ship-01.jpg",
+      }),
+    })
+  })
+  await page.route("**/film-grab.com/wp-content/**", async (route) => {
     await route.fulfill({
       contentType: "image/gif",
       // 1x1 transparent GIF.

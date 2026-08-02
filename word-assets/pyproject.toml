@@ -1,7 +1,7 @@
 [project]
 name = "flowfic-word-assets"
 version = "0.1.0"
-description = "Build-time generator for FLOWFIC's word artifacts (vector pools + match maps)."
+description = "Build-time generator for Flowfic's word artifacts (vector pools + match maps)."
 requires-python = ">=3.14"
 dependencies = [
     "numpy>=2.0",

@@ -66,6 +66,16 @@ cc:
 check-assets:
     just word-assets::check
 
+# ----- Build-time assets ----------------------------------------------
+
+[group("assets")]
+[doc("Parse local film-grab image-sitemap*.xml files into the inspiration \
+catalog JSONL (frontend/public/inspiration, gitignored). Download the sitemaps \
+into INPUT_DIR (default: repo root) first; the output is JSON Lines so you can \
+slice it with shell tools. Usage: just inspiration [INPUT_DIR]")]
+inspiration INPUT_DIR=".":
+    uv run --project word-assets python word-assets/src/build_inspiration.py "{{INPUT_DIR}}"
+
 # ----- Deploy ----------------------------------------------------------
 
 # Host this deploys to (must be defined in `~/.ssh/config`).

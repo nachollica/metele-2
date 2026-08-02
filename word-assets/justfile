@@ -1,4 +1,4 @@
-# word-assets — build-time generator for FLOWFIC's word artifacts.
+# word-assets — build-time generator for Flowfic's word artifacts.
 #
 # Produces two per-language artifacts, each written into its consumer's tree
 # (both are gitignored; regenerate as below):
@@ -34,6 +34,17 @@ all +ARGS:
 [doc("Verify all expected artifacts exist (non-zero exit if any are missing).")]
 check:
     uv run python src/check_assets.py
+
+[group("build")]
+[doc("List quote candidates from a source file (curation helper). \
+Usage: just slice-quotes \"direct_requests/<author>/<book>/content.txt\" [--start N --end N]")]
+slice-quotes FILE *ARGS:
+    uv run python src/slice_quotes.py "{{FILE}}" {{ARGS}}
+
+[group("build")]
+[doc("Verify the committed quote-of-the-day JSONL against its (md5-checked) sources.")]
+quotes-verify *ARGS:
+    uv run python src/verify_quotes.py {{ARGS}}
 
 [group("development")]
 [doc("Check-only lint + format + type + test (CI entry point).")]

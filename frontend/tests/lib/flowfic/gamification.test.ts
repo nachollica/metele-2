@@ -6,7 +6,7 @@ import {
   achievementVisual,
   challengeText,
   challengeVisual,
-  dailyPromptIndex,
+  dailyIndex,
   dayOfYear,
   deltaIsPositive,
   deriveTitle,
@@ -67,12 +67,12 @@ describe("deriveTitle", () => {
   })
 })
 
-describe("dayOfYear / dailyPromptIndex", () => {
+describe("dayOfYear / dailyIndex", () => {
   it("is stable within a day and wraps the pool", () => {
     const d = new Date(2026, 0, 11) // Jan 11 -> day 11
     expect(dayOfYear(d)).toBe(11)
-    expect(dailyPromptIndex(10, d)).toBe(1)
-    expect(dailyPromptIndex(0, d)).toBe(0)
+    expect(dailyIndex(10, d)).toBe(1)
+    expect(dailyIndex(0, d)).toBe(0)
   })
 })
 
