@@ -1,4 +1,4 @@
-// English translations for FLOWFIC. This is the canonical dictionary: the
+// English translations for Flowfic. This is the canonical dictionary: the
 // `Translations` type is derived from it, so every other locale (es.ts, and
 // any future sibling) must match this exact shape.
 
@@ -19,7 +19,7 @@ export const en = {
     goToStep: "Go to step {n}",
     items: {
       intro: {
-        title: "Welcome to FLOWFIC",
+        title: "Welcome to Flowfic",
         body: "A writing game where your hands keep moving. Quick rules before you start.",
       },
       pickVelocity: {
@@ -75,6 +75,7 @@ export const en = {
     secondsSuffix: "s",
     minutesSuffix: "m",
     start: "Start writing",
+    startShort: "Write",
     customModesLabel: "Custom game modes",
     customModesDescription: "Your saved presets. Click to apply.",
     customModesTooltip: "Edit or delete your custom modes from your profile.",
@@ -124,7 +125,7 @@ export const en = {
     placeholder: "Begin your story. Don't stop typing…",
     pause: "Give up",
     quit: "Quit session",
-    createStory: "Create a story",
+    quitShort: "Quit",
     viewingStory: "Viewing a previous story (read-only).",
     saveFailed: "Couldn't save your last story.",
     saveRetry: "Retry",
@@ -181,7 +182,7 @@ export const en = {
     title: "Recent stories",
     subtitle: "Your latest writing sessions",
     empty: "No stories yet — finish a session to see it here.",
-    signUpPrompt: "Sign up to see your saved stories here.",
+    signUpPrompt: "Sign in to see your saved stories here.",
     error: "Couldn't load stories.",
     toggle: "Open recent stories",
     toggleShort: "Stories",
@@ -220,7 +221,7 @@ export const en = {
     signedIn: "Account",
     logIn: "Log in",
     logOut: "Log out",
-    title: "Sign in to FLOWFIC",
+    title: "Sign in to Flowfic",
     description:
       "You can play without an account. Sign in to unlock saved stories and leaderboards (coming soon).",
     continueWith: "Continue with {provider}",
@@ -252,6 +253,13 @@ export const en = {
     challenges: "Challenges",
     stats: "Statistics",
     achievements: "Achievements",
+    newStory: "Create a story",
+    // Short game-button labels shown only on mobile; the full versions above
+    // show from `sm` up and remain the accessible names.
+    newStoryShort: "Create",
+    backToHomeShort: "Home",
+    showAll: "Show all",
+    backToHome: "Back to home",
   },
 
   // Home dashboard + shared gamification copy.
@@ -277,6 +285,9 @@ export const en = {
     sessionsCompleted: "Sessions completed",
     promptOfDay: "Prompt of the day",
     writeNow: "Write now",
+    recentStories: "Recent stories",
+    inspirationAlt: "Inspiration image",
+    inspirationTitle: "Today's inspiration",
   },
 
   achievements: {

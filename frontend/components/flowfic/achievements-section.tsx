@@ -4,33 +4,87 @@ import { useAuth } from "@/lib/auth"
 import { useTranslations } from "@/lib/i18n"
 import { achievementText, achievementVisual } from "@/lib/flowfic/gamification"
 
-import { AchievementItem, Panel } from "./dashboard-widgets"
+import { AchievementItem, EmptyHint, Panel, SectionHeader, ShowAllButton } from "./dashboard-widgets"
 import { useGamification } from "./gamification-context"
 
-export function AchievementsSection() {
+// How many achievements the landing preview card shows before "Show all".
+const PREVIEW_COUNT = 3
+
+type Props = {
+  /** Render a trimmed card for the landing dashboard instead of the full screen. */
+  preview?: boolean
+  /** Open the expanded Achievements screen (preview only). */
+  onShowAll?: () => void
+}
+
+export function AchievementsSection({ preview = false, onShowAll }: Props) {
   const t = useTranslations()
   const { status } = useAuth()
   const { achievements } = useGamification()
 
-  if (status === "anonymous" || achievements === null) {
+  // The sign-in prompt is for anonymous users only. A signed-in user with no
+  // data yet just renders an empty list until it loads (never the prompt).
+  const isAnonymous = status === "anonymous"
+  const list = achievements ?? []
+
+  if (preview) {
     return (
-      <p className="text-muted-foreground py-12 text-center text-sm">
-        {t.dashboard.signInHint}
-      </p>
+      <Panel>
+        <SectionHeader
+          title={t.nav.achievements}
+          action={
+            onShowAll ? (
+              <ShowAllButton
+                label={t.nav.showAll}
+                sectionName={t.nav.achievements}
+                onClick={onShowAll}
+                disabled={isAnonymous}
+              />
+            ) : null
+          }
+        />
+        {isAnonymous ? (
+          <EmptyHint className="py-4">{t.dashboard.signInHint}</EmptyHint>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {list.slice(0, PREVIEW_COUNT).map((a) => {
+              const v = achievementVisual(a.id)
+              const text = achievementText(t, a.id)
+              return (
+                <AchievementItem
+                  key={a.id}
+                  icon={v.icon}
+                  tone={v.tone}
+                  name={text.name}
+                  description={text.description}
+                  unlocked={a.unlocked}
+                  current={a.current}
+                  target={a.target}
+                  progress={a.progress}
+                />
+              )
+            })}
+          </div>
+        )}
+      </Panel>
     )
   }
 
-  const unlockedCount = achievements.filter((a) => a.unlocked).length
+  if (isAnonymous) {
+    return <EmptyHint>{t.dashboard.signInHint}</EmptyHint>
+  }
+
+  const unlockedCount = list.filter((a) => a.unlocked).length
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-5">
+    <div className="flex flex-col gap-5">
       <p className="text-muted-foreground text-sm">
         {t.achievements.unlockedSummary
           .replace("{count}", String(unlockedCount))
-          .replace("{total}", String(achievements.length))}
+          .replace("{total}", String(list.length))}
       </p>
       <div className="grid gap-4 sm:grid-cols-2">
-        {achievements.map((a) => {
+        {list.map((a) => {
           const v = achievementVisual(a.id)
           const text = achievementText(t, a.id)
           return (

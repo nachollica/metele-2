@@ -4,8 +4,9 @@
 // All copy is passed in already-localized so these stay dumb and testable.
 
 import { type ReactNode } from "react"
-import { Check, CircleCheckBig, type LucideIcon } from "lucide-react"
+import { ChevronRight, Check, CircleCheckBig, Trophy, type LucideIcon } from "lucide-react"
 
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { TONE_BAR, TONE_CHIP, type Tone } from "@/lib/flowfic/gamification"
 
@@ -94,9 +95,94 @@ export function SectionHeader({
 }) {
   return (
     <div className="mb-4 flex items-center justify-between gap-3">
-      <h3 className="text-base font-bold">{title}</h3>
+      <h3 className="text-lg font-bold">{title}</h3>
       {action}
     </div>
+  )
+}
+
+// ---- Empty / sign-in hint -------------------------------------------------
+
+/**
+ * Muted, centered hint shown in place of section content (empty lists, "sign in
+ * to see…"). One place for the shared styling; callers tune the vertical padding
+ * via `className` (tighter in preview cards, roomier on full screens).
+ */
+export function EmptyHint({
+  children,
+  className,
+}: {
+  children: ReactNode
+  className?: string
+}) {
+  return (
+    <p className={cn("text-muted-foreground py-12 text-center text-sm", className)}>{children}</p>
+  )
+}
+
+// ---- Level badge ----------------------------------------------------------
+
+/**
+ * Compact level chip — the same amber Trophy tone the home level tile uses, in a
+ * small pill for tight spots like the account menu. `label` is the localized
+ * word (e.g. "Level").
+ */
+export function LevelBadge({
+  level,
+  label,
+  className,
+}: {
+  level: number
+  label: string
+  className?: string
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold",
+        TONE_CHIP.amber,
+        className,
+      )}
+    >
+      <Trophy className="size-3.5" aria-hidden />
+      {label} {level}
+    </span>
+  )
+}
+
+// ---- "Show all" link ------------------------------------------------------
+
+/**
+ * Compact section-header action on the landing dashboard that opens the matching
+ * expanded subsection. Uses the shared Button (ghost) so it matches every other
+ * control while staying soft/borderless. `label` is the localized "Show all"
+ * copy; `sectionName` names the target so screen readers get a unique name.
+ * Disabled for anonymous users (the detail screens need an account).
+ */
+export function ShowAllButton({
+  label,
+  sectionName,
+  onClick,
+  disabled = false,
+}: {
+  label: string
+  sectionName: string
+  onClick: () => void
+  disabled?: boolean
+}) {
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={`${label}: ${sectionName}`}
+      className="text-muted-foreground hover:text-accent-foreground disabled:opacity-40"
+    >
+      {label}
+      <ChevronRight className="size-3.5" aria-hidden />
+    </Button>
   )
 }
 
@@ -119,9 +205,9 @@ export function StatTile({
 }) {
   return (
     <div className="flex flex-col items-center gap-1 text-center">
-      {Icon ? <IconChip icon={Icon} tone={tone} className="mb-1 size-9" iconClassName="size-4" /> : null}
+      {Icon ? <IconChip icon={Icon} tone={tone} className="mb-1 size-11" iconClassName="size-5" /> : null}
       <div className="flex items-baseline gap-1">
-        <span className="text-xl font-extrabold tabular-nums">{value}</span>
+        <span className="text-2xl font-extrabold tabular-nums">{value}</span>
         {delta ? (
           <span
             className={cn(
@@ -133,7 +219,7 @@ export function StatTile({
           </span>
         ) : null}
       </div>
-      <span className="text-muted-foreground text-xs">{label}</span>
+      <span className="text-muted-foreground text-sm">{label}</span>
     </div>
   )
 }
@@ -163,10 +249,10 @@ export function AchievementItem({
 }) {
   return (
     <div className="flex items-center gap-3">
-      <IconChip icon={icon} tone={tone} className="size-10" />
+      <IconChip icon={icon} tone={tone} className="size-11" iconClassName="size-6" />
       <div className="min-w-0 flex-1">
-        <div className="truncate text-sm font-semibold">{name}</div>
-        <div className="text-muted-foreground truncate text-xs">{description}</div>
+        <div className="truncate text-base font-semibold">{name}</div>
+        <div className="text-muted-foreground truncate text-sm">{description}</div>
         {showProgress && !unlocked ? (
           <ProgressMeter value={progress} tone={tone} label={name} className="mt-2" />
         ) : null}
@@ -212,10 +298,10 @@ export function ChallengeItem({
   return (
     <div className="bg-muted/40 flex flex-col rounded-xl border p-4">
       <div className="mb-2 flex items-center gap-2">
-        <IconChip icon={icon} tone={tone} className="size-9" iconClassName="size-4" />
-        <div className="text-sm font-bold">{name}</div>
+        <IconChip icon={icon} tone={tone} className="size-10" iconClassName="size-5" />
+        <div className="text-base font-bold">{name}</div>
       </div>
-      <p className="text-muted-foreground mb-3 text-xs leading-relaxed">{description}</p>
+      <p className="text-muted-foreground mb-3 text-sm leading-relaxed">{description}</p>
       <ProgressMeter value={progress} tone={tone} label={name} />
       <div className="text-muted-foreground mt-1.5 mb-3 text-xs tabular-nums">{progressLabel}</div>
       <div className="mt-auto">

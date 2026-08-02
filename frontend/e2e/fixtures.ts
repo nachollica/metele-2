@@ -125,6 +125,16 @@ export async function mockBackend(
     stories: [...(options.initialStories ?? [])],
   }
 
+  // Stub the placeholder inspiration image (a remote picsum URL for now) so the
+  // suite never reaches the public internet or depends on picsum being up.
+  await page.route("**/picsum.photos/**", async (route) => {
+    await route.fulfill({
+      contentType: "image/gif",
+      // 1x1 transparent GIF.
+      body: Buffer.from("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7", "base64"),
+    })
+  })
+
   await page.route("**/api/**", async (route) => {
     const request = route.request()
     const method = request.method()

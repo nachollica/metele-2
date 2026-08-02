@@ -1,6 +1,6 @@
-# FLOWFIC frontend
+# Flowfic frontend
 
-The Next.js client for FLOWFIC. All gameplay is client-side; the app is built
+The Next.js client for Flowfic. All gameplay is client-side; the app is built
 as a static export (`output: "export"`) and served as plain assets behind
 Caddy in production. It talks to the FastAPI backend at `./backend/` only at
 session start (word pools) and for saving/loading stories.

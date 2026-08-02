@@ -60,7 +60,7 @@ const UI_TICK_MS = 100
 const WORD_AUTO_DISMISS_MS = 10_000
 
 /**
- * The FLOWFIC writing engine as a hook. Ported verbatim from the original
+ * The Flowfic writing engine as a hook. Ported verbatim from the original
  * single-screen game component; the only change is that it no longer renders
  * chrome or owns navigation — it exposes state + actions the dashboard wires
  * into whichever screen is active.

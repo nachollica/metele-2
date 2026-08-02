@@ -1,4 +1,4 @@
-// Spanish translations for FLOWFIC.
+// Spanish translations for Flowfic.
 //
 // `satisfies Translations` (bottom of the file) makes drift a compile error in
 // BOTH directions: a key missing here or an extra key not present in en.ts
@@ -23,7 +23,7 @@ export const es = {
     goToStep: "Ir al paso {n}",
     items: {
       intro: {
-        title: "Bienvenido a FLOWFIC",
+        title: "Bienvenido a Flowfic",
         body: "Un juego de escritura donde tus manos no paran. Reglas rápidas antes de empezar.",
       },
       pickVelocity: {
@@ -80,6 +80,7 @@ export const es = {
     secondsSuffix: "s",
     minutesSuffix: "m",
     start: "Empezar a escribir",
+    startShort: "Escribir",
     customModesLabel: "Modos personalizados",
     customModesDescription: "Tus presets guardados. Haz clic para aplicar.",
     customModesTooltip: "Edita o elimina tus modos personalizados desde tu perfil.",
@@ -129,7 +130,7 @@ export const es = {
     placeholder: "Empieza tu historia. No dejes de escribir…",
     pause: "Abandonar",
     quit: "Salir de sesión",
-    createStory: "Crear una historia",
+    quitShort: "Salir",
     viewingStory: "Viendo una historia anterior (solo lectura).",
     saveFailed: "No se pudo guardar tu última historia.",
     saveRetry: "Reintentar",
@@ -186,7 +187,7 @@ export const es = {
     title: "Historias recientes",
     subtitle: "Tus últimas sesiones de escritura",
     empty: "Aún no hay historias — termina una sesión para verla aquí.",
-    signUpPrompt: "Regístrate para ver tus historias guardadas aquí.",
+    signUpPrompt: "Inicia sesión para ver tus historias guardadas aquí.",
     error: "No se pudieron cargar las historias.",
     toggle: "Abrir historias recientes",
     toggleShort: "Historias",
@@ -225,7 +226,7 @@ export const es = {
     signedIn: "Cuenta",
     logIn: "Iniciar sesión",
     logOut: "Cerrar sesión",
-    title: "Inicia sesión en FLOWFIC",
+    title: "Inicia sesión en Flowfic",
     description:
       "Puedes jugar sin cuenta. Inicia sesión para guardar tus historias y acceder a tablas de líderes (próximamente).",
     continueWith: "Continuar con {provider}",
@@ -257,6 +258,13 @@ export const es = {
     challenges: "Desafíos",
     stats: "Estadísticas",
     achievements: "Logros",
+    newStory: "Crear una historia",
+    // Etiquetas cortas del botón de juego, solo en móvil; las versiones
+    // completas de arriba se muestran desde `sm` y son los nombres accesibles.
+    newStoryShort: "Crear",
+    backToHomeShort: "Inicio",
+    showAll: "Ver todo",
+    backToHome: "Volver al inicio",
   },
 
   dashboard: {
@@ -281,6 +289,9 @@ export const es = {
     sessionsCompleted: "Sesiones completadas",
     promptOfDay: "Prompt del día",
     writeNow: "Escribir ahora",
+    recentStories: "Historias recientes",
+    inspirationAlt: "Imagen de inspiración",
+    inspirationTitle: "Inspiración de hoy",
   },
 
   achievements: {

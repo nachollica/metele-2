@@ -3,65 +3,91 @@
 import { Button } from "@/components/ui/button"
 
 import { useAuth } from "@/lib/auth"
-import { useLocale, useTranslations } from "@/lib/i18n"
-import { DAILY_PROMPTS } from "@/lib/flowfic/prompts"
-import { challengeText, challengeVisual, dailyPromptIndex } from "@/lib/flowfic/gamification"
+import { useTranslations } from "@/lib/i18n"
+import { challengeText, challengeVisual } from "@/lib/flowfic/gamification"
 
-import { ChallengeItem, Panel, SectionHeader } from "./dashboard-widgets"
+import { ChallengeItem, EmptyHint, Panel, SectionHeader, ShowAllButton } from "./dashboard-widgets"
 import { useGamification } from "./gamification-context"
 
+// The single challenge the landing preview highlights. Fixed for now (a
+// per-day / featured pick can replace this later); falls back to the first
+// available challenge if this id isn't in the fetched list.
+const HOME_CHALLENGE_ID = "daily_600"
+
 type Props = {
-  /** Start a sprint (from a challenge or the daily prompt). */
+  /** Begin the new-story flow (from a challenge card's call to action). */
   onNewStory: () => void
+  /** Render a trimmed card for the landing dashboard instead of the full screen. */
+  preview?: boolean
+  /** Open the expanded Challenges screen (preview only). */
+  onShowAll?: () => void
 }
 
-export function ChallengesSection({ onNewStory }: Props) {
+export function ChallengesSection({ onNewStory, preview = false, onShowAll }: Props) {
   const t = useTranslations()
-  const locale = useLocale()
   const { status } = useAuth()
   const { challenges } = useGamification()
 
-  const prompt = DAILY_PROMPTS[locale][dailyPromptIndex(DAILY_PROMPTS[locale].length)]
+  // The sign-in prompt is for anonymous users only. A signed-in user with no
+  // data yet just renders nothing until it loads (never the prompt).
+  const isAnonymous = status === "anonymous"
   const list = challenges ?? []
 
-  return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-5">
-      {/* Prompt of the day */}
-      <Panel>
-        <SectionHeader title={t.dashboard.promptOfDay} />
-        <p className="text-muted-foreground text-base italic">&ldquo;{prompt}&rdquo;</p>
-        <Button className="mt-4" onClick={onNewStory}>
-          {t.dashboard.writeNow}
-        </Button>
-      </Panel>
+  function renderChallenge(c: (typeof list)[number]) {
+    const v = challengeVisual(c.id)
+    const text = challengeText(t, c.id)
+    return (
+      <ChallengeItem
+        key={c.id}
+        icon={v.icon}
+        tone={v.tone}
+        name={text.name}
+        description={text.description}
+        progress={c.progress}
+        completed={c.completed}
+        progressLabel={`${c.current}/${c.target}`}
+        completedLabel={t.challenges.completed}
+        action={
+          <Button size="sm" className="w-full" onClick={onNewStory}>
+            {t.dashboard.writeNow}
+          </Button>
+        }
+      />
+    )
+  }
 
-      {status === "anonymous" ? (
-        <p className="text-muted-foreground py-6 text-center text-sm">{t.dashboard.signInHint}</p>
-      ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {list.map((c) => {
-            const v = challengeVisual(c.id)
-            const text = challengeText(t, c.id)
-            return (
-              <ChallengeItem
-                key={c.id}
-                icon={v.icon}
-                tone={v.tone}
-                name={text.name}
-                description={text.description}
-                progress={c.progress}
-                completed={c.completed}
-                progressLabel={`${c.current}/${c.target}`}
-                completedLabel={t.challenges.completed}
-                action={
-                  <Button size="sm" className="w-full" onClick={onNewStory}>
-                    {t.dashboard.writeNow}
-                  </Button>
-                }
+  if (preview) {
+    const featured = list.find((c) => c.id === HOME_CHALLENGE_ID) ?? list[0]
+    return (
+      <Panel>
+        <SectionHeader
+          title={t.nav.challenges}
+          action={
+            onShowAll ? (
+              <ShowAllButton
+                label={t.nav.showAll}
+                sectionName={t.nav.challenges}
+                onClick={onShowAll}
+                disabled={isAnonymous}
               />
-            )
-          })}
-        </div>
+            ) : null
+          }
+        />
+        {isAnonymous ? (
+          <EmptyHint className="py-6">{t.dashboard.signInHint}</EmptyHint>
+        ) : featured ? (
+          renderChallenge(featured)
+        ) : null}
+      </Panel>
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-5">
+      {isAnonymous ? (
+        <EmptyHint className="py-6">{t.dashboard.signInHint}</EmptyHint>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{list.map(renderChallenge)}</div>
       )}
     </div>
   )
