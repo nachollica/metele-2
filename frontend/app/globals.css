@@ -162,17 +162,19 @@
     @apply border-border outline-ring/50;
   }
   /* The app shell is a fixed-height (`h-dvh`) column whose inner region is the
-     only scroll container. Pin the document itself so it can't scroll past the
-     shell — portal/aux nodes appended to <body> would otherwise make the root
-     scrollable and leave phantom empty space below the content (which then
-     overlaps it on the way back up). The scrolling element is <html>, so it
-     needs the clip too, not just <body>. */
-  html,
-  body {
+     only scroll container. The scrolling element is <html>, so clipping it pins
+     the document — portal/aux nodes appended to <body> would otherwise make the
+     root scrollable and leave phantom empty space below the content (which then
+     overlaps it on the way back up). Deliberately NOT clipping <body>:
+     react-remove-scroll (Radix modal menus/dialogs) mis-measures the scrollbar
+     gap when <body> is `overflow:hidden` and injects a huge margin that
+     collapses the layout on mobile. */
+  html {
     overflow: hidden;
     overscroll-behavior: none;
   }
   body {
+    overscroll-behavior: none;
     @apply bg-background text-foreground;
   }
 }

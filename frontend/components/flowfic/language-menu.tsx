@@ -31,11 +31,14 @@ export function LanguageMenu({ disabled = false }: { disabled?: boolean }) {
   const { locale, setLocale } = usePreferences()
 
   return (
-    <DropdownMenu>
+    // Non-modal: avoids Radix's scroll-lock (react-remove-scroll), which
+    // mis-measures the scrollbar gap against our pinned <html> and collapses the
+    // layout on mobile. A header menu needs no scroll lock.
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>
         <Button
           variant="outline"
-          size="icon"
+          size="icon-lg"
           disabled={disabled}
           aria-label={t.prefs.languageLabel}
           className="md:w-auto md:px-3"

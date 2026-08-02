@@ -60,7 +60,7 @@ export function DevLoginButton({ disabled = false }: Props) {
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          size="icon"
+          size="icon-lg"
           aria-label={t.auth.devUserLogin}
           disabled={disabled}
         >

@@ -57,15 +57,17 @@ export function AccountMenu({ onOpenProfile, disabled = false }: Props) {
   if (status === "anonymous" || !user) {
     return (
       <>
+        {/* 2nd label priority (after the game button): the "Log in" text hides
+            on mobile, leaving the icon; it returns from `sm` up. */}
         <Button
           variant="default"
-          size="sm"
-          className="gap-2"
+          aria-label={t.auth.logIn}
+          className="h-10 gap-2"
           onClick={() => setLoginOpen(true)}
           disabled={disabled}
         >
           <LogIn className="size-4" aria-hidden />
-          {t.auth.logIn}
+          <span className="hidden sm:inline">{t.auth.logIn}</span>
         </Button>
         <LoginModal open={loginOpen} onOpenChange={setLoginOpen} />
       </>
@@ -82,7 +84,10 @@ export function AccountMenu({ onOpenProfile, disabled = false }: Props) {
     .toUpperCase()
 
   return (
-    <DropdownMenu>
+    // Non-modal: skips Radix's scroll-lock (react-remove-scroll), which
+    // mis-measures the scrollbar gap against our pinned <html> and collapses the
+    // layout on mobile. A header menu needs no scroll lock.
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild disabled={disabled}>
         {/* Same outline Button shape as the other header controls; the avatar
             sits inside it (circular) with the name on wider screens. */}
@@ -91,7 +96,7 @@ export function AccountMenu({ onOpenProfile, disabled = false }: Props) {
           variant="outline"
           disabled={disabled}
           aria-label={t.auth.accountMenuLabel}
-          className="h-9 gap-2 px-1 sm:pr-3"
+          className="h-10 gap-2 px-1 sm:pr-3"
         >
           <Avatar className="size-7">
             {user.avatarUrl ? <AvatarImage src={user.avatarUrl} alt="" /> : null}

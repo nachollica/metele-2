@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
 
 import { cn } from "@/lib/utils"
 import { useLocale, useTranslations } from "@/lib/i18n"
@@ -41,21 +41,51 @@ export function InspirationImage({ className }: { className?: string }) {
 }
 
 /**
- * Inspiration image for the split game/setup pane, zoomable with the wheel.
+ * Inspiration image for the split game/setup pane, zoomable and pannable.
  *
  * The viewport fills the pane; the image is `object-contain`, so at rest it fits
  * the width and is centered vertically (min zoom = fully visible, reaching the
- * left/right edges). Scrolling up zooms in, up to the point where the image
+ * left/right edges). Vertical wheel zooms in, up to the point where the image
  * fills the pane's height — for a landscape image that crops the sides (max
- * zoom). The wheel is captured (never scrolls the pane) via a non-passive
- * listener, and the max is recomputed whenever the pane or image size changes.
+ * zoom). Once zoomed, a horizontal wheel (or shift+wheel) and click-and-drag pan
+ * left/right to reveal the cropped edges. The wheel is captured (never scrolls
+ * the pane) via a non-passive listener; the max zoom and pan are recomputed
+ * whenever the pane or image size changes.
  */
 export function ZoomableInspirationImage({ className }: { className?: string }) {
   const t = useTranslations()
   const viewportRef = useRef<HTMLDivElement>(null)
   const imgRef = useRef<HTMLImageElement>(null)
   const maxZoomRef = useRef(1)
+  const zoomRef = useRef(1)
+  const offsetRef = useRef(0)
+  const dragRef = useRef<{ startX: number; startOffset: number } | null>(null)
   const [zoom, setZoom] = useState(1)
+  const [offsetX, setOffsetX] = useState(0)
+  const [dragging, setDragging] = useState(false)
+
+  useEffect(() => {
+    zoomRef.current = zoom
+  }, [zoom])
+  useEffect(() => {
+    offsetRef.current = offsetX
+  }, [offsetX])
+
+  // Max horizontal pan (px) at a given zoom: half the image's overflow past the
+  // pane. Zero at min zoom (nothing overflows), so panning is a no-op there.
+  const maxOffsetFor = useCallback((z: number) => {
+    const vp = viewportRef.current
+    if (!vp) return 0
+    return (vp.clientWidth * (z - 1)) / 2
+  }, [])
+
+  const clampOffset = useCallback(
+    (x: number, z: number) => {
+      const max = maxOffsetFor(z)
+      return Math.min(max, Math.max(-max, x))
+    },
+    [maxOffsetFor],
+  )
 
   const recomputeMax = useCallback(() => {
     const vp = viewportRef.current
@@ -68,8 +98,12 @@ export function ZoomableInspirationImage({ className }: { className?: string }) 
     const fittedHeight = w * (img.naturalHeight / img.naturalWidth)
     const max = Math.max(1, h / fittedHeight)
     maxZoomRef.current = max
-    setZoom((z) => Math.min(z, max))
-  }, [])
+    setZoom((z) => {
+      const nz = Math.min(z, max)
+      setOffsetX((x) => clampOffset(x, nz))
+      return nz
+    })
+  }, [clampOffset])
 
   useEffect(() => {
     recomputeMax()
@@ -85,22 +119,57 @@ export function ZoomableInspirationImage({ className }: { className?: string }) 
     if (!vp) return
     function onWheel(e: WheelEvent) {
       e.preventDefault()
-      setZoom((z) =>
-        Math.min(maxZoomRef.current, Math.max(1, z * Math.exp(-e.deltaY * ZOOM_SENSITIVITY))),
-      )
+      // Horizontal intent (trackpad swipe or shift+wheel) pans; otherwise zoom.
+      const horizontal = e.shiftKey ? e.deltaY : e.deltaX
+      if (Math.abs(horizontal) > Math.abs(e.deltaY)) {
+        setOffsetX((x) => clampOffset(x - horizontal, zoomRef.current))
+        return
+      }
+      setZoom((z) => {
+        const nz = Math.min(maxZoomRef.current, Math.max(1, z * Math.exp(-e.deltaY * ZOOM_SENSITIVITY)))
+        setOffsetX((x) => clampOffset(x, nz))
+        return nz
+      })
     }
     // Non-passive so preventDefault holds (React's onWheel is passive).
     vp.addEventListener("wheel", onWheel, { passive: false })
     return () => vp.removeEventListener("wheel", onWheel)
-  }, [])
+  }, [clampOffset])
+
+  const canPan = maxOffsetFor(zoom) > 0
+
+  function onPointerDown(e: ReactPointerEvent) {
+    if (!canPan) return
+    dragRef.current = { startX: e.clientX, startOffset: offsetRef.current }
+    setDragging(true)
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }
+  function onPointerMove(e: ReactPointerEvent) {
+    const d = dragRef.current
+    if (!d) return
+    setOffsetX(clampOffset(d.startOffset + (e.clientX - d.startX), zoomRef.current))
+  }
+  function endDrag(e: ReactPointerEvent) {
+    if (!dragRef.current) return
+    dragRef.current = null
+    setDragging(false)
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId)
+    }
+  }
 
   return (
     <div
       ref={viewportRef}
       role="img"
       aria-label={t.dashboard.inspirationAlt}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={endDrag}
+      onPointerCancel={endDrag}
       className={cn(
-        "bg-muted relative h-full w-full overflow-hidden rounded-2xl border shadow-sm",
+        "bg-muted relative h-full w-full touch-none overflow-hidden rounded-2xl border shadow-sm select-none",
+        canPan && (dragging ? "cursor-grabbing" : "cursor-grab"),
         className,
       )}
     >
@@ -112,7 +181,7 @@ export function ZoomableInspirationImage({ className }: { className?: string }) 
         aria-hidden
         draggable={false}
         onLoad={recomputeMax}
-        style={{ transform: `scale(${zoom})` }}
+        style={{ transform: `translateX(${offsetX}px) scale(${zoom})` }}
         className="h-full w-full origin-center object-contain will-change-transform"
       />
     </div>

@@ -150,7 +150,14 @@ export function Dashboard() {
 
   function primaryActionFor() {
     if (engine.isPlaying) {
-      return <ActionButton icon={<X className="size-4" aria-hidden />} label={t.game.quit} onClick={engine.quit} />
+      return (
+        <ActionButton
+          icon={<X className="size-4" aria-hidden />}
+          label={t.game.quit}
+          shortLabel={t.game.quitShort}
+          onClick={engine.quit}
+        />
+      )
     }
     if (engine.gameState === "ended") {
       // Finished sprint, text still editable: the action just returns home
@@ -159,6 +166,7 @@ export function Dashboard() {
         <ActionButton
           icon={<Home className="size-4" aria-hidden />}
           label={t.nav.backToHome}
+          shortLabel={t.nav.backToHomeShort}
           onClick={finishStory}
         />
       )
@@ -169,6 +177,7 @@ export function Dashboard() {
         <ActionButton
           icon={<Pencil className="size-4" aria-hidden />}
           label={t.settings.start}
+          shortLabel={t.settings.startShort}
           onClick={startWriting}
         />
       )
@@ -177,6 +186,7 @@ export function Dashboard() {
       <ActionButton
         icon={<Sparkles className="size-4" aria-hidden />}
         label={t.nav.newStory}
+        shortLabel={t.nav.newStoryShort}
         onClick={beginNewStory}
       />
     )
@@ -433,24 +443,27 @@ function SectionDetail({
 function ActionButton({
   icon,
   label,
+  shortLabel,
   onClick,
 }: {
   icon: React.ReactNode
+  /** Full text: shown from `sm` up and used as the accessible name (+ e2e handle). */
   label: string
+  /** Compact text (Create / Write / Quit / Home) shown only on mobile. */
+  shortLabel: string
   onClick: () => void
 }) {
   return (
-    // Icon-only on mobile to keep the crowded top bar from overflowing; from
-    // `sm` up it gets a fixed generous width so every state's label (Create a
-    // story / Start writing / Quit session / Back to home, in either language)
-    // fits without the button resizing between states.
+    // Top-bar height (h-10). Mobile shows the short label at natural width; from
+    // `sm` up it swaps to the full label with a fixed width so the button never
+    // resizes between game states. The full label is always the accessible name.
     <Button
       onClick={onClick}
-      size="sm"
       aria-label={label}
-      className="w-auto justify-center gap-1.5 sm:w-48"
+      className="h-10 w-auto justify-center gap-1.5 sm:w-48"
     >
       {icon}
+      <span className="sm:hidden">{shortLabel}</span>
       <span className="hidden sm:inline">{label}</span>
     </Button>
   )

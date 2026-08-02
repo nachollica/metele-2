@@ -22,7 +22,7 @@ export function ThemeToggle({ disabled = false }: { disabled?: boolean }) {
     <Button
       type="button"
       variant="outline"
-      size="icon"
+      size="icon-lg"
       disabled={disabled || !mounted}
       aria-label={t.prefs.modeLabel}
       onClick={() => setTheme(isDark ? "light" : "dark")}

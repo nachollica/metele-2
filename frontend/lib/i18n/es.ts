@@ -80,6 +80,7 @@ export const es = {
     secondsSuffix: "s",
     minutesSuffix: "m",
     start: "Empezar a escribir",
+    startShort: "Escribir",
     customModesLabel: "Modos personalizados",
     customModesDescription: "Tus presets guardados. Haz clic para aplicar.",
     customModesTooltip: "Edita o elimina tus modos personalizados desde tu perfil.",
@@ -129,6 +130,7 @@ export const es = {
     placeholder: "Empieza tu historia. No dejes de escribir…",
     pause: "Abandonar",
     quit: "Salir de sesión",
+    quitShort: "Salir",
     createStory: "Crear una historia",
     viewingStory: "Viendo una historia anterior (solo lectura).",
     saveFailed: "No se pudo guardar tu última historia.",
@@ -258,6 +260,10 @@ export const es = {
     stats: "Estadísticas",
     achievements: "Logros",
     newStory: "Crear una historia",
+    // Etiquetas cortas del botón de juego, solo en móvil; las versiones
+    // completas de arriba se muestran desde `sm` y son los nombres accesibles.
+    newStoryShort: "Crear",
+    backToHomeShort: "Inicio",
     showAll: "Ver todo",
     backToHome: "Volver al inicio",
   },

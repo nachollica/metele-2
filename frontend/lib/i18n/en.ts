@@ -75,6 +75,7 @@ export const en = {
     secondsSuffix: "s",
     minutesSuffix: "m",
     start: "Start writing",
+    startShort: "Write",
     customModesLabel: "Custom game modes",
     customModesDescription: "Your saved presets. Click to apply.",
     customModesTooltip: "Edit or delete your custom modes from your profile.",
@@ -124,6 +125,7 @@ export const en = {
     placeholder: "Begin your story. Don't stop typing…",
     pause: "Give up",
     quit: "Quit session",
+    quitShort: "Quit",
     createStory: "Create a story",
     viewingStory: "Viewing a previous story (read-only).",
     saveFailed: "Couldn't save your last story.",
@@ -253,6 +255,10 @@ export const en = {
     stats: "Statistics",
     achievements: "Achievements",
     newStory: "Create a story",
+    // Short game-button labels shown only on mobile; the full versions above
+    // show from `sm` up and remain the accessible names.
+    newStoryShort: "Create",
+    backToHomeShort: "Home",
     showAll: "Show all",
     backToHome: "Back to home",
   },
