@@ -65,11 +65,13 @@ export function LandingHome({
       {/* Inspiration image — full-width titled widget. */}
       <InspirationImage />
 
-      {/* This week's totals + challenge of the day (half/half). */}
-      <div className="grid items-start gap-5 lg:grid-cols-2">
-        <Panel>
+      {/* This week's totals + challenge of the day (half/half). The grid stretches
+          both cards to a shared height on wide screens; the summary centers its
+          tiles in the extra space so the two cards read as a consistent pair. */}
+      <div className="grid gap-5 lg:grid-cols-2">
+        <Panel className="flex h-full flex-col">
           <SectionHeader title={t.dashboard.weeklySummary} />
-          <div className="grid grid-cols-3 gap-2">
+          <div className="my-auto grid grid-cols-3 gap-2">
             <StatTile
               icon={Sparkles}
               tone="green"

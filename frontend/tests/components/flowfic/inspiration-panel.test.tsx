@@ -24,11 +24,12 @@ describe("InspirationImage", () => {
     return refresh
   }
 
-  it("shows the card title, the centered film title, the image, and the credit link", () => {
+  it("uses the picked film's name as the (dynamic) card title, with image + credit link", () => {
     mockPick({ status: "ready", image: IMAGE })
     const { container } = renderWithLocale(<InspirationImage />)
-    expect(screen.getByText("Inspiration")).toBeInTheDocument()
-    expect(screen.getByText("And The Ship Sails On")).toBeInTheDocument()
+    // The card title itself is the film name now — no static "Inspiration" label.
+    expect(screen.getByRole("heading", { name: "And The Ship Sails On" })).toBeInTheDocument()
+    expect(screen.queryByText("Inspiration")).toBeNull()
     expect(container.querySelector("img")).toHaveAttribute("src", IMAGE.image)
 
     const link = screen.getByRole("link", { name: /film-grab\.com/i })
