@@ -120,6 +120,16 @@ flowfic.app {
 		@immutable path /_next/static/*
 		header @immutable Cache-Control "public, max-age=31536000, immutable"
 
+		# Generated data assets under public/ (word match maps, the quote pool,
+		# the film-grab inspiration catalog). Their filenames carry a *schema*
+		# version (….vN.…), but the contents are regenerated / re-sliced within a
+		# version, so we don't freeze them like the hashed bundle above. A short
+		# public cache plus revalidation (file_server sends ETag + Last-Modified)
+		# lets a redeploy propagate quickly while unchanged fetches stay cheap
+		# 304s. The app also fetches each file at most once per page load.
+		@data path /match-map/* /quotes/* /inspiration/*
+		header @data Cache-Control "public, max-age=3600, must-revalidate"
+
 		@html path *.html /
 		header @html Cache-Control "public, max-age=60, must-revalidate"
 
