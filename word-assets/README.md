@@ -49,6 +49,9 @@ values are duplicated in the consumers and must be kept in sync. They live in
 - Quotes: `QUOTES_VERSION` and the `quotes/quotes.vN.jsonl` path ↔
   `frontend/lib/flowfic/quotes.ts`. Only the version + path shape are shared; the
   soft-wrap normalizer is build-only (the frontend renders pre-normalized blocks).
+- Inspiration: `INSPIRATION_VERSION` and the `inspiration/images.vN.jsonl` path ↔
+  `frontend/lib/flowfic/inspiration.ts`. Only the version + record shape are
+  shared; parsing the film-grab sitemaps is build-only.
 
 Bump a version here and in its counterpart when the format changes.
 
@@ -133,3 +136,49 @@ re-normalizes, and asserts it equals the stored source-language blocks — so th
 committed file can never silently drift from its sources. If a source is
 re-downloaded and its md5 changes, verification fails until the offsets (and, if
 the text moved, the `char_start`/`char_end`) are refreshed.
+
+## Inspiration image
+
+The landing card and the game/setup pane show a film still from
+[film-grab.com](https://film-grab.com/). film-grab publishes its catalog as
+`image-sitemap-N.xml` files (linked from `image-sitemap-index-1.xml`); each
+`<url>` pairs a page with a still. [`src/build_inspiration.py`](src/build_inspiration.py)
+parses whatever sitemaps you have downloaded into one JSON-Lines catalog:
+
+| Artifact | Written to | Consumed by |
+| --- | --- | --- |
+| Inspiration `images.vN.jsonl` | `frontend/public/inspiration/` | frontend (inspiration image) |
+
+Each line is one film — a `title` (derived from the page slug), the `page` we
+credit/link to, and the direct `image` URL the frontend renders:
+
+```json
+{"title": "And The Ship Sails On", "page": "https://film-grab.com/2014/12/12/and-the-ship-sails-on/", "image": "https://film-grab.com/wp-content/uploads/…/And-The-Ship-…jpg"}
+```
+
+Unlike the word artifacts this one is **optional and decorative**: if it is
+missing the card just shows its reserved placeholder, so no build hard-fails on
+it. Like them it is gitignored (a full dump is large and re-sliced freely).
+
+### Usage
+
+The command lives in the **root** justfile (it only needs the stdlib, no NLP
+deps). robots.txt allows the sitemaps; download the ones you want first, then:
+
+```bash
+# Parse every image-sitemap*.xml in a directory (default: repo root):
+just inspiration              # → frontend/public/inspiration/images.vN.jsonl
+just inspiration ~/sitemaps   # or point it at another directory
+```
+
+Files are merged and de-duplicated by page URL. Because the output is JSON
+Lines, curate which films ship with plain shell tools, e.g. keep a random 300:
+
+```bash
+shuf frontend/public/inspiration/images.v1.jsonl | head -300 > tmp && mv tmp frontend/public/inspiration/images.v1.jsonl
+```
+
+Only the chosen image is fetched at view time, cross-origin, by a plain `<img>`;
+film-grab serves the stills with `access-control-allow-origin: *` and a one-year
+cache, so no proxy or CORS handling is needed (the sitemaps, which lack CORS
+headers, are why parsing happens here at build time rather than in the browser).

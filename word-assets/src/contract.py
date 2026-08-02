@@ -16,6 +16,10 @@ be kept in sync. Counterparts:
   the soft-wrap normalizer that produces the stored text blocks is build-only
   (see ``src/quotes.py``), because the frontend renders the pre-normalized blocks
   verbatim and never needs it.
+- ``INSPIRATION_VERSION`` / ``inspiration_path`` mirror the frontend inspiration
+  loader in ``frontend/lib/flowfic/inspiration.ts``. Only the version + record
+  shape are shared; parsing the film-grab sitemaps is build-only
+  (see ``src/build_inspiration.py``).
 
 These change ~never; when one does, bump it here and in the named counterpart.
 """
@@ -51,6 +55,16 @@ MATCH_MAP_VERSION = 1
 
 QUOTES_VERSION = 1
 
+# ---- inspiration artifact (consumed by the frontend, generated) --------
+# The film-grab image catalog: one JSON object per line (title, page, image),
+# parsed from film-grab's image sitemaps by ``src/build_inspiration.py``. Like
+# the pool/match-map it is generated and gitignored (a full dump is large, and
+# it is re-sliced freely), but unlike them it is a decorative, optional asset —
+# the frontend degrades gracefully when it is absent. Bump alongside
+# INSPIRATION_VERSION in frontend/lib/flowfic/inspiration.ts.
+
+INSPIRATION_VERSION = 1
+
 
 # ---- Output locations --------------------------------------------------
 
@@ -76,6 +90,17 @@ def quotes_path() -> str:
     """``frontend/public/quotes/quotes.vN.jsonl`` (matches the frontend loader)."""
     return os.path.join(
         _repo_root(), "frontend", "public", "quotes", f"quotes.v{QUOTES_VERSION}.jsonl"
+    )
+
+
+def inspiration_path() -> str:
+    """``frontend/public/inspiration/images.vN.jsonl`` (matches the frontend loader)."""
+    return os.path.join(
+        _repo_root(),
+        "frontend",
+        "public",
+        "inspiration",
+        f"images.v{INSPIRATION_VERSION}.jsonl",
     )
 
 

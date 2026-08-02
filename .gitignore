@@ -2,6 +2,9 @@ db-data/
 # Local-only Compose overrides (e.g. the real Auth0 tenant for social login).
 docker-compose.override.yaml
 docker-compose.override.yml
+# Transient film-grab sitemaps: inputs to `just inspiration`, downloaded ad hoc
+# and parsed into the (also gitignored) frontend inspiration catalog.
+image-sitemap*.xml
 *.key
 *.pem
 *.gz
