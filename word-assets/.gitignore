@@ -4,3 +4,8 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+
+# Downloaded literature corpus (large, regenerable via download_datasets.py).
+# hathitrust_extracted_features/ is small curated metadata and stays tracked.
+nlp_literature_datasets/direct_requests/
+nlp_literature_datasets/hf_gutenberg/
