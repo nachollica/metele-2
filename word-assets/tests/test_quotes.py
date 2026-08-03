@@ -165,3 +165,21 @@ class TestVerifyQuotes:
         row = _row(self.SRC, corpus, lang_source="fr")
         jsonl = _write_jsonl(tmp_path, [row])
         assert any("lang_source" in p for p in verify_quotes(jsonl))
+
+    def test_source_i18n_translation_passes(self, tmp_path: Path, corpus: Path) -> None:
+        row = _row(self.SRC, corpus, source_i18n={"es": "Un Libro"})
+        assert verify_quotes(_write_jsonl(tmp_path, [row])) == []
+
+    def test_source_i18n_repeating_source_language_is_flagged(
+        self, tmp_path: Path, corpus: Path
+    ) -> None:
+        row = _row(self.SRC, corpus, source_i18n={"en": "A Book"})
+        assert any("must not repeat" in p for p in verify_quotes(_write_jsonl(tmp_path, [row])))
+
+    def test_source_i18n_unknown_language_is_flagged(self, tmp_path: Path, corpus: Path) -> None:
+        row = _row(self.SRC, corpus, source_i18n={"fr": "Un Livre"})
+        assert any("unknown language" in p for p in verify_quotes(_write_jsonl(tmp_path, [row])))
+
+    def test_source_i18n_empty_title_is_flagged(self, tmp_path: Path, corpus: Path) -> None:
+        row = _row(self.SRC, corpus, source_i18n={"es": "  "})
+        assert any("non-empty string" in p for p in verify_quotes(_write_jsonl(tmp_path, [row])))

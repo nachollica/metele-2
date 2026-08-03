@@ -42,6 +42,7 @@ When you're done, `just word-assets::quotes-verify` must pass with ~40 quotes.
   "id": "carroll-alice-in-wonderland-0001",
   "author": "Lewis Carroll",
   "source": "Alice's Adventures in Wonderland",
+  "source_i18n": { "es": "Alicia en el país de las maravillas" },
   "kind": "dialogue",
   "lang_source": "en",
   "origin": {
@@ -60,7 +61,13 @@ When you're done, `just word-assets::quotes-verify` must pass with ~40 quotes.
 Field rules:
 
 - `id`: stable slug, `"<author-slug>-<source-slug>-NNNN"`, unique across the file.
-- `author`, `source`: human-readable; `source` is the work's title.
+- `author`, `source`: human-readable; `source` is the work's title in `lang_source`.
+- `source_i18n` (optional): a **sparse** map of *other* locales → translated
+  title, e.g. `{"es": "Alicia en el país de las maravillas"}`. Add a locale only
+  when you have a confident translation; omit the field (or the locale) otherwise
+  — the UI falls back to `source`. **Never** repeat the `lang_source` title here
+  (the verifier rejects it): hard-coding the default bloats the file and hides
+  which rows still need translating.
 - `kind`: one of `statement` (single sentence / aphorism), `prose` (multi-sentence
   single block, or narration), `dialogue` (multi-block exchange with quotation
   marks). Recorded for future features, not shown in the UI. The slicer suggests

@@ -6,7 +6,7 @@ import { ExternalLink, RotateCw } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { useLocale, useTranslations } from "@/lib/i18n"
-import { loadQuotes, quoteBlocks, quoteOfTheDay, type Quote } from "@/lib/flowfic/quotes"
+import { loadQuotes, quoteBlocks, quoteOfTheDay, quoteTitle, type Quote } from "@/lib/flowfic/quotes"
 import { useInspiration, type InspirationImageData } from "@/lib/flowfic/inspiration"
 
 import { CARD_TITLE_CLASS, HEADER_ACTION_CLASS, QuoteCard } from "./dashboard-widgets"
@@ -322,7 +322,7 @@ export function QuoteOfDay({ className }: { className?: string }) {
     <QuoteCard
       title={t.dashboard.quoteOfDay}
       blocks={quoteBlocks(quote, locale)}
-      attribution={`${quote.author} · ${quote.source}`}
+      attribution={`${quote.author} · ${quoteTitle(quote, locale)}`}
       className={className}
     />
   )
