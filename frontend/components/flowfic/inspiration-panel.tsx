@@ -75,10 +75,11 @@ function InspirationCredit({ image }: { image: InspirationImageData }) {
 /**
  * Landscape (16:9) inspiration image, wrapped as a dashboard card. Unlike the
  * other landing cards its title is dynamic: it *is* the picked film's name, with
- * the refresh control sitting right beside it (while the catalog loads or is
- * absent the title falls back to a generic label and the actions hide). The
- * film-grab credit link stays at the far end of the header; below sits the image
- * in a reserved 16:9 box that fades in on load.
+ * the refresh control preceding it (while the catalog loads or is absent the
+ * title falls back to a generic label and the actions hide). The title truncates
+ * with an ellipsis instead of wrapping, since film-grab names can run arbitrarily
+ * long. The film-grab credit link stays at the far end of the header; below sits
+ * the image in a reserved 16:9 box that fades in on load.
  */
 export function InspirationImage({ className }: { className?: string }) {
   const t = useTranslations()
@@ -94,9 +95,6 @@ export function InspirationImage({ className }: { className?: string }) {
     >
       <div className="flex items-center justify-between gap-2 px-5 pt-5 pb-4">
         <div className="flex min-w-0 items-center gap-1">
-          <h3 className={cn(CARD_TITLE_CLASS, "text-muted-foreground truncate")}>
-            {image ? image.title : t.dashboard.inspirationTitle}
-          </h3>
           {image ? (
             <Button
               type="button"
@@ -109,6 +107,9 @@ export function InspirationImage({ className }: { className?: string }) {
               <RotateCw className="size-4" aria-hidden />
             </Button>
           ) : null}
+          <h3 className={cn(CARD_TITLE_CLASS, "text-muted-foreground min-w-0 truncate")}>
+            {image ? image.title : t.dashboard.inspirationTitle}
+          </h3>
         </div>
         {image ? <InspirationCredit image={image} /> : null}
       </div>

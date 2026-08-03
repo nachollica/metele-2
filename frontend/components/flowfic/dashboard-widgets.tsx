@@ -15,7 +15,7 @@ import { TONE_BAR, TONE_CHIP, type Tone } from "@/lib/flowfic/gamification"
 // dashboard cards (SectionHeader), the quote hero, and the inspiration card.
 // Colour is layered on per card (neutral muted by default; the amber quote
 // card overrides it), so this token carries only the shape, not the colour.
-export const CARD_TITLE_CLASS = "text-xs font-semibold uppercase tracking-wide"
+export const CARD_TITLE_CLASS = "text-2xl font-semibold uppercase tracking-wide"
 
 // The muted → accent ghost styling shared by the "Show all" links and the
 // inspiration credit link, so every soft header action reads the same.
@@ -106,7 +106,7 @@ export function SectionHeader({
 }) {
   return (
     <div className="mb-4 flex items-center justify-between gap-3">
-      <h3 className={cn(CARD_TITLE_CLASS, "text-muted-foreground")}>{title}</h3>
+      <h3 className={cn(CARD_TITLE_CLASS, "text-muted-foreground min-w-0 truncate")}>{title}</h3>
       {action}
     </div>
   )
@@ -431,7 +431,7 @@ export function QuoteCard({
         className,
       )}
     >
-      <div className={cn(CARD_TITLE_CLASS, "text-amber-700/80 dark:text-amber-300/80 mb-2")}>
+      <div className={cn(CARD_TITLE_CLASS, "text-amber-700/80 dark:text-amber-300/80 mb-2 truncate")}>
         {title}
       </div>
       <span
