@@ -265,6 +265,18 @@ export const es = {
     backToHomeShort: "Inicio",
     showAll: "Ver todo",
     backToHome: "Volver al inicio",
+    // Etiqueta de la flecha atrás en una historia / un "no encontrado" que se
+    // alcanzó desde ella: vuelve a la lista de historias, no al inicio.
+    backToStories: "Volver a mis historias",
+  },
+
+  // Pantalla de "no encontrado" renderizada en cliente: para una ruta
+  // desconocida o una historia cuyo id no resuelve. No hay 404 de servidor: el
+  // shell de la SPA se sirve para toda ruta (ver prod/conf/Caddyfile).
+  notFound: {
+    title: "Página no encontrada",
+    body: "No pudimos encontrar lo que buscabas.",
+    backHome: "Volver al inicio",
   },
 
   dashboard: {

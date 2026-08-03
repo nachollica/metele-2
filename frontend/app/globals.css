@@ -162,19 +162,41 @@
     @apply border-border outline-ring/50;
   }
   /* The app shell is a fixed-height (`h-dvh`) column whose inner region is the
-     only scroll container. The scrolling element is <html>, so clipping it pins
-     the document — portal/aux nodes appended to <body> would otherwise make the
-     root scrollable and leave phantom empty space below the content (which then
-     overlaps it on the way back up). Deliberately NOT clipping <body>:
-     react-remove-scroll (Radix modal menus/dialogs) mis-measures the scrollbar
-     gap when <body> is `overflow:hidden` and injects a huge margin that
-     collapses the layout on mobile. */
-  html {
+     only scroll container. Pin BOTH <html> and <body> so neither can scroll
+     past the shell — portal/aux nodes appended to <body> would otherwise make
+     the document scrollable and leave phantom empty space below the content
+     (the "invisible footer": you overscroll to it, then it overlaps the UI on
+     the way back up). iOS Safari does not reliably honour `overflow:hidden` on
+     the root alone, so <body> must be clipped too.
+
+     `overflow: clip` (not `hidden`) is deliberate: it pins the axis without
+     creating a scroll *port*, which is what iOS actually respects; `hidden` is
+     the fallback for the rare engine without `clip`.
+
+     Clipping <body> alone breaks Radix modals: react-remove-scroll compensates
+     for the (removed) scrollbar by injecting a `margin-right` equal to
+     `window.innerWidth - documentElement.clientWidth`. Those are equal on a
+     real locked document (no scrollbar), but some mobile/zoom/emulation setups
+     report them differently and it injects a bogus margin that collapses the
+     layout — which is why an earlier change wrongly dropped the <body> clip and
+     reintroduced the footer. We keep the clip and instead neutralise that
+     compensation below. Do not remove either half. See the SPA-shell note in
+     the frontend CLAUDE.md. */
+  html,
+  body {
     overflow: hidden;
+    overflow: clip;
     overscroll-behavior: none;
   }
   body {
-    overscroll-behavior: none;
     @apply bg-background text-foreground;
+  }
+  /* Neutralise react-remove-scroll's scrollbar-gap compensation (see above).
+     Our document never shows a scrollbar, so there is nothing to compensate.
+     `html body[...]` outranks its injected `body[data-scroll-locked]` rule, so
+     this wins even though that rule is `!important` and injected at runtime. */
+  html body[data-scroll-locked] {
+    margin-right: 0 !important;
+    padding-right: 0 !important;
   }
 }

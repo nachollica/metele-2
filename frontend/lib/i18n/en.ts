@@ -260,6 +260,18 @@ export const en = {
     backToHomeShort: "Home",
     showAll: "Show all",
     backToHome: "Back to home",
+    // Back-arrow label on a single story / a not-found reached from one, where
+    // the arrow returns to the stories list rather than the landing.
+    backToStories: "Back to my stories",
+  },
+
+  // Client-rendered not-found screen: shown for an unknown path or a story id
+  // that doesn't resolve. There is no server 404 — the SPA shell is served for
+  // every app path (see prod/conf/Caddyfile), so the app decides not-found.
+  notFound: {
+    title: "Page not found",
+    body: "We couldn't find what you were looking for.",
+    backHome: "Back to home",
   },
 
   // Home dashboard + shared gamification copy.
