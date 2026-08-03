@@ -16,9 +16,11 @@ import {
 
 const STORAGE_KEY = `flowfic:inspiration:v${INSPIRATION_VERSION}`
 
+// On-disk shape: FILM_GRAB_PREFIX is stripped from both fields (reconstructed
+// on parse), so the fixture uses bare relative paths.
 const CATALOG = [
-  { loc: "https://film-grab.test/a", img: "https://img.test/a.jpg" },
-  { loc: "https://film-grab.test/b", img: "https://img.test/b.jpg" },
+  { loc: "2020/01/01/a/", img: "wp-content/a.jpg" },
+  { loc: "2020/01/02/b/", img: "wp-content/b.jpg" },
 ]
   .map((record) => JSON.stringify(record))
   .join("\n")

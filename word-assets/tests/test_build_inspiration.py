@@ -38,6 +38,12 @@ _SITEMAP = """<?xml version="1.0" encoding="UTF-8"?>
  <url>
   <loc>https://film-grab.com/2024/04/15/no-image/</loc>
  </url>
+ <url>
+  <loc>https://film-grab.com/2023/05/09/off-site-still/</loc>
+  <image:image>
+   <image:loc>https://cdn.elsewhere.example/off-site-still.jpg</image:loc>
+  </image:image>
+ </url>
 </urlset>
 """
 
@@ -57,20 +63,31 @@ class TestIsFilmPage:
 
 
 class TestParseSitemap:
-    def test_extracts_pairs_and_skips_junk_and_imageless_entries(self, tmp_path: Path) -> None:
+    def test_extracts_pairs_prefix_stripped(self, tmp_path: Path) -> None:
         path = tmp_path / "image-sitemap-1.xml"
         path.write_text(_SITEMAP, encoding="utf-8")
         records = parse_sitemap(str(path))
         assert records == [
             {
-                "loc": "https://film-grab.com/2014/12/12/and-the-ship-sails-on/",
-                "img": "https://film-grab.com/wp-content/uploads/And-The-Ship-01.jpg",
+                "loc": "2014/12/12/and-the-ship-sails-on/",
+                "img": "wp-content/uploads/And-The-Ship-01.jpg",
             },
             {
-                "loc": "https://film-grab.com/2024/04/15/stopmotion/",
-                "img": "https://film-grab.com/wp-content/uploads/Stopmotion-18.jpg",
+                "loc": "2024/04/15/stopmotion/",
+                "img": "wp-content/uploads/Stopmotion-18.jpg",
             },
         ]
+
+    def test_skips_junk_slugs_imageless_entries_and_off_site_images(self, tmp_path: Path) -> None:
+        path = tmp_path / "image-sitemap-1.xml"
+        path.write_text(_SITEMAP, encoding="utf-8")
+        records = parse_sitemap(str(path))
+        locs = [r["loc"] for r in records]
+        # 013-2 (junk slug), no-image (no <image:loc>), and off-site-still (image
+        # not hosted on film-grab.com, so there is no prefix to strip) are absent.
+        assert "013-2/" not in locs
+        assert "2024/04/15/no-image/" not in locs
+        assert "2023/05/09/off-site-still/" not in locs
 
 
 class TestCollect:
@@ -81,8 +98,8 @@ class TestCollect:
         records = collect(str(tmp_path))
         locs = [r["loc"] for r in records]
         assert locs == [
-            "https://film-grab.com/2014/12/12/and-the-ship-sails-on/",
-            "https://film-grab.com/2024/04/15/stopmotion/",
+            "2014/12/12/and-the-ship-sails-on/",
+            "2024/04/15/stopmotion/",
         ]
 
     def test_raises_when_no_sitemaps_present(self, tmp_path: Path) -> None:

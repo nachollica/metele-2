@@ -7,9 +7,10 @@ import {
   type InspirationImageData,
 } from "@/lib/flowfic/inspiration"
 
+// On-disk shape: FILM_GRAB_PREFIX is stripped from both fields.
 const LINE = JSON.stringify({
-  loc: "https://film-grab.com/2014/12/12/and-the-ship-sails-on/",
-  img: "https://film-grab.com/wp-content/uploads/And-The-Ship-01.jpg",
+  loc: "2014/12/12/and-the-ship-sails-on/",
+  img: "wp-content/uploads/And-The-Ship-01.jpg",
 })
 
 describe("deriveTitle", () => {
@@ -25,7 +26,7 @@ describe("deriveTitle", () => {
 })
 
 describe("parseInspirationJsonl", () => {
-  it("parses one object per non-blank line and derives the title from loc", () => {
+  it("parses one object per non-blank line, reconstructing full URLs and the title", () => {
     const images = parseInspirationJsonl(`${LINE}\n\n${LINE}\n`)
     expect(images).toHaveLength(2)
     expect(images[0]).toEqual({

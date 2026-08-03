@@ -2,10 +2,13 @@
 //
 // The catalog (public/inspiration/images.vN.jsonl) is parsed from film-grab's
 // image sitemaps by the word-assets tool (`just inspiration`). Each line is one
-// film: `loc` (the film-grab page URL we credit/link to) and `img` (the direct
-// image URL we render). The display title is not stored — it is derived from the
-// `loc` slug here (see `deriveTitle`), since the card renders it upper-cased. It
-// is a generated, gitignored, optional artifact — if it is missing the loader
+// film: `loc` (the film-grab page path we credit/link to) and `img` (the image
+// path we render), both with the common `https://film-grab.com/` host stripped
+// on disk (~4000 lines would otherwise repeat it) and reconstructed into full
+// URLs by `parseInspirationJsonl` below — see `FILM_GRAB_PREFIX`. The display
+// title is not stored either — it is derived from the (reconstructed) `loc`
+// slug here (see `deriveTitle`), since the card renders it upper-cased. It is a
+// generated, gitignored, optional artifact — if it is missing the loader
 // resolves to null and the card simply shows its reserved placeholder.
 //
 // One image is chosen per browsing session and shared by both consumers (the
@@ -19,6 +22,13 @@ import { useSyncExternalStore } from "react"
 
 /** Bump alongside INSPIRATION_VERSION in word-assets/src/contract.py. */
 export const INSPIRATION_VERSION = 1
+
+/**
+ * Host every `loc`/`img` in the JSONL is stripped of on disk; prepended back by
+ * `parseInspirationJsonl`. Mirror of `_PREFIX` in
+ * word-assets/src/build_inspiration.py.
+ */
+export const FILM_GRAB_PREFIX = "https://film-grab.com/"
 
 export type InspirationImageData = {
   /**
@@ -81,8 +91,9 @@ export async function loadInspiration(): Promise<readonly InspirationImageData[]
 
 /**
  * Parse the JSONL body into records, skipping blank lines. Each line is a
- * `{loc, img}` object; the display `title` is derived from `loc` here. Exported
- * for tests.
+ * `{loc, img}` object with the `FILM_GRAB_PREFIX` host stripped; this
+ * reconstructs the full URLs and derives the display `title` from `loc`.
+ * Exported for tests.
  */
 export function parseInspirationJsonl(body: string): InspirationImageData[] {
   const images: InspirationImageData[] = []
@@ -90,7 +101,9 @@ export function parseInspirationJsonl(body: string): InspirationImageData[] {
     const trimmed = line.trim()
     if (!trimmed) continue
     const { loc, img } = JSON.parse(trimmed) as { loc: string; img: string }
-    images.push({ title: deriveTitle(loc), loc, img })
+    const fullLoc = FILM_GRAB_PREFIX + loc
+    const fullImg = FILM_GRAB_PREFIX + img
+    images.push({ title: deriveTitle(fullLoc), loc: fullLoc, img: fullImg })
   }
   return images
 }

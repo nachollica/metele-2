@@ -7,8 +7,14 @@ film-grab.com publishes ``image-sitemap-N.xml`` files (linked from its
 present in an input directory (download them yourself — robots.txt allows it)
 and merges them, de-duplicated by page URL, into one JSON-Lines file:
 
-    {"loc": "https://film-grab.com/2014/12/12/and-the-ship-sails-on/",
-     "img": "https://film-grab.com/wp-content/uploads/.../And-The-Ship-...jpg"}
+    {"loc": "2014/12/12/and-the-ship-sails-on/",
+     "img": "wp-content/uploads/.../And-The-Ship-...jpg"}
+
+Every entry lives under ``https://film-grab.com/``, so that prefix is stripped
+before writing (it would otherwise be repeated on all ~4000 lines) and is
+reconstructed by the frontend loader at read time — see ``FILM_GRAB_PREFIX`` in
+``inspiration.ts``. An ``<image:loc>`` that is NOT hosted on film-grab.com (a
+handful of sitemap entries point off-site) has nothing to strip and is dropped.
 
 Only real film pages are kept: film-grab's per-film permalinks look like
 ``https://film-grab.com/yyyy/mm/dd/slug/`` — eight segments when split on ``/``
@@ -47,6 +53,11 @@ _NS = {
 # ['https:', '', 'film-grab.com', '2014', '12', '12', 'and-the-ship-sails-on', '']
 _FILM_PAGE_SEGMENTS = 8
 
+# Common host every ``loc``/``img`` lives under; stripped from the stored value
+# (see module docstring). Mirror of ``FILM_GRAB_PREFIX`` in
+# ``frontend/lib/flowfic/inspiration.ts``.
+_PREFIX = "https://film-grab.com/"
+
 
 def is_film_page(loc: str) -> bool:
     """True for a ``/yyyy/mm/dd/slug/`` film permalink, False for junk/archive."""
@@ -54,10 +65,12 @@ def is_film_page(loc: str) -> bool:
 
 
 def parse_sitemap(path: str) -> list[dict[str, str]]:
-    """Parse one sitemap file into ``{loc, img}`` records.
+    """Parse one sitemap file into ``{loc, img}`` records, ``_PREFIX`` stripped.
 
-    Skips ``<url>`` entries that lack a page loc or an image loc, and those
-    whose page loc is not a film permalink (see :func:`is_film_page`).
+    Skips ``<url>`` entries that lack a page loc or an image loc, whose page loc
+    is not a film permalink (see :func:`is_film_page`), or whose image is not
+    hosted on film-grab.com (nothing to strip, so it can't round-trip through
+    ``FILM_GRAB_PREFIX`` on the frontend).
     """
     records: list[dict[str, str]] = []
     root = ET.parse(path).getroot()
@@ -70,7 +83,9 @@ def parse_sitemap(path: str) -> list[dict[str, str]]:
         img = (img_el.text or "").strip()
         if not loc or not img or not is_film_page(loc):
             continue
-        records.append({"loc": loc, "img": img})
+        if not loc.startswith(_PREFIX) or not img.startswith(_PREFIX):
+            continue
+        records.append({"loc": loc[len(_PREFIX) :], "img": img[len(_PREFIX) :]})
     return records
 
 
