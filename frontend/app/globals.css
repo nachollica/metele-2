@@ -199,4 +199,27 @@
     margin-right: 0 !important;
     padding-right: 0 !important;
   }
+  /* `overscroll-behavior: none` on <html>/<body> above only stops an inner
+     pane's scroll from *chaining* into the document once the pane hits its
+     own boundary — it does nothing for the pane's OWN native bounce/glow
+     effect, which on iOS Safari (and some Android/emulated-touch setups) can
+     still visually overshoot past the pane's box before it's reported back
+     through `scrollTop`. That overshoot is the "invisible footer" reappearing:
+     it renders as blank space below the content on overscroll, then briefly
+     misaligns real components on the way back. It reproduces on any element
+     using Tailwind's scrollable-overflow utilities (`overflow-y-auto` etc,
+     e.g. the game shell's main content pane in `dashboard.tsx`) — not just
+     the document root — so the html/body fix alone does not cover it, and
+     resurfaces every time a new scrollable pane is added. Rather than
+     requiring every such pane to remember an `overscroll-*` utility by hand,
+     pin it here for every element using one of Tailwind's scrollable-overflow
+     utilities, app-wide, present and future. */
+  .overflow-auto,
+  .overflow-y-auto,
+  .overflow-x-auto,
+  .overflow-scroll,
+  .overflow-y-scroll,
+  .overflow-x-scroll {
+    overscroll-behavior: contain;
+  }
 }
