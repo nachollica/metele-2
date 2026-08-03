@@ -226,8 +226,6 @@ export const en = {
       "You can play without an account. Sign in to unlock saved stories and leaderboards (coming soon).",
     continueWith: "Continue with {provider}",
     google: "Google",
-    facebook: "Facebook",
-    twitter: "X (Twitter)",
     finishingSignIn: "Finishing sign-in…",
     signInFailed: "Sign-in failed.",
     signInFailedRetry: "Try again",

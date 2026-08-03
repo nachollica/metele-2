@@ -17,8 +17,8 @@ import {
 const STORAGE_KEY = `flowfic:inspiration:v${INSPIRATION_VERSION}`
 
 const CATALOG = [
-  { title: "A", page: "https://film-grab.test/a", image: "https://img.test/a.jpg" },
-  { title: "B", page: "https://film-grab.test/b", image: "https://img.test/b.jpg" },
+  { loc: "https://film-grab.test/a", img: "https://img.test/a.jpg" },
+  { loc: "https://film-grab.test/b", img: "https://img.test/b.jpg" },
 ]
   .map((record) => JSON.stringify(record))
   .join("\n")
@@ -48,17 +48,17 @@ describe("useInspiration (shared store)", () => {
     await waitFor(() => expect(result.current.state.status).toBe("ready"))
     const first = readImage(result.current.state)
     expect(first).not.toBeNull()
-    expect(window.sessionStorage.getItem(STORAGE_KEY)).toBe(first?.page)
+    expect(window.sessionStorage.getItem(STORAGE_KEY)).toBe(first?.loc)
 
     // Refresh re-rolls; with two films in the pool the pick must change, and the
     // new choice is re-persisted.
     act(() => {
       result.current.refresh()
     })
-    await waitFor(() => expect(readImage(result.current.state)?.page).not.toBe(first?.page))
+    await waitFor(() => expect(readImage(result.current.state)?.loc).not.toBe(first?.loc))
     const second = readImage(result.current.state)
     expect(second).not.toBeNull()
-    expect(window.sessionStorage.getItem(STORAGE_KEY)).toBe(second?.page)
+    expect(window.sessionStorage.getItem(STORAGE_KEY)).toBe(second?.loc)
 
     // The catalog is fetched at most once across the initial load + refresh.
     expect(fetch).toHaveBeenCalledTimes(1)

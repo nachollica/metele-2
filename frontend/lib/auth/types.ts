@@ -7,15 +7,13 @@
 // them to the Auth0 social connection names that get passed to
 // `loginWithRedirect`.
 //
-// Instagram is intentionally absent — Auth0 does not expose it as a built-in
-// social connection (per the project requirement to drop unsupported ones).
-export type AuthProvider = "google" | "facebook" | "twitter"
+// Google-only by product decision: Facebook and X/Twitter were dropped so the
+// login modal offers a single social path. The backend stays provider-agnostic
+// (it validates any Auth0-issued token), so narrowing the list is purely a
+// front-of-house choice here plus the Auth0 tenant's enabled connections.
+export type AuthProvider = "google"
 
-export const AUTH_PROVIDERS: readonly AuthProvider[] = [
-  "google",
-  "facebook",
-  "twitter",
-] as const
+export const AUTH_PROVIDERS: readonly AuthProvider[] = ["google"] as const
 
 // Mirrors the FastAPI `AuthUser` model (with the `avatarUrl` alias on the
 // wire). The backend keeps these fields populated from the Auth0 /userinfo

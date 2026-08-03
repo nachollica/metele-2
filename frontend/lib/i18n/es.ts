@@ -231,8 +231,6 @@ export const es = {
       "Puedes jugar sin cuenta. Inicia sesión para guardar tus historias y acceder a tablas de líderes (próximamente).",
     continueWith: "Continuar con {provider}",
     google: "Google",
-    facebook: "Facebook",
-    twitter: "X (Twitter)",
     finishingSignIn: "Terminando el inicio de sesión…",
     signInFailed: "Falló el inicio de sesión.",
     signInFailedRetry: "Reintentar",

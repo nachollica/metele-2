@@ -132,9 +132,8 @@ export async function mockBackend(
     await route.fulfill({
       contentType: "text/plain; charset=utf-8",
       body: JSON.stringify({
-        title: "And The Ship Sails On",
-        page: "https://film-grab.com/2014/12/12/and-the-ship-sails-on/",
-        image: "https://film-grab.com/wp-content/uploads/And-The-Ship-01.jpg",
+        loc: "https://film-grab.com/2014/12/12/and-the-ship-sails-on/",
+        img: "https://film-grab.com/wp-content/uploads/And-The-Ship-01.jpg",
       }),
     })
   })

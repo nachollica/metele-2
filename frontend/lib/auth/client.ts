@@ -53,8 +53,6 @@ export function readAuth0Config(): Auth0Config | null {
 // social connection name that gets passed via `loginWithRedirect`.
 export const AUTH0_CONNECTION: Record<AuthProvider, string> = {
   google: "google-oauth2",
-  facebook: "facebook",
-  twitter: "twitter",
 }
 
 // The redirect URL Auth0 should send the user back to after consent. Must

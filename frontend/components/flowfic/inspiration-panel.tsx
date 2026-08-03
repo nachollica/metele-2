@@ -20,6 +20,11 @@ const ZOOM_SENSITIVITY = 0.0015
  * film-grab image has loaded, so a slow network reveals the picture softly into
  * its already-reserved box instead of popping. Resets on every `src` change
  * (e.g. a refresh) so each new image fades in too.
+ *
+ * Aspect guardrail: `object-cover` + `size-full` make the still fill its parent
+ * frame (the card's fixed 16:9 box) by cropping the overflowing edge — never by
+ * stretching. So any source proportion (16:9, 4:3, wide cinema, even portrait)
+ * renders consistently and is never distorted; at most it is cropped a little.
  */
 function FadeInImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
   const [loaded, setLoaded] = useState(false)
@@ -58,7 +63,7 @@ function InspirationCredit({ image }: { image: InspirationImageData }) {
       size="sm"
       className={cn(HEADER_ACTION_CLASS, "shrink-0")}
     >
-      <a href={image.page} target="_blank" rel="noopener noreferrer" aria-label={label}>
+      <a href={image.loc} target="_blank" rel="noopener noreferrer" aria-label={label}>
         <span className="hidden lg:inline">{t.dashboard.inspirationCredit}</span>
         <span className="hidden md:inline lg:hidden">{t.dashboard.inspirationCreditShort}</span>
         <ExternalLink className="size-3.5" aria-hidden />
@@ -109,7 +114,7 @@ export function InspirationImage({ className }: { className?: string }) {
       </div>
 
       <div className="bg-muted aspect-video w-full">
-        {image ? <FadeInImage src={image.image} alt="" /> : null}
+        {image ? <FadeInImage src={image.img} alt="" /> : null}
       </div>
     </div>
   )
@@ -118,14 +123,20 @@ export function InspirationImage({ className }: { className?: string }) {
 /**
  * Inspiration image for the split game/setup pane, zoomable and pannable.
  *
- * The viewport fills the pane; the image is `object-contain`, so at rest it fits
- * the width and is centered vertically (min zoom = fully visible, reaching the
- * left/right edges). Vertical wheel zooms in, up to the point where the image
- * fills the pane's height — for a landscape image that crops the sides (max
- * zoom). Once zoomed, a horizontal wheel (or shift+wheel) and click-and-drag pan
- * left/right to reveal the cropped edges. The wheel is captured (never scrolls
- * the pane) via a non-passive listener; the max zoom and pan are recomputed
- * whenever the pane or image size changes.
+ * Unlike the landing card (a fixed 16:9 cover-crop), this pane shows the still at
+ * its ORIGINAL proportions: `object-contain` fits the whole frame inside the
+ * viewport, so at rest it fits the width and is centered vertically (min zoom =
+ * fully visible, reaching the left/right edges) whatever the source ratio. The
+ * only transform applied is a uniform `scale` (plus a horizontal `translate`),
+ * so the picture is never stretched or squashed — the source proportions hold at
+ * every zoom level.
+ *
+ * Vertical wheel zooms in, up to the point where the image fills the pane's
+ * height — for a landscape image that crops the sides (max zoom). Once zoomed, a
+ * horizontal wheel (or shift+wheel) and click-and-drag pan left/right to reveal
+ * the cropped edges. The wheel is captured (never scrolls the pane) via a
+ * non-passive listener; the max zoom and pan are recomputed whenever the pane or
+ * image size changes.
  */
 export function ZoomableInspirationImage({ className }: { className?: string }) {
   const t = useTranslations()
@@ -145,7 +156,7 @@ export function ZoomableInspirationImage({ className }: { className?: string }) 
   // Fade a newly picked image (or the first arrival) back in from transparent.
   useEffect(() => {
     setLoaded(false)
-  }, [image?.image])
+  }, [image?.img])
 
   useEffect(() => {
     zoomRef.current = zoom
@@ -260,7 +271,7 @@ export function ZoomableInspirationImage({ className }: { className?: string }) 
         // eslint-disable-next-line @next/next/no-img-element
         <img
           ref={imgRef}
-          src={image.image}
+          src={image.img}
           alt=""
           aria-hidden
           draggable={false}

@@ -19,7 +19,7 @@ import {
   type AuthProviderId,
 } from "@/lib/auth"
 
-import { FacebookIcon, GoogleIcon, TwitterIcon } from "./provider-icons"
+import { GoogleIcon } from "./provider-icons"
 
 type Props = {
   open: boolean
@@ -28,8 +28,6 @@ type Props = {
 
 const PROVIDER_ICONS: Record<AuthProviderId, React.ComponentType<{ className?: string }>> = {
   google: GoogleIcon,
-  facebook: FacebookIcon,
-  twitter: TwitterIcon,
 }
 
 // Social-login only. The dev-user backdoor used to live here as a collapsible

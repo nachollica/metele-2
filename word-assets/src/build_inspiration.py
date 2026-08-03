@@ -7,15 +7,20 @@ film-grab.com publishes ``image-sitemap-N.xml`` files (linked from its
 present in an input directory (download them yourself — robots.txt allows it)
 and merges them, de-duplicated by page URL, into one JSON-Lines file:
 
-    {"title": "And The Ship Sails On",
-     "page": "https://film-grab.com/2014/12/12/and-the-ship-sails-on/",
-     "image": "https://film-grab.com/wp-content/uploads/.../And-The-Ship-...jpg"}
+    {"loc": "https://film-grab.com/2014/12/12/and-the-ship-sails-on/",
+     "img": "https://film-grab.com/wp-content/uploads/.../And-The-Ship-...jpg"}
 
-The title is derived from the page slug (last path segment: hyphens to spaces,
-each word capitalized). JSON Lines so the output can be sliced with plain shell
-tools (``shuf``, ``head``, ``grep``) to curate which films ship; the frontend
-loads the result and renders the image directly (see the Words/inspiration notes
-in ``README.md``).
+Only real film pages are kept: film-grab's per-film permalinks look like
+``https://film-grab.com/yyyy/mm/dd/slug/`` — eight segments when split on ``/``
+(scheme, empty, host, year, month, day, slug, trailing empty). Everything else
+in the sitemaps (numeric/junk slugs, archive pages) has a different segment
+count and is dropped. The display title is NOT stored: the frontend derives it
+from the ``loc`` slug at render time (the card title is upper-cased in CSS, so a
+plain hyphens-to-spaces conversion is enough) — see ``inspiration.ts``.
+
+JSON Lines so the output can be sliced with plain shell tools (``shuf``,
+``head``, ``grep``) to curate which films ship; the frontend loads the result
+and renders the image directly (see the Words/inspiration notes in ``README.md``).
 
     python build_inspiration.py             # read ./ , write the catalog
     python build_inspiration.py ~/sitemaps  # read a specific input directory
@@ -37,50 +42,52 @@ _NS = {
     "image": "http://www.google.com/schemas/sitemap-image/1.1",
 }
 
+# A film-grab film permalink splits into exactly this many ``/``-segments:
+# ``https://film-grab.com/2014/12/12/and-the-ship-sails-on/`` ->
+# ['https:', '', 'film-grab.com', '2014', '12', '12', 'and-the-ship-sails-on', '']
+_FILM_PAGE_SEGMENTS = 8
 
-def derive_title(page_url: str) -> str:
-    """Film title from a film-grab page URL's last path segment.
 
-    ``.../and-the-ship-sails-on/`` -> ``And The Ship Sails On``.
-    """
-    slug = page_url.rstrip("/").rsplit("/", 1)[-1]
-    return " ".join(word.capitalize() for word in slug.split("-") if word)
+def is_film_page(loc: str) -> bool:
+    """True for a ``/yyyy/mm/dd/slug/`` film permalink, False for junk/archive."""
+    return len(loc.split("/")) == _FILM_PAGE_SEGMENTS
 
 
 def parse_sitemap(path: str) -> list[dict[str, str]]:
-    """Parse one sitemap file into ``{title, page, image}`` records.
+    """Parse one sitemap file into ``{loc, img}`` records.
 
-    Skips ``<url>`` entries that lack a page loc or an image loc.
+    Skips ``<url>`` entries that lack a page loc or an image loc, and those
+    whose page loc is not a film permalink (see :func:`is_film_page`).
     """
     records: list[dict[str, str]] = []
     root = ET.parse(path).getroot()
     for url in root.findall("s:url", _NS):
-        page_el = url.find("s:loc", _NS)
-        image_el = url.find("image:image/image:loc", _NS)
-        if page_el is None or image_el is None:
+        loc_el = url.find("s:loc", _NS)
+        img_el = url.find("image:image/image:loc", _NS)
+        if loc_el is None or img_el is None:
             continue
-        page = (page_el.text or "").strip()
-        image = (image_el.text or "").strip()
-        if not page or not image:
+        loc = (loc_el.text or "").strip()
+        img = (img_el.text or "").strip()
+        if not loc or not img or not is_film_page(loc):
             continue
-        records.append({"title": derive_title(page), "page": page, "image": image})
+        records.append({"loc": loc, "img": img})
     return records
 
 
 def collect(input_dir: str) -> list[dict[str, str]]:
-    """Merge every ``image-sitemap*.xml`` under ``input_dir``, de-duped by page.
+    """Merge every ``image-sitemap*.xml`` under ``input_dir``, de-duped by loc.
 
     First occurrence of a page URL wins; input files are processed in sorted
     (stable) order so the output is deterministic.
     """
-    by_page: dict[str, dict[str, str]] = {}
+    by_loc: dict[str, dict[str, str]] = {}
     paths = sorted(glob.glob(os.path.join(input_dir, "image-sitemap*.xml")))
     if not paths:
         raise SystemExit(f"no image-sitemap*.xml files found in {os.path.abspath(input_dir)!r}")
     for path in paths:
         for record in parse_sitemap(path):
-            by_page.setdefault(record["page"], record)
-    return list(by_page.values())
+            by_loc.setdefault(record["loc"], record)
+    return list(by_loc.values())
 
 
 def main() -> None:
