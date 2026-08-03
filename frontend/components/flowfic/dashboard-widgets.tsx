@@ -10,6 +10,17 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { TONE_BAR, TONE_CHIP, type Tone } from "@/lib/flowfic/gamification"
 
+// Shared "overline" treatment for every card/section title: small uppercase
+// letter-spaced label. The one definition keeps titles consistent across the
+// dashboard cards (SectionHeader), the quote hero, and the inspiration card.
+// Colour is layered on per card (neutral muted by default; the amber quote
+// card overrides it), so this token carries only the shape, not the colour.
+export const CARD_TITLE_CLASS = "text-xs font-semibold uppercase tracking-wide"
+
+// The muted → accent ghost styling shared by the "Show all" links and the
+// inspiration credit link, so every soft header action reads the same.
+export const HEADER_ACTION_CLASS = "text-muted-foreground hover:text-accent-foreground"
+
 // ---- Icon chip ------------------------------------------------------------
 
 export function IconChip({
@@ -95,7 +106,7 @@ export function SectionHeader({
 }) {
   return (
     <div className="mb-4 flex items-center justify-between gap-3">
-      <h3 className="text-lg font-bold">{title}</h3>
+      <h3 className={cn(CARD_TITLE_CLASS, "text-muted-foreground")}>{title}</h3>
       {action}
     </div>
   )
@@ -178,7 +189,7 @@ export function ShowAllButton({
       onClick={onClick}
       disabled={disabled}
       aria-label={`${label}: ${sectionName}`}
-      className="text-muted-foreground hover:text-accent-foreground disabled:opacity-40"
+      className={cn(HEADER_ACTION_CLASS, "disabled:opacity-40")}
     >
       {label}
       <ChevronRight className="size-3.5" aria-hidden />
@@ -420,7 +431,7 @@ export function QuoteCard({
         className,
       )}
     >
-      <div className="text-amber-700/80 mb-2 text-xs font-semibold tracking-wide uppercase dark:text-amber-300/80">
+      <div className={cn(CARD_TITLE_CLASS, "text-amber-700/80 dark:text-amber-300/80 mb-2")}>
         {title}
       </div>
       <span

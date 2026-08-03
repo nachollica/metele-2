@@ -9,7 +9,7 @@ import { useLocale, useTranslations } from "@/lib/i18n"
 import { loadQuotes, quoteBlocks, quoteOfTheDay, type Quote } from "@/lib/flowfic/quotes"
 import { useInspiration, type InspirationImageData } from "@/lib/flowfic/inspiration"
 
-import { QuoteCard } from "./dashboard-widgets"
+import { CARD_TITLE_CLASS, HEADER_ACTION_CLASS, QuoteCard } from "./dashboard-widgets"
 
 // How fast the wheel zooms. Multiplicative per wheel delta so it feels even
 // across the range.
@@ -56,7 +56,7 @@ function InspirationCredit({ image }: { image: InspirationImageData }) {
       asChild
       variant="ghost"
       size="sm"
-      className="text-muted-foreground hover:text-accent-foreground shrink-0"
+      className={cn(HEADER_ACTION_CLASS, "shrink-0")}
     >
       <a href={image.page} target="_blank" rel="noopener noreferrer" aria-label={label}>
         <span className="hidden lg:inline">{t.dashboard.inspirationCredit}</span>
@@ -89,7 +89,7 @@ export function InspirationImage({ className }: { className?: string }) {
     >
       <div className="flex items-center justify-between gap-2 px-5 pt-5 pb-4">
         <div className="flex min-w-0 items-center gap-1">
-          <h3 className="truncate text-lg font-bold">
+          <h3 className={cn(CARD_TITLE_CLASS, "text-muted-foreground truncate")}>
             {image ? image.title : t.dashboard.inspirationTitle}
           </h3>
           {image ? (
@@ -99,7 +99,7 @@ export function InspirationImage({ className }: { className?: string }) {
               size="icon-sm"
               onClick={refresh}
               aria-label={t.dashboard.inspirationRefresh}
-              className="text-muted-foreground hover:text-accent-foreground shrink-0"
+              className={cn(HEADER_ACTION_CLASS, "shrink-0")}
             >
               <RotateCw className="size-4" aria-hidden />
             </Button>
