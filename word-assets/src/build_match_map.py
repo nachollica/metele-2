@@ -12,19 +12,17 @@ from __future__ import annotations
 
 import argparse
 
-from contract import LANGUAGES, match_map_path
+from cli import add_language_arg, resolve_languages
+from contract import match_map_path
 from matchmap import write_match_map
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(prog="build_match_map")
-    parser.add_argument(
-        "-l", "--language", choices=list(LANGUAGES), action="append",
-        help="Language(s) to build (repeatable). Defaults to all.",
-    )  # fmt: skip
+    add_language_arg(parser)
     args = parser.parse_args()
 
-    for lang in args.language or list(LANGUAGES):
+    for lang in resolve_languages(args):
         forms, groups = write_match_map(lang)
         print(f"{lang}: {forms} forms in {groups} groups -> {match_map_path(lang)}")
 

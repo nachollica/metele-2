@@ -15,7 +15,8 @@ from __future__ import annotations
 import argparse
 import os
 
-from contract import LANGUAGES, pool_path
+from cli import add_language_arg, resolve_languages
+from contract import pool_path
 from pool import build_pool
 
 _DEFAULT_PATTERN = "cc.{lang}.300.vec.gz"
@@ -37,10 +38,7 @@ def _resolve_path(lang: str, args: argparse.Namespace) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(prog="build_vectors")
-    parser.add_argument(
-        "-l", "--language", choices=list(LANGUAGES), action="append",
-        help="Language(s) to build (repeatable). Defaults to all.",
-    )  # fmt: skip
+    add_language_arg(parser)
     parser.add_argument("--fasttext", default=None, help="Single language's fastText file.")
     parser.add_argument("--fasttext-dir", default=None, help="Dir of fastText files (--pattern).")
     parser.add_argument("--pattern", default=_DEFAULT_PATTERN, help=f"Default: {_DEFAULT_PATTERN}.")
@@ -48,7 +46,7 @@ def main() -> None:
     parser.add_argument("--dim", type=int, default=_DEFAULT_DIM)
     args = parser.parse_args()
 
-    languages = args.language or list(LANGUAGES)
+    languages = resolve_languages(args)
     if args.fasttext and len(languages) != 1:
         parser.error("--fasttext takes a single file; pass exactly one -l with it.")
 

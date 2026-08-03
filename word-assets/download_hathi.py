@@ -17,7 +17,7 @@ def sanitize_filename(name: Any) -> str:
     """Removes invalid characters for directory and file names."""
     if not name or not isinstance(name, str):
         return "Unknown"
-    keepcharacters = (' ', '.', '_', '-')
+    keepcharacters = (" ", ".", "_", "-")
     return "".join(c for c in name if c.isalnum() or c in keepcharacters).strip()
 
 
@@ -89,8 +89,8 @@ def main() -> None:
     default_htids = [
         "hvd.32044013656053",  # Jane Austen, Pride and prejudice v.1 (eng)
         "hvd.32044013656061",  # Jane Austen, Pride and prejudice v.2 (eng)
-        "uc1.b3623910",        # Miguel de Cervantes, Don Quijote (spa)
-        "mdp.39015004735257"   # Arthur Conan Doyle, Adventures of Sherlock Holmes (eng)
+        "uc1.b3623910",  # Miguel de Cervantes, Don Quijote (spa)
+        "mdp.39015004735257",  # Arthur Conan Doyle, Adventures of Sherlock Holmes (eng)
     ]
 
     args = sys.argv[1:]
