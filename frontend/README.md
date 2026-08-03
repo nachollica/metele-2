@@ -57,7 +57,7 @@ in both files when touching UI strings.
 | [`app/`](app/) | Next.js routes. The game tree is dynamically imported with `ssr: false`. |
 | [`components/flowfic/`](components/flowfic/) | Game components (settings, HUD, writing area, results, profile). |
 | [`components/auth/`](components/auth/) | Login modal, account button, dev-login. |
-| [`components/ui/`](components/ui/) | shadcn/ui primitives; adapt as needed. |
+| [`components/ui/`](components/ui/) | In-house Radix UI + Tailwind primitives (originally scaffolded via the shadcn CLI); only the components actually used elsewhere are kept, adapt as needed. |
 | [`lib/`](lib/) | Auth, backend-status, i18n, preferences, and the game logic + API clients under `lib/flowfic/`. |
 | [`tests/`](tests/) | Vitest unit/component tests. |
 | [`e2e/`](e2e/) | Playwright browser tests — see [e2e/README.md](e2e/README.md). |

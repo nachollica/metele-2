@@ -87,6 +87,7 @@ aggregated word frequencies, not full text, so it is not a quote source.
   "id": "carroll-alice-in-wonderland-0001",
   "author": "Lewis Carroll",
   "source": "Alice's Adventures in Wonderland",
+  "source_i18n": { "es": "Alicia en el país de las maravillas" },
   "kind": "dialogue",
   "lang_source": "en",
   "origin": {
@@ -101,6 +102,12 @@ aggregated word frequencies, not full text, so it is not a quote source.
 
 - `text` maps a language to an array of **paragraph blocks** (one element per
   line/turn; a dialogue exchange has several). Adding a language = adding a key.
+- `source` is the work's title in `lang_source` (always present). `source_i18n`
+  is an **optional, sparse** map of *other* locales → translated title — include
+  a locale only when you have a confident translation; the frontend falls back to
+  `source` for any missing locale. Never repeat the `lang_source` title here (the
+  verifier rejects it): duplicating the default only bloats the file and hides
+  which rows still need translating.
 - `origin` describes only `lang_source` (the verbatim original). `char_start` /
   `char_end` are offsets into a raw UTF-8 `read()` of `origin.file`, relative to
   `nlp_literature_datasets/`. `md5` is the md5 of that file's bytes.
@@ -125,7 +132,8 @@ just word-assets::slice-quotes "<rel/path>" --start 13650 --end 13970
 ```
 
 Copy good offsets into `frontend/public/quotes/quotes.vN.jsonl`, add
-`id`/`author`/`source` and the translated `text` keys, then check integrity:
+`id`/`author`/`source` (and, when you have one, a `source_i18n` title
+translation) plus the translated `text` keys, then check integrity:
 
 ```bash
 just word-assets::quotes-verify

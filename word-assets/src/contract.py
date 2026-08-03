@@ -15,7 +15,9 @@ be kept in sync. Counterparts:
   ``frontend/lib/flowfic/quotes.ts``. Only the version + path shape are shared;
   the soft-wrap normalizer that produces the stored text blocks is build-only
   (see ``src/quotes.py``), because the frontend renders the pre-normalized blocks
-  verbatim and never needs it.
+  verbatim and never needs it. The optional ``source_i18n`` title-translation map
+  is additive (older readers ignore it, missing locales fall back to ``source``),
+  so it needed no version bump — see ``quoteTitle`` in ``quotes.ts``.
 - ``INSPIRATION_VERSION`` / ``inspiration_path`` mirror the frontend inspiration
   loader in ``frontend/lib/flowfic/inspiration.ts``. Only the version + record
   shape (``{loc, img}``) are shared; parsing the film-grab sitemaps and deriving

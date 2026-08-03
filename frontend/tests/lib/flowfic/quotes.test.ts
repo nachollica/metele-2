@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest"
 
-import { parseQuotesJsonl, quoteBlocks, quoteOfTheDay, type Quote } from "@/lib/flowfic/quotes"
+import {
+  parseQuotesJsonl,
+  quoteBlocks,
+  quoteOfTheDay,
+  quoteTitle,
+  type Quote,
+} from "@/lib/flowfic/quotes"
 
 const LINE = JSON.stringify({
   id: "a-0001",
@@ -48,5 +54,20 @@ describe("quoteBlocks", () => {
   it("falls back to the source language when the locale is missing", () => {
     const enOnly: Quote = { ...quote, text: { en: ["Only English."] } }
     expect(quoteBlocks(enOnly, "es")).toEqual(["Only English."])
+  })
+})
+
+describe("quoteTitle", () => {
+  const quote = parseQuotesJsonl(LINE)[0]
+
+  it("returns the translated title when present", () => {
+    const withEs: Quote = { ...quote, source_i18n: { es: "Un Libro" } }
+    expect(quoteTitle(withEs, "es")).toBe("Un Libro")
+  })
+
+  it("falls back to the source title when the locale has no translation", () => {
+    expect(quoteTitle(quote, "es")).toBe("A Book")
+    const withEs: Quote = { ...quote, source_i18n: { es: "Un Libro" } }
+    expect(quoteTitle(withEs, "en")).toBe("A Book")
   })
 })

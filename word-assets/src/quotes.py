@@ -36,7 +36,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from contract import datasets_dir
+from contract import LANGUAGES, datasets_dir
 
 # Consistent ``kind`` vocabulary. Recorded per quote (not shown in the UI yet);
 # a curator may override the heuristic guess from :func:`classify`.
@@ -183,6 +183,36 @@ def load_quotes(path: str | Path) -> list[dict]:
     return quotes
 
 
+def _verify_source_i18n(quote: dict) -> list[str]:
+    """
+    Validate the optional ``source_i18n`` map (title translations).
+
+    It is sparse by design: a language → translated-title map holding *only* the
+    languages we have a confident translation for. The source-language title
+    already lives in ``source`` and must not be repeated here (that would bloat
+    the file and hide which rows still need a translation — the frontend falls
+    back to ``source`` when a locale is absent). Absent entirely is fine.
+    """
+    if "source_i18n" not in quote:
+        return []
+    qid = quote.get("id", "<no id>")
+    i18n = quote["source_i18n"]
+    if not isinstance(i18n, dict) or not i18n:
+        return [f"{qid}: source_i18n must be a non-empty object of language → title"]
+    problems: list[str] = []
+    for lang, title in i18n.items():
+        if lang not in LANGUAGES:
+            problems.append(f"{qid}: source_i18n has unknown language {lang!r}")
+        if lang == quote.get("lang_source"):
+            problems.append(
+                f"{qid}: source_i18n must not repeat the source language "
+                f"{lang!r} (that title lives in 'source')"
+            )
+        if not isinstance(title, str) or not title.strip():
+            problems.append(f"{qid}: source_i18n[{lang!r}] must be a non-empty string")
+    return problems
+
+
 def _verify_quote(quote: dict) -> list[str]:
     """Return a list of human-readable problems with one quote row (empty = ok)."""
     qid = quote.get("id", "<no id>")
@@ -196,6 +226,8 @@ def _verify_quote(quote: dict) -> list[str]:
 
     if quote["kind"] not in KINDS:
         problems.append(f"{qid}: kind {quote['kind']!r} not in {KINDS}")
+
+    problems.extend(_verify_source_i18n(quote))
 
     text = quote["text"]
     lang_source = quote["lang_source"]

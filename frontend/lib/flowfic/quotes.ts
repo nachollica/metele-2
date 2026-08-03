@@ -27,6 +27,13 @@ export type Quote = {
   kind: QuoteKind
   /** Language the quote was taken from verbatim. */
   lang_source: string
+  /**
+   * Optional, sparse title translations: locale → translated `source` title,
+   * for locales other than `lang_source` (whose title is `source` itself).
+   * Present only for titles we have a confident translation of; a missing
+   * locale falls back to `source` (see {@link quoteTitle}).
+   */
+  source_i18n?: Record<string, string>
   origin: {
     file: string
     md5: string
@@ -93,4 +100,9 @@ export function quoteOfTheDay(quotes: readonly Quote[], d: Date = new Date()): Q
 /** Paragraph blocks for `quote` in `locale`, falling back to its source language. */
 export function quoteBlocks(quote: Quote, locale: Locale): string[] {
   return quote.text[locale] ?? quote.text[quote.lang_source] ?? []
+}
+
+/** The work's title for `locale`, falling back to the original `source` title. */
+export function quoteTitle(quote: Quote, locale: Locale): string {
+  return quote.source_i18n?.[locale] ?? quote.source
 }
