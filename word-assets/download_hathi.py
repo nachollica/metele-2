@@ -74,7 +74,9 @@ def download_htrc_features(htids: list[str], base_dir: Path) -> None:
                         f.write(f"Language: {lang}\n")
                         f.write(f"URL: {vol.handle_url}\n")
 
-            except Exception as e:
+            # Best-effort batch: any single volume may fail (network, missing
+            # features, API quirks); swallow it and continue with the rest.
+            except Exception as e:  # noqa: BLE001
                 print(f"\nFailed to process {htid}: {e}")
 
             pbar.update(1)
