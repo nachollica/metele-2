@@ -16,16 +16,15 @@ import type { Story } from "@/lib/flowfic/stories-api"
 import { SECTION_META, type Section } from "./dashboard-nav"
 import { pathToScreen, screenToPath, type Screen } from "./navigation"
 import { AppHeader } from "./app-header"
-import { ChallengesSection } from "./challenges-section"
 import { DetailScreen } from "./detail-screen"
 import { GamificationProvider } from "./gamification-context"
 import { GameHud } from "./game-hud"
 import { ZoomableInspirationImage } from "./inspiration-panel"
+import { JourneySection } from "./journey-section"
 import { LandingHome } from "./landing"
 import { ProfilePanel } from "./profile-panel"
 import { ResultsModal } from "./results-modal"
 import { SettingsPanel } from "./settings-panel"
-import { StatsSection } from "./stats-section"
 import { StoriesSection } from "./stories-section"
 import { WelcomeModal } from "./welcome-modal"
 import { WritingArea } from "./writing-area"
@@ -236,6 +235,7 @@ export function Dashboard() {
           devUserEnabled={devUserEnabled}
           disabled={controlsDisabled}
           onGoHome={goHome}
+          onShowSection={showSection}
           onOpenProfile={openProfile}
         />
 
@@ -501,10 +501,8 @@ function SectionDetail({
           onUpdateTitle={onUpdateStoryTitle}
         />
       )
-    case "challenges":
-      return <ChallengesSection onNewStory={onNewStory} />
-    case "stats":
-      return <StatsSection />
+    case "journey":
+      return <JourneySection onNewStory={onNewStory} />
   }
 }
 

@@ -112,6 +112,31 @@ export function SectionHeader({
   )
 }
 
+/**
+ * Small "overline" label for a block nested inside a larger card — the merged
+ * journey card uses it to keep the "Challenge of the day" / "Weekly summary"
+ * labels visible now that they are no longer card titles of their own. Smaller
+ * and lighter than `SectionHeader` so it reads as a sub-label, not a heading.
+ */
+export function CardSubtitle({
+  children,
+  className,
+}: {
+  children: ReactNode
+  className?: string
+}) {
+  return (
+    <div
+      className={cn(
+        "text-muted-foreground mb-2 text-xs font-semibold uppercase tracking-wide",
+        className,
+      )}
+    >
+      {children}
+    </div>
+  )
+}
+
 // ---- Empty / sign-in hint -------------------------------------------------
 
 /**

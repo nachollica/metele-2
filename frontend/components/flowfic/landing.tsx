@@ -1,24 +1,16 @@
 "use client"
 
-import { Clock, Flame, Sparkles } from "lucide-react"
+import { useTranslations } from "@/lib/i18n"
+import { type Story } from "@/lib/flowfic/stories-api"
 
-import { useLocale, useTranslations } from "@/lib/i18n"
-import { emptyOverview, formatCount, formatHoursMinutes } from "@/lib/flowfic/gamification"
-import type { Story } from "@/lib/flowfic/stories-api"
-
-import { ChallengesSection } from "./challenges-section"
 import { type Section } from "./dashboard-nav"
-import { Panel, SectionHeader, StatTile } from "./dashboard-widgets"
-import { useGamification } from "./gamification-context"
 import { InspirationImage, QuoteOfDay } from "./inspiration-panel"
-import { StatsSection } from "./stats-section"
+import { JourneySection } from "./journey-section"
 import { StoriesSection } from "./stories-section"
 
-// Landing order: full-width quote of the day, the inspiration-image widget,
-// weekly summary + challenge of the day (half/half), the full-width statistics
-// widget, and the full-width recent-stories list. Half-width rows stack on
-// mobile. Achievements no longer has its own card — it lives inside the expanded
-// Challenges screen.
+// Landing order: full-width quote of the day, the inspiration-image widget, the
+// combined "My Journey" card (level/streak, challenge of the day, weekly
+// summary), and the full-width recent-stories list.
 
 type Props = {
   /** Open an expanded subsection (from a "Show all" link). */
@@ -35,9 +27,9 @@ type Props = {
 /**
  * Landing dashboard: everything the old Home screen showed (minus the session
  * settings, now on the configuring screen) aggregated with the previously
- * sidebar-navigated sections. Order: inspiration image, prompt + this week's
- * totals, then a preview card per subsection, each with a "Show all" link into
- * its expanded screen.
+ * sidebar-navigated sections. Order: quote of the day, inspiration image, the
+ * combined "My Journey" card, then recent stories — each of the last two with a
+ * "Show all" link into its expanded screen.
  */
 export function LandingHome({
   onShowSection,
@@ -49,9 +41,6 @@ export function LandingHome({
   onUpdateStoryTitle,
 }: Props) {
   const t = useTranslations()
-  const locale = useLocale()
-  const { overview } = useGamification()
-  const ov = overview ?? emptyOverview()
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-5">
@@ -65,38 +54,13 @@ export function LandingHome({
       {/* Inspiration image — full-width titled widget. */}
       <InspirationImage />
 
-      {/* This week's totals + challenge of the day (half/half). The grid stretches
-          both cards to a shared height on wide screens; the summary centers its
-          tiles in the extra space so the two cards read as a consistent pair. */}
-      <div className="grid gap-5 lg:grid-cols-2">
-        <Panel className="flex h-full flex-col">
-          <SectionHeader title={t.dashboard.weeklySummary} />
-          <div className="my-auto grid grid-cols-3 gap-2">
-            <StatTile
-              icon={Sparkles}
-              tone="green"
-              value={formatCount(ov.weekly.sessions, locale)}
-              label={t.dashboard.sessions}
-            />
-            <StatTile
-              icon={Flame}
-              tone="amber"
-              value={formatCount(ov.weekly.words, locale)}
-              label={t.dashboard.words}
-            />
-            <StatTile
-              icon={Clock}
-              tone="violet"
-              value={formatHoursMinutes(ov.weekly.durationMs)}
-              label={t.dashboard.totalTime}
-            />
-          </div>
-        </Panel>
-        <ChallengesSection preview onNewStory={onNewStory} onShowAll={() => onShowSection("challenges")} />
-      </div>
-
-      {/* Statistics — full width. */}
-      <StatsSection preview onShowAll={() => onShowSection("stats")} />
+      {/* Combined progress card — level/streak, challenge of the day, and this
+          week's summary — with one "Show all" into the My Journey screen. */}
+      <JourneySection
+        preview
+        onNewStory={onNewStory}
+        onShowAll={() => onShowSection("journey")}
+      />
 
       {/* Recent stories — full width. */}
       <StoriesSection

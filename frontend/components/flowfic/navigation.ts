@@ -24,8 +24,7 @@ export type Screen =
 
 const SECTION_PATH: Record<Section, string> = {
   stories: "/stories",
-  challenges: "/challenges",
-  stats: "/stats",
+  journey: "/journey",
 }
 
 // Path for the screen, or null when the screen owns no canonical URL:
@@ -64,10 +63,8 @@ export function pathToScreen(pathname: string): Screen {
       return { name: "profile" }
     case "/stories":
       return { name: "section", section: "stories" }
-    case "/challenges":
-      return { name: "section", section: "challenges" }
-    case "/stats":
-      return { name: "section", section: "stats" }
+    case "/journey":
+      return { name: "section", section: "journey" }
   }
   const storyMatch = /^\/stories\/(\d+)$/.exec(path)
   if (storyMatch) return { name: "story", id: Number(storyMatch[1]) }

@@ -21,9 +21,9 @@ type Props = {
 }
 
 /**
- * Chrome for an "expanded subsection" reached from a landing "Show all" link
- * (Statistics, Achievements, Challenges, My stories, Profile, a single story).
- * The removed sidebar no longer marks the active section, so each detail screen
+ * Chrome for an "expanded subsection" reached from a landing "Show all" link or
+ * the account menu (My stories, My Journey, Profile, a single story). The
+ * removed sidebar no longer marks the active section, so each detail screen
  * carries its own back arrow + title at the top of the main area.
  */
 export function DetailScreen({ title, onBack, backLabel, children }: Props) {

@@ -253,6 +253,7 @@ export const es = {
     openMenu: "Abrir menú",
     home: "Inicio",
     stories: "Mis historias",
+    journey: "Mi viaje",
     challenges: "Desafíos",
     stats: "Estadísticas",
     achievements: "Logros",

@@ -7,6 +7,7 @@ import { useTranslations } from "@/lib/i18n"
 import type { AuthContextValue } from "@/lib/auth"
 
 import { AccountMenu } from "./account-menu"
+import { type Section } from "./dashboard-nav"
 import { LanguageMenu } from "./language-menu"
 import { ThemeToggle } from "./theme-toggle"
 
@@ -20,6 +21,8 @@ type Props = {
   disabled: boolean
   /** Return to the landing dashboard (brand logo acts as a home link). */
   onGoHome: () => void
+  /** Open an expanded subsection (from the account-menu links). */
+  onShowSection: (section: Section) => void
   onOpenProfile: () => void
 }
 
@@ -35,6 +38,7 @@ export function AppHeader({
   devUserEnabled,
   disabled,
   onGoHome,
+  onShowSection,
   onOpenProfile,
 }: Props) {
   const t = useTranslations()
@@ -73,7 +77,7 @@ export function AppHeader({
         {authStatus === "anonymous" && devUserEnabled ? (
           <DevLoginButton disabled={disabled} />
         ) : null}
-        <AccountMenu onOpenProfile={onOpenProfile} disabled={disabled} />
+        <AccountMenu onShowSection={onShowSection} onOpenProfile={onOpenProfile} disabled={disabled} />
         {/* Primary action (Create a story / Start writing / Quit …), far-right. */}
         {primaryAction}
       </div>

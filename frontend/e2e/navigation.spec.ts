@@ -139,18 +139,18 @@ test("a 'Show all' link pushes the section URL; Back and Forward step through it
   await seedDevSession(page)
   await page.goto("/")
 
-  // Open Statistics from its landing preview card.
-  await page.getByRole("button", { name: "Show all: Statistics" }).click()
-  await expect(page).toHaveURL("/stats")
-  await expect(page.getByRole("heading", { level: 1, name: "Statistics" })).toBeVisible()
+  // Open My Journey from the combined landing card.
+  await page.getByRole("button", { name: "Show all: My Journey" }).click()
+  await expect(page).toHaveURL("/journey")
+  await expect(page.getByRole("heading", { level: 1, name: "My Journey" })).toBeVisible()
 
   await page.goBack()
   await expect(page).toHaveURL("/")
-  await expect(page.getByRole("heading", { level: 1, name: "Statistics" })).toBeHidden()
+  await expect(page.getByRole("heading", { level: 1, name: "My Journey" })).toBeHidden()
 
   await page.goForward()
-  await expect(page).toHaveURL("/stats")
-  await expect(page.getByRole("heading", { level: 1, name: "Statistics" })).toBeVisible()
+  await expect(page).toHaveURL("/journey")
+  await expect(page.getByRole("heading", { level: 1, name: "My Journey" })).toBeVisible()
 })
 
 test("logging out resets navigation to the landing", async ({ page }) => {

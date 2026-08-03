@@ -248,6 +248,7 @@ export const en = {
     openMenu: "Open menu",
     home: "Home",
     stories: "My stories",
+    journey: "My Journey",
     challenges: "Challenges",
     stats: "Statistics",
     achievements: "Achievements",
