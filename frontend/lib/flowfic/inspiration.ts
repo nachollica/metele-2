@@ -2,10 +2,14 @@
 //
 // The catalog (public/inspiration/images.vN.jsonl) is parsed from film-grab's
 // image sitemaps by the word-assets tool (`just inspiration`). Each line is one
-// film: a display title (derived from the film-grab page slug), the page URL we
-// credit/link to, and the direct image URL we render. It is a generated,
-// gitignored, optional artifact — if it is missing the loader resolves to null
-// and the card simply shows its reserved placeholder.
+// film: `loc` (the film-grab page path we credit/link to) and `img` (the image
+// path we render), both with the common `https://film-grab.com/` host stripped
+// on disk (~4000 lines would otherwise repeat it) and reconstructed into full
+// URLs by `parseInspirationJsonl` below — see `FILM_GRAB_PREFIX`. The display
+// title is not stored either — it is derived from the (reconstructed) `loc`
+// slug here (see `deriveTitle`), since the card renders it upper-cased. It is a
+// generated, gitignored, optional artifact — if it is missing the loader
+// resolves to null and the card simply shows its reserved placeholder.
 //
 // One image is chosen per browsing session and shared by both consumers (the
 // landing card and the game/setup pane) through a tiny external store, so they
@@ -19,13 +23,35 @@ import { useSyncExternalStore } from "react"
 /** Bump alongside INSPIRATION_VERSION in word-assets/src/contract.py. */
 export const INSPIRATION_VERSION = 1
 
+/**
+ * Host every `loc`/`img` in the JSONL is stripped of on disk; prepended back by
+ * `parseInspirationJsonl`. Mirror of `_PREFIX` in
+ * word-assets/src/build_inspiration.py.
+ */
+export const FILM_GRAB_PREFIX = "https://film-grab.com/"
+
 export type InspirationImageData = {
-  /** Display title, e.g. "And The Ship Sails On". */
+  /**
+   * Display title derived from the `loc` slug, e.g. "and the ship sails on".
+   * The card upper-cases it in CSS, which also renders numerals/roman-numeral
+   * acronyms correctly ("VII"), so no per-word capitalization is applied.
+   */
   title: string
   /** film-grab page URL (the credit link target). */
-  page: string
+  loc: string
   /** Direct image URL to render. */
-  image: string
+  img: string
+}
+
+/**
+ * Film title from a film-grab page URL's last path segment: hyphens to spaces.
+ * `.../2014/12/12/and-the-ship-sails-on/` -> `and the ship sails on`. Left
+ * lower-case on purpose — the card styles the title `uppercase`, so this stays a
+ * plain slug decode (see `InspirationImageData.title`).
+ */
+export function deriveTitle(loc: string): string {
+  const slug = loc.replace(/\/+$/, "").split("/").pop() ?? ""
+  return slug.split("-").filter(Boolean).join(" ")
 }
 
 // undefined = not yet attempted; null = attempted and unavailable.
@@ -63,31 +89,39 @@ export async function loadInspiration(): Promise<readonly InspirationImageData[]
   return inflight
 }
 
-/** Parse the JSONL body into records, skipping blank lines. Exported for tests. */
+/**
+ * Parse the JSONL body into records, skipping blank lines. Each line is a
+ * `{loc, img}` object with the `FILM_GRAB_PREFIX` host stripped; this
+ * reconstructs the full URLs and derives the display `title` from `loc`.
+ * Exported for tests.
+ */
 export function parseInspirationJsonl(body: string): InspirationImageData[] {
   const images: InspirationImageData[] = []
   for (const line of body.split("\n")) {
     const trimmed = line.trim()
     if (!trimmed) continue
-    images.push(JSON.parse(trimmed) as InspirationImageData)
+    const { loc, img } = JSON.parse(trimmed) as { loc: string; img: string }
+    const fullLoc = FILM_GRAB_PREFIX + loc
+    const fullImg = FILM_GRAB_PREFIX + img
+    images.push({ title: deriveTitle(fullLoc), loc: fullLoc, img: fullImg })
   }
   return images
 }
 
 /**
- * Pick a random film, avoiding `currentPage` when the pool has alternatives so a
+ * Pick a random film, avoiding `currentLoc` when the pool has alternatives so a
  * refresh visibly changes the image. Assumes a non-empty pool (callers guard).
- * Pages are unique in the catalog, so the loop terminates promptly.
+ * Locs are unique in the catalog, so the loop terminates promptly.
  */
 export function chooseNext(
   pool: readonly InspirationImageData[],
-  currentPage?: string,
+  currentLoc?: string,
 ): InspirationImageData {
   if (pool.length === 1) return pool[0]
   let next: InspirationImageData
   do {
     next = pool[Math.floor(Math.random() * pool.length)]
-  } while (next.page === currentPage)
+  } while (next.loc === currentLoc)
   return next
 }
 
@@ -115,7 +149,7 @@ function setState(next: InspirationState): void {
   for (const notify of listeners) notify()
 }
 
-function readStoredPage(): string | null {
+function readStoredLoc(): string | null {
   try {
     return window.sessionStorage.getItem(STORAGE_KEY)
   } catch {
@@ -123,9 +157,9 @@ function readStoredPage(): string | null {
   }
 }
 
-function writeStoredPage(page: string): void {
+function writeStoredLoc(loc: string): void {
   try {
-    window.sessionStorage.setItem(STORAGE_KEY, page)
+    window.sessionStorage.setItem(STORAGE_KEY, loc)
   } catch {
     // Private mode / storage disabled: the pick just won't survive a reload.
   }
@@ -142,10 +176,10 @@ function start(): void {
       return
     }
     pool = loaded
-    const storedPage = readStoredPage()
-    const stored = storedPage ? loaded.find((p) => p.page === storedPage) : undefined
+    const storedLoc = readStoredLoc()
+    const stored = storedLoc ? loaded.find((p) => p.loc === storedLoc) : undefined
     const image = stored ?? chooseNext(loaded)
-    writeStoredPage(image.page)
+    writeStoredLoc(image.loc)
     setState({ status: "ready", image })
   })
 }
@@ -153,9 +187,9 @@ function start(): void {
 /** Re-roll to a different film on demand (the card's refresh control). */
 export function refreshInspiration(): void {
   if (!pool || pool.length === 0) return
-  const current = state.status === "ready" ? state.image.page : undefined
+  const current = state.status === "ready" ? state.image.loc : undefined
   const image = chooseNext(pool, current)
-  writeStoredPage(image.page)
+  writeStoredLoc(image.loc)
   setState({ status: "ready", image })
 }
 

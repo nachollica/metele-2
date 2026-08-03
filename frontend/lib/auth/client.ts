@@ -15,6 +15,20 @@ export function apiUrl(path: string): string {
   return `${API_URL.replace(/\/+$/, "")}/api${path.startsWith("/") ? path : `/${path}`}`
 }
 
+// ---- Auth redirect marker (bfcache guard) --------------------------------
+
+// In-memory marker set right before a full-page auth redirect (login/logout).
+// It survives a bfcache freeze via the frozen JS heap — so a page restored by
+// Back-from-Auth0 still sees it — but not a real reload (a fresh JS context
+// starts false). The bfcache guard reloads a restored page only when it's set,
+// giving a clean SDK reinit after Back-from-Auth0 while leaving ordinary
+// in-app navigation (same-document popstate, no bfcache restore) alone.
+export const authRedirectState = { inFlight: false }
+
+export function markAuthRedirect(): void {
+  authRedirectState.inFlight = true
+}
+
 // ---- Auth0 SPA configuration ---------------------------------------------
 
 export type Auth0Config = {
@@ -39,8 +53,6 @@ export function readAuth0Config(): Auth0Config | null {
 // social connection name that gets passed via `loginWithRedirect`.
 export const AUTH0_CONNECTION: Record<AuthProvider, string> = {
   google: "google-oauth2",
-  facebook: "facebook",
-  twitter: "twitter",
 }
 
 // The redirect URL Auth0 should send the user back to after consent. Must

@@ -149,12 +149,22 @@ parses whatever sitemaps you have downloaded into one JSON-Lines catalog:
 | --- | --- | --- |
 | Inspiration `images.vN.jsonl` | `frontend/public/inspiration/` | frontend (inspiration image) |
 
-Each line is one film — a `title` (derived from the page slug), the `page` we
-credit/link to, and the direct `image` URL the frontend renders:
+Each line is one film — the `loc` page we credit/link to and the `img` still the
+frontend renders, both with the common `https://film-grab.com/` host stripped
+(every entry lives under it, so repeating it on ~4000 lines would bloat the
+file for nothing) and reconstructed by the frontend loader at read time:
 
 ```json
-{"title": "And The Ship Sails On", "page": "https://film-grab.com/2014/12/12/and-the-ship-sails-on/", "image": "https://film-grab.com/wp-content/uploads/…/And-The-Ship-…jpg"}
+{"loc": "2014/12/12/and-the-ship-sails-on/", "img": "wp-content/uploads/…/And-The-Ship-…jpg"}
 ```
+
+The display title is not stored either: the frontend derives it from the
+reconstructed `loc` slug at render time (the card upper-cases it in CSS, so a
+plain hyphens-to-spaces decode is enough). Only real film permalinks are kept —
+film-grab's per-film URLs look like `/yyyy/mm/dd/slug/` (eight `/`-segments);
+other sitemap entries (numeric junk slugs, archive pages) are dropped, as is any
+`<image:loc>` not hosted on film-grab.com (a handful of sitemap entries point
+off-site, and there is no shared prefix to strip for those).
 
 Unlike the word artifacts this one is **optional and decorative**: if it is
 missing the card just shows its reserved placeholder, so no build hard-fails on
@@ -171,8 +181,8 @@ just inspiration              # → frontend/public/inspiration/images.vN.jsonl
 just inspiration ~/sitemaps   # or point it at another directory
 ```
 
-Files are merged and de-duplicated by page URL. Because the output is JSON
-Lines, curate which films ship with plain shell tools, e.g. keep a random 300:
+Files are merged and de-duplicated by `loc`. Because the output is JSON Lines,
+curate which films ship with plain shell tools, e.g. keep a random 300:
 
 ```bash
 shuf frontend/public/inspiration/images.v1.jsonl | head -300 > tmp && mv tmp frontend/public/inspiration/images.v1.jsonl

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { AlertTriangle, Home, Loader2, Pencil, Sparkles, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -14,6 +14,7 @@ import { useStories } from "@/lib/flowfic/use-stories"
 import type { Story } from "@/lib/flowfic/stories-api"
 
 import { SECTION_META, type Section } from "./dashboard-nav"
+import { pathToScreen, screenToPath, type Screen } from "./navigation"
 import { AppHeader } from "./app-header"
 import { ChallengesSection } from "./challenges-section"
 import { DetailScreen } from "./detail-screen"
@@ -31,16 +32,6 @@ import { WritingArea } from "./writing-area"
 
 const WELCOME_STORAGE_KEY = "flowfic.welcome.dismissed"
 
-// The single-route app has no URL-driven navigation: the visible main-area
-// screen is this local state. Engine states (loading/playing/ended) take
-// precedence over it and render the game.
-type Screen =
-  | { name: "landing" }
-  | { name: "configuring" } // session settings shown, engine still idle
-  | { name: "section"; section: Section }
-  | { name: "profile" }
-  | { name: "story"; story: Story }
-
 export function Dashboard() {
   const t = useTranslations()
   const { status: authStatus } = useAuth()
@@ -54,7 +45,13 @@ export function Dashboard() {
     update: updateStoryTitle,
   } = useStories(engine.storiesRefreshKey)
 
-  const [screen, setScreen] = useState<Screen>({ name: "landing" })
+  // Initial screen comes from the URL so a deep link / refresh lands on the
+  // right place (the game tree is `dynamic(ssr:false)`, so `window` exists).
+  const [screen, setScreen] = useState<Screen>(() =>
+    typeof window === "undefined"
+      ? { name: "landing" }
+      : pathToScreen(window.location.pathname),
+  )
   const [welcomeOpen, setWelcomeOpen] = useState(false)
 
   const inGame = engine.gameState === "playing" || engine.gameState === "ended"
@@ -88,46 +85,83 @@ export function Dashboard() {
     setWelcomeOpen(false)
   }
 
+  // ---- URL-synced navigation ---------------------------------------------
+  // Drive the visible screen through the History API so Back/Forward, refresh,
+  // and deep links work while staying a single static bundle. Stable content
+  // screens own a URL (see navigation.ts); the transient `configuring`/game
+  // states keep the split layout. `notfound` has no path, so it leaves the
+  // (unknown) URL untouched — a refresh then still renders not-found.
+  const navigate = useCallback((next: Screen, opts?: { replace?: boolean }) => {
+    if (typeof window !== "undefined") {
+      const path = screenToPath(next)
+      if (path !== null) {
+        if (opts?.replace) window.history.replaceState(null, "", path)
+        else if (window.location.pathname !== path)
+          window.history.pushState(null, "", path)
+      }
+    }
+    setScreen(next)
+  }, [])
+
+  // Save any just-finished story before leaving the game area.
+  const leaveGame = useCallback(() => {
+    if (engine.gameState === "ended") engine.finishAndReset()
+  }, [engine])
+
+  // Sync the screen when the user presses Back/Forward. Mid-game, Back quits
+  // the session and stays in-app rather than tearing the tree down or leaving
+  // the document (that jump-to-Auth0-on-back was the reported auth bug). The
+  // handler is kept in a ref so the single listener always sees fresh state.
+  const popStateRef = useRef<() => void>(() => {})
+  useEffect(() => {
+    popStateRef.current = () => {
+      if (engine.isPlaying) engine.quit()
+      else leaveGame()
+      setScreen(pathToScreen(window.location.pathname))
+    }
+  })
+  useEffect(() => {
+    const handler = () => popStateRef.current()
+    window.addEventListener("popstate", handler)
+    return () => window.removeEventListener("popstate", handler)
+  }, [])
+
   // ---- Reset navigation on logout ----------------------------------------
   const prevAuthRef = useRef(authStatus)
   useEffect(() => {
     const prev = prevAuthRef.current
     prevAuthRef.current = authStatus
     if (prev === "authenticated" && authStatus === "anonymous") {
-      setScreen({ name: "landing" })
+      navigate({ name: "landing" }, { replace: true })
     }
-  }, [authStatus])
+  }, [authStatus, navigate])
 
   // ---- Navigation helpers ------------------------------------------------
-  // Save any just-finished story before leaving the game area.
-  function leaveGame() {
-    if (engine.gameState === "ended") engine.finishAndReset()
-  }
-
   function goHome() {
     leaveGame()
-    setScreen({ name: "landing" })
+    navigate({ name: "landing" })
   }
 
   function showSection(section: Section) {
     leaveGame()
-    setScreen({ name: "section", section })
+    navigate({ name: "section", section })
   }
 
   function openProfile() {
     leaveGame()
-    setScreen({ name: "profile" })
+    navigate({ name: "profile" })
   }
 
   function onViewStory(story: Story) {
     leaveGame()
-    setScreen({ name: "story", story })
+    navigate({ name: "story", id: story.id })
   }
 
-  // "New story": reveal the session configurator (engine stays idle).
+  // "New story": reveal the session configurator (engine stays idle). This
+  // pushes the /new entry so Back during setup/play returns here in-app.
   function beginNewStory() {
     leaveGame()
-    setScreen({ name: "configuring" })
+    navigate({ name: "configuring" })
   }
 
   // "Start writing": start the sprint with the configured settings.
@@ -139,7 +173,7 @@ export function Dashboard() {
   // "Create a story" (ended state): finalize the finished sprint, back to home.
   function finishStory() {
     engine.finishAndReset()
-    setScreen({ name: "landing" })
+    navigate({ name: "landing" })
   }
 
   // ---- Primary action ----------------------------------------------------
@@ -388,18 +422,55 @@ function ScreenContent({
           <ProfilePanel />
         </DetailScreen>
       )
-    case "story":
+    case "story": {
+      // The screen only carries the id (so a deep link / refresh at
+      // /stories/:id reconstructs it); resolve the record from the loaded
+      // list. `null` list means the first load is still in flight.
+      const story = stories?.find((s) => s.id === screen.id) ?? null
+      if (stories === null) {
+        return (
+          <DetailScreen title={t.game.viewingStory} onBack={onBackToStories} backLabel={t.nav.backToStories}>
+            <div role="status" aria-live="polite" className="flex justify-center py-16">
+              <Loader2 className="text-primary size-8 animate-spin" aria-hidden />
+            </div>
+          </DetailScreen>
+        )
+      }
+      if (story === null) return <NotFoundScreen onBack={onBackToStories} backLabel={t.nav.backToStories} />
       return (
-        <DetailScreen title={t.game.viewingStory} onBack={onBackToStories}>
+        <DetailScreen title={t.game.viewingStory} onBack={onBackToStories} backLabel={t.nav.backToStories}>
           <div className="h-[65vh]">
-            <WritingArea value={screen.story.text} onChange={() => {}} matches={[]} readOnly />
+            <WritingArea value={story.text} onChange={() => {}} matches={[]} readOnly />
           </div>
         </DetailScreen>
       )
+    }
+    case "notfound":
+      return <NotFoundScreen onBack={onBackHome} />
     // `configuring` is rendered by the split layout, not here.
     default:
       return null
   }
+}
+
+// Client-rendered not-found screen (no server 404 — the shell is served for
+// every app path). Reached for an unknown URL or a story id that doesn't
+// resolve; the back arrow returns to a sensible in-app screen.
+function NotFoundScreen({ onBack, backLabel }: { onBack: () => void; backLabel?: string }) {
+  const t = useTranslations()
+  // The arrow + button share one destination; label both after it so the copy
+  // matches where they lead (home by default, the stories list from a story).
+  const label = backLabel ?? t.notFound.backHome
+  return (
+    <DetailScreen title={t.notFound.title} onBack={onBack} backLabel={label}>
+      <div className="flex flex-col items-start gap-4 py-8">
+        <p className="text-muted-foreground">{t.notFound.body}</p>
+        <Button type="button" variant="outline" onClick={onBack}>
+          {label}
+        </Button>
+      </div>
+    </DetailScreen>
+  )
 }
 
 function SectionDetail({

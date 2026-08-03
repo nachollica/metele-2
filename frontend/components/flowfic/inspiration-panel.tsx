@@ -9,7 +9,7 @@ import { useLocale, useTranslations } from "@/lib/i18n"
 import { loadQuotes, quoteBlocks, quoteOfTheDay, type Quote } from "@/lib/flowfic/quotes"
 import { useInspiration, type InspirationImageData } from "@/lib/flowfic/inspiration"
 
-import { QuoteCard } from "./dashboard-widgets"
+import { CARD_TITLE_CLASS, HEADER_ACTION_CLASS, QuoteCard } from "./dashboard-widgets"
 
 // How fast the wheel zooms. Multiplicative per wheel delta so it feels even
 // across the range.
@@ -20,6 +20,11 @@ const ZOOM_SENSITIVITY = 0.0015
  * film-grab image has loaded, so a slow network reveals the picture softly into
  * its already-reserved box instead of popping. Resets on every `src` change
  * (e.g. a refresh) so each new image fades in too.
+ *
+ * Aspect guardrail: `object-cover` + `size-full` make the still fill its parent
+ * frame (the card's fixed 16:9 box) by cropping the overflowing edge — never by
+ * stretching. So any source proportion (16:9, 4:3, wide cinema, even portrait)
+ * renders consistently and is never distorted; at most it is cropped a little.
  */
 function FadeInImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
   const [loaded, setLoaded] = useState(false)
@@ -56,9 +61,9 @@ function InspirationCredit({ image }: { image: InspirationImageData }) {
       asChild
       variant="ghost"
       size="sm"
-      className="text-muted-foreground hover:text-accent-foreground shrink-0"
+      className={cn(HEADER_ACTION_CLASS, "shrink-0")}
     >
-      <a href={image.page} target="_blank" rel="noopener noreferrer" aria-label={label}>
+      <a href={image.loc} target="_blank" rel="noopener noreferrer" aria-label={label}>
         <span className="hidden lg:inline">{t.dashboard.inspirationCredit}</span>
         <span className="hidden md:inline lg:hidden">{t.dashboard.inspirationCreditShort}</span>
         <ExternalLink className="size-3.5" aria-hidden />
@@ -70,10 +75,11 @@ function InspirationCredit({ image }: { image: InspirationImageData }) {
 /**
  * Landscape (16:9) inspiration image, wrapped as a dashboard card. Unlike the
  * other landing cards its title is dynamic: it *is* the picked film's name, with
- * the refresh control sitting right beside it (while the catalog loads or is
- * absent the title falls back to a generic label and the actions hide). The
- * film-grab credit link stays at the far end of the header; below sits the image
- * in a reserved 16:9 box that fades in on load.
+ * the refresh control preceding it (while the catalog loads or is absent the
+ * title falls back to a generic label and the actions hide). The title truncates
+ * with an ellipsis instead of wrapping, since film-grab names can run arbitrarily
+ * long. The film-grab credit link stays at the far end of the header; below sits
+ * the image in a reserved 16:9 box that fades in on load.
  */
 export function InspirationImage({ className }: { className?: string }) {
   const t = useTranslations()
@@ -89,9 +95,6 @@ export function InspirationImage({ className }: { className?: string }) {
     >
       <div className="flex items-center justify-between gap-2 px-5 pt-5 pb-4">
         <div className="flex min-w-0 items-center gap-1">
-          <h3 className="truncate text-lg font-bold">
-            {image ? image.title : t.dashboard.inspirationTitle}
-          </h3>
           {image ? (
             <Button
               type="button"
@@ -99,17 +102,20 @@ export function InspirationImage({ className }: { className?: string }) {
               size="icon-sm"
               onClick={refresh}
               aria-label={t.dashboard.inspirationRefresh}
-              className="text-muted-foreground hover:text-accent-foreground shrink-0"
+              className={cn(HEADER_ACTION_CLASS, "shrink-0")}
             >
               <RotateCw className="size-4" aria-hidden />
             </Button>
           ) : null}
+          <h3 className={cn(CARD_TITLE_CLASS, "text-muted-foreground min-w-0 truncate")}>
+            {image ? image.title : t.dashboard.inspirationTitle}
+          </h3>
         </div>
         {image ? <InspirationCredit image={image} /> : null}
       </div>
 
       <div className="bg-muted aspect-video w-full">
-        {image ? <FadeInImage src={image.image} alt="" /> : null}
+        {image ? <FadeInImage src={image.img} alt="" /> : null}
       </div>
     </div>
   )
@@ -118,14 +124,20 @@ export function InspirationImage({ className }: { className?: string }) {
 /**
  * Inspiration image for the split game/setup pane, zoomable and pannable.
  *
- * The viewport fills the pane; the image is `object-contain`, so at rest it fits
- * the width and is centered vertically (min zoom = fully visible, reaching the
- * left/right edges). Vertical wheel zooms in, up to the point where the image
- * fills the pane's height — for a landscape image that crops the sides (max
- * zoom). Once zoomed, a horizontal wheel (or shift+wheel) and click-and-drag pan
- * left/right to reveal the cropped edges. The wheel is captured (never scrolls
- * the pane) via a non-passive listener; the max zoom and pan are recomputed
- * whenever the pane or image size changes.
+ * Unlike the landing card (a fixed 16:9 cover-crop), this pane shows the still at
+ * its ORIGINAL proportions: `object-contain` fits the whole frame inside the
+ * viewport, so at rest it fits the width and is centered vertically (min zoom =
+ * fully visible, reaching the left/right edges) whatever the source ratio. The
+ * only transform applied is a uniform `scale` (plus a horizontal `translate`),
+ * so the picture is never stretched or squashed — the source proportions hold at
+ * every zoom level.
+ *
+ * Vertical wheel zooms in, up to the point where the image fills the pane's
+ * height — for a landscape image that crops the sides (max zoom). Once zoomed, a
+ * horizontal wheel (or shift+wheel) and click-and-drag pan left/right to reveal
+ * the cropped edges. The wheel is captured (never scrolls the pane) via a
+ * non-passive listener; the max zoom and pan are recomputed whenever the pane or
+ * image size changes.
  */
 export function ZoomableInspirationImage({ className }: { className?: string }) {
   const t = useTranslations()
@@ -145,7 +157,7 @@ export function ZoomableInspirationImage({ className }: { className?: string }) 
   // Fade a newly picked image (or the first arrival) back in from transparent.
   useEffect(() => {
     setLoaded(false)
-  }, [image?.image])
+  }, [image?.img])
 
   useEffect(() => {
     zoomRef.current = zoom
@@ -260,7 +272,7 @@ export function ZoomableInspirationImage({ className }: { className?: string }) 
         // eslint-disable-next-line @next/next/no-img-element
         <img
           ref={imgRef}
-          src={image.image}
+          src={image.img}
           alt=""
           aria-hidden
           draggable={false}

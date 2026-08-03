@@ -1,6 +1,6 @@
-// Inline brand SVGs so the modal doesn't pull a third-party icon font. Each
-// icon takes the current text color via `fill="currentColor"` where it makes
-// sense, and `aria-hidden` so screen readers rely on the button label.
+// Inline brand SVG so the modal doesn't pull a third-party icon font. Uses
+// Google's fixed brand colors and `aria-hidden` so screen readers rely on the
+// button label.
 import type { ComponentProps } from "react"
 
 type IconProps = ComponentProps<"svg">
@@ -23,35 +23,6 @@ export function GoogleIcon(props: IconProps) {
       <path
         fill="#1976D2"
         d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.1-4 5.5l6.2 5.2C41.8 34 44 29.4 44 24c0-1.3-.1-2.3-.4-3.5z"
-      />
-    </svg>
-  )
-}
-
-// Stylized as the post-rebrand "X" mark — Auth0 still calls the connection
-// `twitter` but the public brand is X. Single-color path so the icon picks
-// up `currentColor` and stays readable on both light and dark surfaces.
-export function TwitterIcon(props: IconProps) {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden {...props}>
-      <path
-        fill="currentColor"
-        d="M18.244 2H21l-6.51 7.43L22 22h-6.797l-4.792-6.27L4.91 22H2.155l6.99-7.985L2 2h6.97l4.33 5.74L18.244 2zm-1.19 18h1.51L7.05 4H5.43l11.625 16z"
-      />
-    </svg>
-  )
-}
-
-export function FacebookIcon(props: IconProps) {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden {...props}>
-      <path
-        fill="#1877F2"
-        d="M22 12a10 10 0 1 0-11.6 9.9V15h-2.5v-3h2.5V9.8c0-2.5 1.5-3.8 3.7-3.8 1.1 0 2.2.2 2.2.2v2.4h-1.2c-1.2 0-1.6.8-1.6 1.5V12h2.7l-.4 3h-2.3v6.9A10 10 0 0 0 22 12z"
-      />
-      <path
-        fill="#fff"
-        d="M15.9 15 16.3 12h-2.7v-1.9c0-.7.4-1.5 1.6-1.5h1.2V6c-.1 0-1.1-.2-2.2-.2-2.2 0-3.7 1.3-3.7 3.8V12H8v3h2.5v6.9c.5.1 1 .1 1.5.1s1 0 1.5-.1V15h2.4z"
       />
     </svg>
   )

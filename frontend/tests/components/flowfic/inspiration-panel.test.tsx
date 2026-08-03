@@ -11,9 +11,9 @@ import type { InspirationImageData, InspirationState } from "@/lib/flowfic/inspi
 import { renderWithLocale } from "../../utils"
 
 const IMAGE: InspirationImageData = {
-  title: "And The Ship Sails On",
-  page: "https://film-grab.com/2014/12/12/and-the-ship-sails-on/",
-  image: "https://film-grab.com/wp-content/uploads/And-The-Ship-01.jpg",
+  title: "and the ship sails on",
+  loc: "https://film-grab.com/2014/12/12/and-the-ship-sails-on/",
+  img: "https://film-grab.com/wp-content/uploads/And-The-Ship-01.jpg",
 }
 
 describe("InspirationImage", () => {
@@ -27,13 +27,14 @@ describe("InspirationImage", () => {
   it("uses the picked film's name as the (dynamic) card title, with image + credit link", () => {
     mockPick({ status: "ready", image: IMAGE })
     const { container } = renderWithLocale(<InspirationImage />)
-    // The card title itself is the film name now — no static "Inspiration" label.
-    expect(screen.getByRole("heading", { name: "And The Ship Sails On" })).toBeInTheDocument()
+    // The card title itself is the film name now (styled uppercase in CSS; the
+    // accessible name is the raw derived slug) — no static "Inspiration" label.
+    expect(screen.getByRole("heading", { name: "and the ship sails on" })).toBeInTheDocument()
     expect(screen.queryByText("Inspiration")).toBeNull()
-    expect(container.querySelector("img")).toHaveAttribute("src", IMAGE.image)
+    expect(container.querySelector("img")).toHaveAttribute("src", IMAGE.img)
 
     const link = screen.getByRole("link", { name: /film-grab\.com/i })
-    expect(link).toHaveAttribute("href", IMAGE.page)
+    expect(link).toHaveAttribute("href", IMAGE.loc)
     expect(link).toHaveAttribute("target", "_blank")
     expect(link).toHaveAttribute("rel", "noopener noreferrer")
   })

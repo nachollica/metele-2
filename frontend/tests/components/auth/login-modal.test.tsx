@@ -29,17 +29,25 @@ describe("LoginModal", () => {
     loginWithProvider.mockReset().mockResolvedValue(undefined)
   })
 
-  it("renders one button per supported provider", () => {
+  it("renders the sole Google provider button", () => {
     renderWithLocale(<LoginModal open onOpenChange={() => {}} />)
     expect(
       screen.getByRole("button", { name: /continue with google/i }),
     ).toBeInTheDocument()
+  })
+
+  it("does not offer the dropped social providers", () => {
+    // Facebook and X/Twitter were removed — Google is the only social path now.
+    renderWithLocale(<LoginModal open onOpenChange={() => {}} />)
     expect(
-      screen.getByRole("button", { name: /continue with facebook/i }),
-    ).toBeInTheDocument()
+      screen.queryByRole("button", { name: /continue with facebook/i }),
+    ).not.toBeInTheDocument()
     expect(
-      screen.getByRole("button", { name: /continue with x \(twitter\)/i }),
-    ).toBeInTheDocument()
+      screen.queryByRole("button", { name: /continue with x/i }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole("button", { name: /twitter/i }),
+    ).not.toBeInTheDocument()
   })
 
   it("does not render Instagram, email/password fields, or a 'Maybe later' button", () => {
@@ -71,15 +79,6 @@ describe("LoginModal", () => {
       screen.getByRole("button", { name: /continue with google/i }),
     )
     expect(loginWithProvider).toHaveBeenCalledWith("google")
-  })
-
-  it("kicks off the Auth0 redirect flow for the Twitter button", async () => {
-    renderWithLocale(<LoginModal open onOpenChange={() => {}} />, { locale: "en" })
-    const user = userEvent.setup()
-    await user.click(
-      screen.getByRole("button", { name: /continue with x \(twitter\)/i }),
-    )
-    expect(loginWithProvider).toHaveBeenCalledWith("twitter")
   })
 
   it("no longer hosts the dev-user control (it moved beside the header CTA)", () => {

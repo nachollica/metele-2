@@ -131,10 +131,11 @@ export async function mockBackend(
   await page.route("**/inspiration/images.v*.jsonl", async (route) => {
     await route.fulfill({
       contentType: "text/plain; charset=utf-8",
+      // On-disk shape: the FILM_GRAB_PREFIX host is stripped and reconstructed
+      // by the frontend loader (see lib/flowfic/inspiration.ts).
       body: JSON.stringify({
-        title: "And The Ship Sails On",
-        page: "https://film-grab.com/2014/12/12/and-the-ship-sails-on/",
-        image: "https://film-grab.com/wp-content/uploads/And-The-Ship-01.jpg",
+        loc: "2014/12/12/and-the-ship-sails-on/",
+        img: "wp-content/uploads/And-The-Ship-01.jpg",
       }),
     })
   })

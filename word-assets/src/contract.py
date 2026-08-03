@@ -18,8 +18,9 @@ be kept in sync. Counterparts:
   verbatim and never needs it.
 - ``INSPIRATION_VERSION`` / ``inspiration_path`` mirror the frontend inspiration
   loader in ``frontend/lib/flowfic/inspiration.ts``. Only the version + record
-  shape are shared; parsing the film-grab sitemaps is build-only
-  (see ``src/build_inspiration.py``).
+  shape (``{loc, img}``) are shared; parsing the film-grab sitemaps and deriving
+  the display title from the ``loc`` slug are build-only / frontend-only
+  respectively (see ``src/build_inspiration.py`` and ``inspiration.ts``).
 
 These change ~never; when one does, bump it here and in the named counterpart.
 """
@@ -56,8 +57,8 @@ MATCH_MAP_VERSION = 1
 QUOTES_VERSION = 1
 
 # ---- inspiration artifact (consumed by the frontend, generated) --------
-# The film-grab image catalog: one JSON object per line (title, page, image),
-# parsed from film-grab's image sitemaps by ``src/build_inspiration.py``. Like
+# The film-grab image catalog: one JSON object per line (loc, img), parsed from
+# film-grab's image sitemaps by ``src/build_inspiration.py``. Like
 # the pool/match-map it is generated and gitignored (a full dump is large, and
 # it is re-sliced freely), but unlike them it is a decorative, optional asset —
 # the frontend degrades gracefully when it is absent. Bump alongside

@@ -19,6 +19,7 @@ import {
   AUTH0_CONNECTION,
   buildRedirectUri,
   fetchMe,
+  markAuthRedirect,
   readAuth0Config,
 } from "./client"
 import {
@@ -222,12 +223,21 @@ export function useAuth(): AuthContextValue {
 
   const loginWithProvider = useCallback(
     async (provider: AuthProviderId) => {
+      markAuthRedirect()
       await a0.loginWithRedirect({
         authorizationParams: {
           connection: AUTH0_CONNECTION[provider],
           redirect_uri: buildRedirectUri(),
         },
         appState: { returnTo: "/" },
+        // Replace the current entry instead of pushing a duplicate, so the
+        // pre-login page isn't stacked twice below the returned session. The
+        // cross-origin /authorize entry can't be spliced out of history, but
+        // combined with the app's own in-app history depth this keeps Back
+        // inside the app rather than jumping straight back to Auth0.
+        openUrl: (url: string) => {
+          window.location.replace(url)
+        },
       })
     },
     [a0],
@@ -253,6 +263,7 @@ export function useAuth(): AuthContextValue {
       local?.setOverride(null)
       return
     }
+    markAuthRedirect()
     a0.logout({
       logoutParams: {
         returnTo:

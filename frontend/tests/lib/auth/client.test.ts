@@ -17,9 +17,8 @@ describe("apiUrl", () => {
 })
 
 describe("AUTH0_CONNECTION", () => {
-  it("maps internal provider ids to Auth0 connection names", () => {
+  it("maps the Google provider id to its Auth0 connection name", () => {
     expect(AUTH0_CONNECTION.google).toBe("google-oauth2")
-    expect(AUTH0_CONNECTION.facebook).toBe("facebook")
   })
 })
 
