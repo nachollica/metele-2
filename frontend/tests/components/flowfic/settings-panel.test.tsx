@@ -1,117 +1,70 @@
 import { screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { useState } from "react"
-import { describe, expect, it, vi } from "vitest"
+import { describe, expect, it } from "vitest"
 
 import { SettingsPanel } from "@/components/flowfic/settings-panel"
-import type { AuthContextValue, AuthUser } from "@/lib/auth"
-import { DEFAULT_SETTINGS, PRESETS, type GameSettings } from "@/lib/flowfic/types"
+import { DEFAULT_SETTINGS, type GameSettings } from "@/lib/flowfic/types"
 
 import { renderWithLocale } from "@/tests/utils"
 
-const baseUser: AuthUser = {
-  id: "google-oauth2|abc",
-  email: "x@example.com",
-  name: "Tester",
-  avatarUrl: null,
-  customPresets: [],
-}
+// The mode picker and the session-length dial live in the launcher now (see
+// session-launcher.test.tsx); this panel is only the advanced rows.
 
-const authState: { current: AuthContextValue } = {
-  current: makeAuth(),
-}
-
-function makeAuth(overrides: Partial<AuthContextValue> = {}): AuthContextValue {
-  return {
-    status: "authenticated",
-    user: baseUser,
-    loginWithProvider: vi.fn().mockResolvedValue(undefined),
-    logout: vi.fn(),
-    getAccessToken: vi.fn().mockResolvedValue("tok"),
-    applyLocalUser: vi.fn(),
-    loginAsDevUser: vi
-      .fn()
-      .mockResolvedValue({ ok: false, reason: "error" as const }),
-    ...overrides,
-  }
-}
-
-vi.mock("@/lib/auth", async () => {
-  const actual = await vi.importActual<typeof import("@/lib/auth")>("@/lib/auth")
-  return {
-    ...actual,
-    useAuth: () => authState.current,
-  }
-})
-
-function Harness({
-  initial = DEFAULT_SETTINGS,
-  onChange,
-}: {
-  initial?: GameSettings
-  onChange?: (s: GameSettings) => void
-}) {
+function Harness({ initial = DEFAULT_SETTINGS }: { initial?: GameSettings }) {
   const [settings, setSettings] = useState<GameSettings>(initial)
-  return (
-    <SettingsPanel
-      settings={settings}
-      onChange={(s) => {
-        setSettings(s)
-        onChange?.(s)
-      }}
-    />
-  )
+  return <SettingsPanel settings={settings} onChange={setSettings} />
 }
 
 describe("SettingsPanel", () => {
-  it("renders one button per preset and marks the matching one active", () => {
-    authState.current = makeAuth()
+  it("does not render the mode picker or the session-length control", () => {
     renderWithLocale(<Harness />)
-    for (const preset of PRESETS) {
-      const expectedName = preset.id === "nolimit" ? "no limit" : preset.id
-      const btn = screen.getByRole("button", {
-        name: new RegExp(expectedName, "i"),
-      })
-      expect(btn).toBeInTheDocument()
-    }
-    // DEFAULT_SETTINGS matches "classic" — that button reports aria-pressed.
-    const classic = screen.getByRole("button", { name: /classic/i })
-    expect(classic).toHaveAttribute("aria-pressed", "true")
+    expect(screen.queryByRole("button", { name: /classic/i })).toBeNull()
+    expect(screen.queryByRole("slider", { name: /session length/i })).toBeNull()
   })
 
-  it("emits a preset-merged settings object without touching personal settings", async () => {
-    authState.current = makeAuth()
-    const onChange = vi.fn()
-    // Personal setting (soundEnabled=false) must survive the preset application.
-    const initial = { ...DEFAULT_SETTINGS, soundEnabled: false }
-    renderWithLocale(<Harness initial={initial} onChange={onChange} />)
+  it("toggles the idle timeout and dims its slider when off", async () => {
+    renderWithLocale(<Harness />)
+    const slider = screen.getByRole("slider", { name: /idle timeout/i })
+    expect(slider).not.toHaveAttribute("data-disabled")
 
-    const user = userEvent.setup()
-    await user.click(screen.getByRole("button", { name: /no limit/i }))
-
-    const nolimit = PRESETS.find((p) => p.id === "nolimit")!
-    expect(onChange).toHaveBeenCalledOnce()
-    const out = onChange.mock.calls[0]?.[0]
-    expect(out).toMatchObject(nolimit.settings)
-    expect(out.soundEnabled).toBe(false)
+    await userEvent.click(screen.getByLabelText(/enable the idle timeout/i))
+    expect(screen.getByRole("slider", { name: /idle timeout/i })).toHaveAttribute(
+      "data-disabled",
+    )
   })
 
-  it("hides the required-word sub-settings when the master toggle is off, keeping the word source visible but disabled", () => {
-    authState.current = makeAuth()
+  it("keeps the required-word sub-settings visible but disabled when the master toggle is off", () => {
     renderWithLocale(
       <Harness initial={{ ...DEFAULT_SETTINGS, requiredWordIntervalEnabled: false }} />,
     )
-    // Sub-rows (deadline + sound) collapse away entirely.
-    expect(
-      screen.queryByLabelText(/enforce required-word deadline/i),
-    ).not.toBeInTheDocument()
-    expect(screen.queryByLabelText(/enable word sound/i)).not.toBeInTheDocument()
-    // The word-source dropdown stays in the master row, but disabled.
+    // The rows stay mounted (the panel keeps a stable height) …
+    expect(screen.getByLabelText(/enforce required-word deadline/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/enable word sound/i)).toBeInTheDocument()
+    // … but every control in them is disabled, as is the word source.
+    expect(screen.getByLabelText(/enforce required-word deadline/i)).toBeDisabled()
+    expect(screen.getByLabelText(/enable word sound/i)).toBeDisabled()
     expect(screen.getByLabelText(/word source/i)).toBeDisabled()
+    expect(screen.getByLabelText(/sound type/i)).toBeDisabled()
+    expect(
+      screen.getByRole("slider", { name: /new required word every/i }),
+    ).toHaveAttribute("data-disabled")
   })
 
-  it("shows the sound mode dropdown when required words are on, disabled while sound is off", () => {
-    authState.current = makeAuth()
+  it("shows the sound mode dropdown enabled when required words and sound are both on", () => {
+    renderWithLocale(
+      <Harness
+        initial={{
+          ...DEFAULT_SETTINGS,
+          requiredWordIntervalEnabled: true,
+          soundEnabled: true,
+        }}
+      />,
+    )
+    expect(screen.getByLabelText(/sound type/i)).toBeEnabled()
+  })
+
+  it("disables just the sound mode dropdown when sound alone is off", () => {
     renderWithLocale(
       <Harness
         initial={{
@@ -122,5 +75,6 @@ describe("SettingsPanel", () => {
       />,
     )
     expect(screen.getByLabelText(/sound type/i)).toBeDisabled()
+    expect(screen.getByLabelText(/enable word sound/i)).toBeEnabled()
   })
 })

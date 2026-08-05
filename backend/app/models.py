@@ -9,10 +9,10 @@ from pydantic import BaseModel, Field
 if TYPE_CHECKING:
     from app.db_models import User
 
-# Hard cap on user-defined session presets. Mirrors the 5 visible slots in
-# the settings screen. Both backend and tests reference this constant so the
-# limit stays single-sourced.
-MAX_CUSTOM_PRESETS = 5
+# Hard cap on user-defined session presets. Mirrors the 4 cells of the home
+# screen's mode grid, which the "Custom modes" toggle flips over to. Both
+# backend and tests reference this constant so the limit stays single-sourced.
+MAX_CUSTOM_PRESETS = 4
 
 
 class PresetSettings(BaseModel):
@@ -21,8 +21,8 @@ class PresetSettings(BaseModel):
     ``lib/flowfic/types.ts`` — keep the two in sync when adding settings.
     """
 
+    idleTimerEnabled: bool  # noqa: N815
     mainTimerSeconds: int = Field(ge=1, le=60)  # noqa: N815
-    globalTimerEnabled: bool  # noqa: N815
     globalTimerSeconds: int = Field(ge=1, le=3600)  # noqa: N815
     requiredWordIntervalEnabled: bool  # noqa: N815
     requiredWordIntervalSeconds: int = Field(ge=5, le=300)  # noqa: N815
@@ -55,12 +55,13 @@ class StorySettings(BaseModel):
     ignored so a story written by a newer frontend never breaks an older
     backend. The sound/word-source fields carry defaults so rows saved by the
     pre-rename frontend (which stored ``bellEnabled`` / ``categoryWords*``, now
-    ignored) still validate on read. The strict create-time variant is
-    ``StorySettingsStrict``.
+    ignored) still validate on read, and ``idleTimerEnabled`` does the same for
+    rows written before the idle timeout became optional (it was always on).
+    The strict create-time variant is ``StorySettingsStrict``.
     """
 
+    idleTimerEnabled: bool = True  # noqa: N815
     mainTimerSeconds: int  # noqa: N815
-    globalTimerEnabled: bool  # noqa: N815
     globalTimerSeconds: int  # noqa: N815
     requiredWordIntervalEnabled: bool  # noqa: N815
     requiredWordIntervalSeconds: int  # noqa: N815

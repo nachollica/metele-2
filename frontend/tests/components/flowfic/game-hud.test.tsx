@@ -1,5 +1,6 @@
 import { screen } from "@testing-library/react"
-import { describe, expect, it } from "vitest"
+import userEvent from "@testing-library/user-event"
+import { describe, expect, it, vi } from "vitest"
 
 import { GameHud } from "@/components/flowfic/game-hud"
 
@@ -16,6 +17,12 @@ const baseProps: Props = {
   requiredWord: null,
   useWordIn: null,
   useWordTotal: null,
+  paused: false,
+  ended: false,
+  onPause: () => {},
+  onResume: () => {},
+  onQuit: () => {},
+  onFinish: () => {},
 }
 
 function renderHud(props: Partial<Props> = {}) {
@@ -35,6 +42,34 @@ describe("GameHud", () => {
   it("hides the global timer bar when globalSecondsLeft is null", () => {
     renderHud({ globalSecondsLeft: null })
     expect(screen.queryByRole("progressbar", { name: /session ends in/i })).toBeNull()
+  })
+
+  it("hides the idle timer bar when the idle timeout is disabled", () => {
+    renderHud({ idleSecondsLeft: null })
+    expect(screen.queryByRole("progressbar", { name: /idle timeout in/i })).toBeNull()
+    // The session bar is unaffected.
+    expect(screen.getByRole("progressbar", { name: /session ends in/i })).toBeInTheDocument()
+  })
+
+  it("offers Pause and Quit while running, and fires them", async () => {
+    const onPause = vi.fn()
+    const onQuit = vi.fn()
+    renderHud({ onPause, onQuit })
+
+    await userEvent.click(screen.getByRole("button", { name: "Pause" }))
+    expect(onPause).toHaveBeenCalledOnce()
+
+    await userEvent.click(screen.getByRole("button", { name: "Quit session" }))
+    expect(onQuit).toHaveBeenCalledOnce()
+  })
+
+  it("swaps Pause for Resume once paused", async () => {
+    const onResume = vi.fn()
+    renderHud({ paused: true, onResume })
+
+    expect(screen.queryByRole("button", { name: "Pause" })).toBeNull()
+    await userEvent.click(screen.getByRole("button", { name: "Resume" }))
+    expect(onResume).toHaveBeenCalledOnce()
   })
 
   it("hides the required-word panel when requiredWordsEnabled=false", () => {

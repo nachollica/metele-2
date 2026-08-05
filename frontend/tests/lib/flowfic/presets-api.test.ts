@@ -12,8 +12,8 @@ import type { PresetSettings } from "@/lib/flowfic/types"
 // mismatch here 404s silently for every logged-in user.
 
 const SETTINGS: PresetSettings = {
+  idleTimerEnabled: true,
   mainTimerSeconds: 7,
-  globalTimerEnabled: true,
   globalTimerSeconds: 300,
   requiredWordIntervalEnabled: true,
   requiredWordIntervalSeconds: 30,

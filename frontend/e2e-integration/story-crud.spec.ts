@@ -20,7 +20,9 @@ test("story CRUD persists through the real backend and DB", async ({ page, reque
 
   // ---- Create ------------------------------------------------------------
   // Required words off so starting needs no word artifacts (the testing env
-  // skips the word pools) and the game begins immediately.
+  // skips the word pools) and the game begins immediately. That toggle lives
+  // in the home screen's settings panel, behind "More options".
+  await page.getByRole("button", { name: "More options" }).click()
   await page.getByRole("switch", { name: "Enable required words" }).click()
   await page.getByRole("button", { name: "Start writing" }).click()
 
@@ -29,6 +31,7 @@ test("story CRUD persists through the real backend and DB", async ({ page, reque
   await textarea.fill(`${marker}. The keeper watched the tide roll in. `)
 
   await page.getByRole("button", { name: "Quit session" }).click()
+  await page.getByRole("button", { name: "Quit", exact: true }).click()
   await expect(page.getByRole("dialog").getByText("Session ended")).toBeVisible()
   await page.getByRole("button", { name: "Continue editing" }).click()
   await page.getByRole("button", { name: "Create a story" }).click()

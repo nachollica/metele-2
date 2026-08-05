@@ -21,12 +21,9 @@ import { useTranslations } from "@/lib/i18n"
 import { formatSeconds } from "@/lib/flowfic/format"
 import {
   type GameSettings,
-  type PresetSettings,
   type SoundMode,
   type WordSource,
 } from "@/lib/flowfic/types"
-
-import { PresetGrid } from "./preset-grid"
 
 type Props = {
   settings: GameSettings
@@ -34,9 +31,13 @@ type Props = {
 }
 
 /**
- * Session configurator embedded in the Home screen: preset picker (see
- * `PresetGrid`) on top, then one row per game setting. Purely controlled — the
- * parent owns the settings object and the surrounding scroll.
+ * Advanced session settings, shown in the Home screen's swappable panel behind
+ * the "More options" toggle. Purely controlled — the parent owns the settings
+ * object and the surrounding scroll.
+ *
+ * The session length and the mode picker are NOT here: both live in the
+ * launcher above (the dial and the mode grid), since they are the two choices
+ * every player makes and these rows are the ones most never touch.
  */
 export function SettingsPanel({ settings, onChange }: Props) {
   const t = useTranslations()
@@ -45,29 +46,21 @@ export function SettingsPanel({ settings, onChange }: Props) {
     onChange({ ...settings, [key]: value })
   }
 
-  function applyPresetSettings(preset: PresetSettings) {
-    // Merge: only overwrite preset-covered keys, preserving personal settings.
-    onChange({ ...settings, ...preset })
-  }
-
   const fmtSeconds = (v: number) => formatSeconds(v, t.units)
-  const fmtMinutes = (v: number) => `${v}${t.units.minutes}`
 
   const requiredWordsOn = settings.requiredWordIntervalEnabled
 
   return (
     <section
       aria-labelledby="settings-title"
-      className="bg-card text-card-foreground flex flex-col gap-6 rounded-lg border p-4 shadow-sm sm:p-6"
+      className="flex flex-col gap-4"
     >
       <div className="flex flex-col gap-1.5">
-        <h2 id="settings-title" className="text-2xl font-semibold">
+        <h2 id="settings-title" className="text-xl font-semibold">
           {t.settings.title}
         </h2>
         <p className="text-muted-foreground text-sm">{t.settings.description}</p>
       </div>
-
-      <PresetGrid settings={settings} onApply={applyPresetSettings} />
 
       <Separator />
 
@@ -79,6 +72,15 @@ export function SettingsPanel({ settings, onChange }: Props) {
           id="main-timer"
           label={t.settings.mainTimerLabel}
           description={t.settings.mainTimerHelp}
+          toggleId="idle-timer-toggle"
+          toggle={
+            <Switch
+              id="idle-timer-toggle"
+              checked={settings.idleTimerEnabled}
+              onCheckedChange={(v) => update("idleTimerEnabled", v)}
+              aria-label={t.settings.idleTimerEnable}
+            />
+          }
           control={
             <ValueSlider
               id="main-timer"
@@ -86,35 +88,9 @@ export function SettingsPanel({ settings, onChange }: Props) {
               value={settings.mainTimerSeconds}
               min={1}
               max={60}
+              disabled={!settings.idleTimerEnabled}
               onChange={(v) => update("mainTimerSeconds", v)}
               format={fmtSeconds}
-            />
-          }
-        />
-
-        <SettingRow
-          id="global-timer"
-          label={t.settings.globalTimerLabel}
-          description={t.settings.globalTimerHelp}
-          toggleId="global-timer-toggle"
-          toggle={
-            <Switch
-              id="global-timer-toggle"
-              checked={settings.globalTimerEnabled}
-              onCheckedChange={(v) => update("globalTimerEnabled", v)}
-              aria-label={t.settings.globalTimerEnable}
-            />
-          }
-          control={
-            <ValueSlider
-              id="global-timer"
-              ariaLabel={t.settings.globalTimerLabel}
-              value={Math.round(settings.globalTimerSeconds / 60)}
-              min={1}
-              max={30}
-              disabled={!settings.globalTimerEnabled}
-              onChange={(v) => update("globalTimerSeconds", v * 60)}
-              format={fmtMinutes}
             />
           }
         />
@@ -178,104 +154,108 @@ export function SettingsPanel({ settings, onChange }: Props) {
           }
         />
 
-        {/* Required-word sub-settings: hidden entirely when the master toggle
-            is off, so the panel collapses instead of showing dimmed rows. */}
-        {requiredWordsOn ? (
-          <>
-            <SettingRow
+        {/* Required-word sub-settings. Always rendered so the panel keeps a
+            stable height (the home screen swaps it in and out of a fixed-size
+            container); the master toggle greys them out and disables their
+            controls instead of collapsing the rows away. */}
+        <SettingRow
+          id="word-interval"
+          label={t.settings.requiredWordIntervalLabel}
+          description={t.settings.requiredWordIntervalHelp}
+          dimmed={!requiredWordsOn}
+          control={
+            <ValueSlider
               id="word-interval"
-              label={t.settings.requiredWordIntervalLabel}
-              description={t.settings.requiredWordIntervalHelp}
-              control={
-                <ValueSlider
-                  id="word-interval"
-                  ariaLabel={t.settings.requiredWordIntervalLabel}
-                  value={settings.requiredWordIntervalSeconds}
-                  min={5}
-                  max={120}
-                  onChange={(v) => update("requiredWordIntervalSeconds", v)}
-                  format={fmtSeconds}
-                />
-              }
+              ariaLabel={t.settings.requiredWordIntervalLabel}
+              value={settings.requiredWordIntervalSeconds}
+              min={5}
+              max={120}
+              disabled={!requiredWordsOn}
+              onChange={(v) => update("requiredWordIntervalSeconds", v)}
+              format={fmtSeconds}
             />
+          }
+        />
 
-            <SettingRow
+        <SettingRow
+          id="use-timer"
+          label={t.settings.requiredWordUseTimerLabel}
+          description={t.settings.requiredWordUseTimerHelp}
+          dimmed={!requiredWordsOn}
+          toggleId="use-toggle"
+          toggle={
+            <Switch
+              id="use-toggle"
+              checked={settings.requiredWordUseTimerEnabled}
+              disabled={!requiredWordsOn}
+              onCheckedChange={(v) => update("requiredWordUseTimerEnabled", v)}
+              aria-label={t.settings.requiredWordUseTimerEnable}
+            />
+          }
+          control={
+            <ValueSlider
               id="use-timer"
-              label={t.settings.requiredWordUseTimerLabel}
-              description={t.settings.requiredWordUseTimerHelp}
-              toggleId="use-toggle"
-              toggle={
-                <Switch
-                  id="use-toggle"
-                  checked={settings.requiredWordUseTimerEnabled}
-                  onCheckedChange={(v) => update("requiredWordUseTimerEnabled", v)}
-                  aria-label={t.settings.requiredWordUseTimerEnable}
-                />
-              }
-              control={
-                <ValueSlider
-                  id="use-timer"
-                  ariaLabel={t.settings.requiredWordUseTimerLabel}
-                  value={settings.requiredWordUseTimerSeconds}
-                  min={5}
-                  max={120}
-                  disabled={!settings.requiredWordUseTimerEnabled}
-                  onChange={(v) => update("requiredWordUseTimerSeconds", v)}
-                  format={fmtSeconds}
-                />
-              }
+              ariaLabel={t.settings.requiredWordUseTimerLabel}
+              value={settings.requiredWordUseTimerSeconds}
+              min={5}
+              max={120}
+              disabled={!requiredWordsOn || !settings.requiredWordUseTimerEnabled}
+              onChange={(v) => update("requiredWordUseTimerSeconds", v)}
+              format={fmtSeconds}
             />
+          }
+        />
 
-            {/* Word sound: toggle plus the bell/speak mode dropdown, which
-                grays out (like a disabled slider) when sound is off. Personal
-                setting — never saved into presets. */}
-            <SettingRow
-              id="sound-mode"
-              label={
-                <span className="flex items-center gap-2">
-                  <Volume2 className="size-4" aria-hidden />
-                  {t.settings.soundLabel}
-                </span>
-              }
-              description={t.settings.soundHelp}
-              toggleId="sound-toggle"
-              toggle={
-                <Switch
-                  id="sound-toggle"
-                  checked={settings.soundEnabled}
-                  onCheckedChange={(v) => update("soundEnabled", v)}
-                  aria-label={t.settings.soundEnable}
-                />
-              }
-              control={
-                <div
-                  className={cn(
-                    "flex py-2 transition-opacity",
-                    !settings.soundEnabled && "opacity-50",
-                  )}
-                >
-                  <Select
-                    value={settings.soundMode}
-                    onValueChange={(v) => update("soundMode", v as SoundMode)}
-                    disabled={!settings.soundEnabled}
-                  >
-                    <SelectTrigger
-                      id="sound-mode"
-                      className="w-full sm:w-48"
-                      aria-label={t.settings.soundModeLabel}
-                    >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="bell">{t.settings.soundBell}</SelectItem>
-                      <SelectItem value="speak">{t.settings.soundSpeak}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              }
+        {/* Word sound: toggle plus the bell/speak mode dropdown, which grays
+            out (like a disabled slider) when sound is off. Personal setting —
+            never saved into presets. */}
+        <SettingRow
+          id="sound-mode"
+          label={
+            <span className="flex items-center gap-2">
+              <Volume2 className="size-4" aria-hidden />
+              {t.settings.soundLabel}
+            </span>
+          }
+          description={t.settings.soundHelp}
+          dimmed={!requiredWordsOn}
+          toggleId="sound-toggle"
+          toggle={
+            <Switch
+              id="sound-toggle"
+              checked={settings.soundEnabled}
+              disabled={!requiredWordsOn}
+              onCheckedChange={(v) => update("soundEnabled", v)}
+              aria-label={t.settings.soundEnable}
             />
-          </>
-        ) : null}
+          }
+          control={
+            <div
+              className={cn(
+                "flex py-2 transition-opacity",
+                !settings.soundEnabled && "opacity-50",
+              )}
+            >
+              <Select
+                value={settings.soundMode}
+                onValueChange={(v) => update("soundMode", v as SoundMode)}
+                disabled={!requiredWordsOn || !settings.soundEnabled}
+              >
+                <SelectTrigger
+                  id="sound-mode"
+                  className="w-full sm:w-48"
+                  aria-label={t.settings.soundModeLabel}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="bell">{t.settings.soundBell}</SelectItem>
+                  <SelectItem value="speak">{t.settings.soundSpeak}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          }
+        />
       </div>
     </section>
   )
@@ -290,6 +270,7 @@ function SettingRow({
   toggle,
   toggleId,
   control,
+  dimmed = false,
 }: {
   id: string
   label: ReactNode
@@ -297,11 +278,18 @@ function SettingRow({
   toggle?: ReactNode
   toggleId?: string
   control?: ReactNode
+  /** Grey the row's label out — used when a master toggle above disables it. */
+  dimmed?: boolean
 }) {
   return (
     <div className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:gap-4">
       {/* Top row for toggle+name on small screens, left half on wide screens */}
-      <div className="flex w-full items-center gap-3 sm:w-1/2">
+      <div
+        className={cn(
+          "flex w-full items-center gap-3 transition-opacity sm:w-1/2",
+          dimmed && "opacity-50",
+        )}
+      >
         <label
           htmlFor={toggleId}
           className={cn(

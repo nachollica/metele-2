@@ -1,7 +1,5 @@
 "use client"
 
-import { type ReactNode } from "react"
-
 import { DevLoginButton } from "@/components/auth/dev-login-button"
 import { useTranslations } from "@/lib/i18n"
 import type { AuthContextValue } from "@/lib/auth"
@@ -12,8 +10,6 @@ import { LanguageMenu } from "./language-menu"
 import { ThemeToggle } from "./theme-toggle"
 
 type Props = {
-  /** Game action for the top-right slot (Create a story / Start writing / Quit …). */
-  primaryAction: ReactNode
   authStatus: AuthContextValue["status"]
   /** Whether the backend advertises the dev-user backdoor. */
   devUserEnabled: boolean
@@ -29,11 +25,13 @@ type Props = {
 /**
  * The topmost app bar, same structure on every screen. Left: brand logo (a home
  * link) with the language + light/dark controls beside it. Right: the dev-login
- * shortcut, the account control (Log in / avatar), and the primary game action
- * anchored to the far right.
+ * shortcut and the account control (Log in / avatar).
+ *
+ * There is deliberately no game action here — the whole session lifecycle is
+ * driven from the home screen's launcher and, mid-sprint, from the pause/quit
+ * controls inside the game HUD.
  */
 export function AppHeader({
-  primaryAction,
   authStatus,
   devUserEnabled,
   disabled,
@@ -78,8 +76,6 @@ export function AppHeader({
           <DevLoginButton disabled={disabled} />
         ) : null}
         <AccountMenu onShowSection={onShowSection} onOpenProfile={onOpenProfile} disabled={disabled} />
-        {/* Primary action (Create a story / Start writing / Quit …), far-right. */}
-        {primaryAction}
       </div>
     </header>
   )

@@ -82,8 +82,8 @@ def test_dev_token_works_for_preset_crud(client, settings, dev_user) -> None:
     payload = {
         "name": "DevPreset",
         "settings": {
+            "idleTimerEnabled": False,
             "mainTimerSeconds": 5,
-            "globalTimerEnabled": False,
             "globalTimerSeconds": 60,
             "requiredWordIntervalEnabled": False,
             "requiredWordIntervalSeconds": 30,

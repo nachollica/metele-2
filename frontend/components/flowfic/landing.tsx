@@ -1,44 +1,59 @@
 "use client"
 
 import { useTranslations } from "@/lib/i18n"
+import { type GameSettings } from "@/lib/flowfic/types"
 import { type Story } from "@/lib/flowfic/stories-api"
 
 import { type Section } from "./dashboard-nav"
-import { InspirationImage, QuoteOfDay } from "./inspiration-panel"
-import { JourneySection } from "./journey-section"
+import { type GridMode } from "./preset-grid"
+import { InspirationCard } from "./inspiration-panel"
+import { SessionLauncher } from "./session-launcher"
+import { SettingsPanel } from "./settings-panel"
 import { StoriesSection } from "./stories-section"
 
-// Landing order: full-width quote of the day, the inspiration-image widget, the
-// combined "My Journey" card (level/streak, challenge of the day, weekly
-// summary), and the full-width recent-stories list.
+// Landing order: the session launcher (dial + modes + actions), a fixed-height
+// panel that swaps between recent stories and the advanced settings, then the
+// full-width inspiration card.
+
+// Height of the swappable panel. Sized so the settings face fits without the
+// container resizing when the two faces trade places — the stories face simply
+// shows as many rows as fit and scrolls for the rest.
+const PANEL_HEIGHT = "h-[30rem]"
 
 type Props = {
+  settings: GameSettings
+  onChangeSettings: (settings: GameSettings) => void
+  /** Begin the sprint with the current settings. */
+  onStart: () => void
+  /** Whether the swappable panel shows the settings face (URL-backed: /new). */
+  settingsOpen: boolean
+  onToggleSettings: () => void
   /** Open an expanded subsection (from a "Show all" link). */
   onShowSection: (section: Section) => void
-  /** Begin the new-story flow (challenge call-to-action). */
-  onNewStory: () => void
   stories: Story[] | null
   storiesError: boolean
   onViewStory: (story: Story) => void
   onDeleteStory: (id: number) => Promise<boolean>
   onUpdateStoryTitle: (id: number, title: string | null) => Promise<boolean>
+  /** Mode grid face, lifted here so it survives the panel toggling. */
+  gridMode: GridMode
+  onToggleGridMode: () => void
 }
 
-/**
- * Landing dashboard: everything the old Home screen showed (minus the session
- * settings, now on the configuring screen) aggregated with the previously
- * sidebar-navigated sections. Order: quote of the day, inspiration image, the
- * combined "My Journey" card, then recent stories — each of the last two with a
- * "Show all" link into its expanded screen.
- */
 export function LandingHome({
+  settings,
+  onChangeSettings,
+  onStart,
+  settingsOpen,
+  onToggleSettings,
   onShowSection,
-  onNewStory,
   stories,
   storiesError,
   onViewStory,
   onDeleteStory,
   onUpdateStoryTitle,
+  gridMode,
+  onToggleGridMode,
 }: Props) {
   const t = useTranslations()
 
@@ -48,30 +63,38 @@ export function LandingHome({
           assistive tech so the page still has a top-level heading. */}
       <h1 className="sr-only">{t.app.title}</h1>
 
-      {/* Quote of the day — full width, top of the dashboard. */}
-      <QuoteOfDay />
-
-      {/* Inspiration image — full-width titled widget. */}
-      <InspirationImage />
-
-      {/* Combined progress card — level/streak, challenge of the day, and this
-          week's summary — with one "Show all" into the My Journey screen. */}
-      <JourneySection
-        preview
-        onNewStory={onNewStory}
-        onShowAll={() => onShowSection("journey")}
+      <SessionLauncher
+        settings={settings}
+        onChange={onChangeSettings}
+        onStart={onStart}
+        settingsOpen={settingsOpen}
+        onToggleSettings={onToggleSettings}
+        gridMode={gridMode}
+        onToggleGridMode={onToggleGridMode}
       />
 
-      {/* Recent stories — full width. */}
-      <StoriesSection
-        preview
-        onShowAll={() => onShowSection("stories")}
-        stories={stories}
-        error={storiesError}
-        onViewStory={onViewStory}
-        onDeleteStory={onDeleteStory}
-        onUpdateTitle={onUpdateStoryTitle}
-      />
+      {/* Swappable panel: recent stories by default, advanced settings behind
+          "More options". Fixed height so toggling never jumps the page. */}
+      <div
+        className={`bg-card text-card-foreground ${PANEL_HEIGHT} overflow-y-auto rounded-2xl border p-5 shadow-sm`}
+      >
+        {settingsOpen ? (
+          <SettingsPanel settings={settings} onChange={onChangeSettings} />
+        ) : (
+          <StoriesSection
+            preview
+            flush
+            onShowAll={() => onShowSection("stories")}
+            stories={stories}
+            error={storiesError}
+            onViewStory={onViewStory}
+            onDeleteStory={onDeleteStory}
+            onUpdateTitle={onUpdateStoryTitle}
+          />
+        )}
+      </div>
+
+      <InspirationCard />
     </div>
   )
 }

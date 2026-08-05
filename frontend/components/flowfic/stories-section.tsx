@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { Fragment, useMemo, useState } from "react"
 import {
   ArrowDownWideNarrow,
   ArrowUpWideNarrow,
@@ -24,8 +24,9 @@ import { filterAndSortStories, type SortOrder } from "@/lib/flowfic/story-search
 import { EmptyHint, Panel, SectionHeader, ShowAllButton } from "./dashboard-widgets"
 import { StoryCard } from "./story-card"
 
-// How many stories the landing preview card shows before "Show all".
-const PREVIEW_COUNT = 3
+// How many stories the landing preview shows before "Show all". Sized to more
+// than fills the landing's fixed-height panel, which scrolls for the rest.
+const PREVIEW_COUNT = 6
 
 type Props = {
   stories: Story[] | null
@@ -35,6 +36,8 @@ type Props = {
   onUpdateTitle: (id: number, title: string | null) => Promise<boolean>
   /** Render a trimmed card for the landing dashboard instead of the full screen. */
   preview?: boolean
+  /** Drop the preview's own card chrome — the landing already supplies it. */
+  flush?: boolean
   /** Open the expanded My-stories screen (preview only). */
   onShowAll?: () => void
 }
@@ -54,6 +57,7 @@ export function StoriesSection({
   onDeleteStory,
   onUpdateTitle,
   preview = false,
+  flush = false,
   onShowAll,
 }: Props) {
   const t = useTranslations()
@@ -82,8 +86,9 @@ export function StoriesSection({
           PREVIEW_COUNT,
         )
       : []
+    const Wrapper = flush ? Fragment : Panel
     return (
-      <Panel>
+      <Wrapper>
         <SectionHeader
           title={t.dashboard.recentStories}
           action={
@@ -124,7 +129,7 @@ export function StoriesSection({
             ))}
           </div>
         )}
-      </Panel>
+      </Wrapper>
     )
   }
 

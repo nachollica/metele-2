@@ -15,9 +15,8 @@ test("a finished session is saved to the backend and shows in My stories", async
   await seedDevSession(page)
   await page.goto("/")
 
-  // Signed-in users skip the welcome modal and land on the dashboard; New story
-  // reveals the settings, then Start writing begins the sprint.
-  await page.getByRole("button", { name: "Create a story" }).click()
+  // Signed-in users skip the welcome modal and land on the dashboard, whose
+  // launcher starts the sprint directly.
   await page.getByRole("button", { name: "Start writing" }).click()
 
   const story = "Lighthouse keepers count the waves at dusk. "
@@ -27,12 +26,13 @@ test("a finished session is saved to the backend and shows in My stories", async
 
   // Quit ends the (armed) session and opens the stats modal.
   await page.getByRole("button", { name: "Quit session" }).click()
+  await page.getByRole("button", { name: "Quit", exact: true }).click()
   await expect(page.getByRole("dialog").getByText("Session ended")).toBeVisible()
 
-  // Close the modal, then "Back to home" leaves the ended state — which is
-  // what triggers the save.
+  // Close the modal, then the HUD's Finish button performs the final checkout
+  // of the ended sprint — which is what triggers the save.
   await page.getByRole("button", { name: "Continue editing" }).click()
-  await page.getByRole("button", { name: "Back to home" }).click()
+  await page.getByRole("button", { name: "Create a story" }).click()
 
   // The frontend POSTed exactly one story with the expected contract.
   await expect.poll(() => backend.postedStories.length).toBe(1)

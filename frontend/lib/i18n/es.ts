@@ -46,14 +46,14 @@ export const es = {
   },
 
   settings: {
-    title: "Configuración de sesión",
-    description: "Elige un preset o ajusta abajo.",
-    presetsLabel: "Ajustes rápidos",
+    title: "Ajustes avanzados",
+    description: "Afina los temporizadores y las palabras requeridas.",
+    presetsLabel: "Modos de juego",
+    moreOptions: "Más opciones",
+    sessionLengthLabel: "Duración de la sesión",
     mainTimerLabel: "Tiempo de inactividad",
     mainTimerHelp: "Segundos inactivo antes de terminar.",
-    globalTimerLabel: "Duración de la sesión",
-    globalTimerHelp: "Duración total. Desactiva para sesión sin límite.",
-    globalTimerEnable: "Limitar duración de sesión",
+    idleTimerEnable: "Activar el tiempo de inactividad",
     requiredWordIntervalEnable: "Activar palabras requeridas",
     requiredWordIntervalLabel: "Nueva palabra requerida cada",
     requiredWordIntervalHelp: "Intervalo promedio entre palabras; aleatorio.",
@@ -82,10 +82,7 @@ export const es = {
     start: "Empezar a escribir",
     startShort: "Escribir",
     customModesLabel: "Modos personalizados",
-    customModesDescription: "Tus presets guardados. Haz clic para aplicar.",
-    customModesTooltip: "Edita o elimina tus modos personalizados desde tu perfil.",
-    backToPresetsLabel: "Volver a los presets originales",
-    backToPresetsDescription: "Mostrar los modos predeterminados.",
+    backToPresetsLabel: "Modos predeterminados",
     createPresetLabel: "Guardar configuración actual",
     createPresetTooltip: "Guarda los ajustes de arriba como un modo personalizado.",
     customNamePlaceholder: "Nombre del modo",
@@ -100,23 +97,15 @@ export const es = {
   presets: {
     classic: {
       name: "Clásico",
-      description: "Ajustes equilibrados para una sesión de 5 minutos.",
+      description: "Ajustes equilibrados. Un buen punto de partida.",
     },
     speed: {
-      name: "Velocidad",
-      description: "Poco tiempo inactivo y palabras rápidas. No pares.",
-    },
-    relaxed: {
-      name: "Relajado",
-      description: "Sin temporizador global, palabras lentas y plazos suaves.",
+      name: "Rápido",
+      description: "Poco tiempo inactivo, sin palabras requeridas. No pares.",
     },
     creative: {
-      name: "Demasiado creativo",
+      name: "Súper creativo",
       description: "Las palabras requeridas llegan sin parar. Mantente ágil.",
-    },
-    nolimit: {
-      name: "Sin Límite",
-      description: "Sin temporizador global, palabras lentas, juega cuanto quieras.",
     },
   },
 
@@ -128,9 +117,25 @@ export const es = {
     sessionEndsIn: "Sesión termina en",
     characters: "caracteres",
     placeholder: "Empieza tu historia. No dejes de escribir…",
-    pause: "Abandonar",
+    pause: "Pausar",
+    // Los controles van en un bloque cuadrado pequeño, así que las etiquetas
+    // visibles se acortan; el nombre accesible lleva la palabra completa.
+    resume: "Continuar",
+    resumeShort: "Seguir",
+    paused: "En pausa",
+    pausedHint: "Tus temporizadores están detenidos. Continúa para seguir escribiendo.",
     quit: "Salir de sesión",
     quitShort: "Salir",
+    quitConfirmTitle: "¿Salir de esta sesión?",
+    quitConfirmDescription:
+      "Tu sesión termina aquí y verás tus estadísticas. La historia seguirá siendo editable después.",
+    quitConfirm: "Salir",
+    quitCancel: "Seguir escribiendo",
+    // Cierre final de una sesión terminada: guarda la historia y vuelve al inicio.
+    finish: "Crear una historia",
+    finishShort: "Terminar",
+    inspirationShow: "Mostrar inspiración",
+    inspirationHide: "Ocultar inspiración",
     viewingStory: "Viendo una historia anterior (solo lectura).",
     saveFailed: "No se pudo guardar tu última historia.",
     saveRetry: "Reintentar",
@@ -257,11 +262,6 @@ export const es = {
     challenges: "Desafíos",
     stats: "Estadísticas",
     achievements: "Logros",
-    newStory: "Crear una historia",
-    // Etiquetas cortas del botón de juego, solo en móvil; las versiones
-    // completas de arriba se muestran desde `sm` y son los nombres accesibles.
-    newStoryShort: "Crear",
-    backToHomeShort: "Inicio",
     showAll: "Ver todo",
     backToHome: "Volver al inicio",
     // Etiqueta de la flecha atrás en una historia / un "no encontrado" que se
@@ -298,16 +298,16 @@ export const es = {
     wordsWritten: "Palabras escritas",
     writingTime: "Tiempo de escritura",
     sessionsCompleted: "Sesiones completadas",
+    minutes: "minutos",
     quoteOfDay: "Cita del día",
     challengeOfDay: "Desafío del día",
+    challengeOfDayHint: "Entra directo",
     writeNow: "Escribir ahora",
     recentStories: "Historias recientes",
     inspirationAlt: "Imagen de inspiración",
-    inspirationTitle: "Inspiración",
-    inspirationCredit: "Ver en film-grab.com",
-    inspirationCreditShort: "film-grab.com",
-    inspirationCreditLabel: "Ver {title} en film-grab.com (se abre en una pestaña nueva)",
-    inspirationRefresh: "Mostrar otra imagen",
+    inspirationPrompt: "Haz clic aquí para inspirarte",
+    inspirationAnother: "Muéstrame otra inspiración",
+    inspirationUnavailable: "No hay inspiración disponible ahora mismo.",
   },
 
   achievements: {

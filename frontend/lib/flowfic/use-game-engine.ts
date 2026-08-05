@@ -12,6 +12,7 @@ import {
 import { useAuth } from "@/lib/auth"
 import { useLocale } from "@/lib/i18n"
 import { usePreferences } from "@/lib/preferences"
+import { clearInspiration } from "@/lib/flowfic/inspiration"
 import { playBell, primeAudio, speakWord } from "@/lib/flowfic/sound"
 import { randomIntervalMs } from "@/lib/flowfic/random"
 import { pickRequiredWord, normalizeForMatch } from "@/lib/flowfic/words"
@@ -39,9 +40,10 @@ import {
  *   idle    → no session; the dashboard shows sections.
  *   loading → resolving the custom word pool before the first keystroke.
  *   playing → timers armed on first input; required words spawn.
+ *   paused  → timers frozen mid-sprint; the editor is read-only until resumed.
  *   ended   → stats captured; the text stays editable until the user leaves.
  */
-export type GameState = "idle" | "loading" | "playing" | "ended"
+export type GameState = "idle" | "loading" | "playing" | "paused" | "ended"
 
 // Max time we'll block on the categories backend call before starting with the
 // hardcoded fallback pool (the request, if it ever resolves, is discarded).
@@ -110,6 +112,31 @@ export function useGameEngine() {
   const uiTickRef = useRef<number | null>(null)
   const armSpawnTimerRef = useRef<() => void>(() => {})
 
+  // Wall-clock deadline (ms epoch) for each running timeout, so pausing can
+  // convert "fires at T" into "fires in N ms" and re-arm on resume. `null`
+  // means that timer is not currently running.
+  const deadlinesRef = useRef<{
+    idle: number | null
+    global: number | null
+    wordSpawn: number | null
+    wordUse: number | null
+  }>({ idle: null, global: null, wordSpawn: null, wordUse: null })
+  // Remaining ms captured at the moment of pausing; consumed by resume().
+  const pausedRemainingRef = useRef<{
+    idle: number | null
+    global: number | null
+    wordSpawn: number | null
+    wordUse: number | null
+  } | null>(null)
+  // What the word-use timeout does when it fires (see spawnRequiredWord): end
+  // the sprint, or silently retire the unanswered word. Re-armed on resume.
+  const wordUseActionRef = useRef<"end" | "dismiss">("end")
+  // When the current pause started, so resume can shift the elapsed-time marks
+  // the HUD countdowns are derived from.
+  const pausedAtRef = useRef<number | null>(null)
+  // Latest game state, readable from callbacks without re-creating them.
+  const gameStateRef = useRef<GameState>("idle")
+
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
 
   useEffect(() => {
@@ -121,6 +148,9 @@ export function useGameEngine() {
   useEffect(() => {
     settingsRef.current = settings
   }, [settings])
+  useEffect(() => {
+    gameStateRef.current = gameState
+  }, [gameState])
 
   // Prefetch the required-word match map for the active locale so it is warm
   // before a game starts. It is versioned/immutable, so this is effectively a
@@ -180,6 +210,17 @@ export function useGameEngine() {
       window.clearInterval(uiTickRef.current)
       uiTickRef.current = null
     }
+    deadlinesRef.current = { idle: null, global: null, wordSpawn: null, wordUse: null }
+    pausedRemainingRef.current = null
+  }, [])
+
+  // Start the cosmetic 100ms tick that drives the HUD countdowns. Idempotent —
+  // both arming and resuming call it.
+  const startUiTick = useCallback(() => {
+    if (uiTickRef.current !== null) return
+    uiTickRef.current = window.setInterval(() => {
+      setNow(Date.now())
+    }, UI_TICK_MS)
   }, [])
 
   const endGame = useCallback(
@@ -291,13 +332,57 @@ export function useGameEngine() {
   }, [clearAllTimers])
 
   // Save any just-finished story, wipe transient state, return to idle. The
-  // dashboard decides where to navigate afterward.
+  // dashboard decides where to navigate afterward. This is the final checkout
+  // of the game flow, so it also drops the inspiration the sprint was written
+  // against — the next story starts from a blank invitation.
   const finishAndReset = useCallback(() => {
     saveCurrentStoryIfNeeded()
     resetSession()
+    clearInspiration()
   }, [resetSession, saveCurrentStoryIfNeeded])
 
   // ---- Required word lifecycle ------------------------------------------
+  // Each arm-* helper takes an explicit duration and records the wall-clock
+  // deadline, so pause() can turn "fires at T" back into "fires in N ms" and
+  // resume() can re-arm the remainder without re-deriving it from settings.
+  const armWordUseTimeout = useCallback(
+    (ms: number) => {
+      if (wordUseTimeoutRef.current !== null) {
+        window.clearTimeout(wordUseTimeoutRef.current)
+      }
+      deadlinesRef.current.wordUse = Date.now() + ms
+      wordUseTimeoutRef.current = window.setTimeout(() => {
+        wordUseTimeoutRef.current = null
+        deadlinesRef.current.wordUse = null
+        if (currentWordRef.current === null) return
+        // Deadline enforced: an unanswered word ends the sprint. Otherwise the
+        // word just retires and the next spawn is scheduled.
+        if (wordUseActionRef.current === "end") {
+          endGame("unused-word")
+          return
+        }
+        setCurrentRequiredWord(null)
+        currentWordRef.current = null
+        wordSpawnedAtRef.current = null
+        armSpawnTimerRef.current()
+      }, ms)
+    },
+    [endGame],
+  )
+
+  const spawnRequiredWordRef = useRef<() => void>(() => {})
+  const armSpawnTimeout = useCallback((ms: number) => {
+    if (wordSpawnTimeoutRef.current !== null) {
+      window.clearTimeout(wordSpawnTimeoutRef.current)
+    }
+    deadlinesRef.current.wordSpawn = Date.now() + ms
+    wordSpawnTimeoutRef.current = window.setTimeout(() => {
+      wordSpawnTimeoutRef.current = null
+      deadlinesRef.current.wordSpawn = null
+      spawnRequiredWordRef.current()
+    }, ms)
+  }, [])
+
   const spawnRequiredWord = useCallback(() => {
     const currentSettings = settingsRef.current
     const next = pickRequiredWord(
@@ -317,54 +402,61 @@ export function useGameEngine() {
       }
     }
 
-    if (wordUseTimeoutRef.current !== null) {
-      window.clearTimeout(wordUseTimeoutRef.current)
-      wordUseTimeoutRef.current = null
-    }
-    if (currentSettings.requiredWordUseTimerEnabled) {
-      wordUseTimeoutRef.current = window.setTimeout(() => {
-        if (currentWordRef.current !== null) {
-          endGame("unused-word")
-        }
-      }, currentSettings.requiredWordUseTimerSeconds * 1000)
-    } else {
-      wordUseTimeoutRef.current = window.setTimeout(() => {
-        if (currentWordRef.current === null) return
-        setCurrentRequiredWord(null)
-        currentWordRef.current = null
-        wordSpawnedAtRef.current = null
-        wordUseTimeoutRef.current = null
-        armSpawnTimerRef.current()
-      }, WORD_AUTO_DISMISS_MS)
-    }
-  }, [endGame, locale])
+    const action = currentSettings.requiredWordUseTimerEnabled ? "end" : "dismiss"
+    wordUseActionRef.current = action
+    armWordUseTimeout(
+      action === "end"
+        ? currentSettings.requiredWordUseTimerSeconds * 1000
+        : WORD_AUTO_DISMISS_MS,
+    )
+  }, [armWordUseTimeout, locale])
 
   const armSpawnTimer = useCallback(() => {
-    if (wordSpawnTimeoutRef.current !== null) {
-      window.clearTimeout(wordSpawnTimeoutRef.current)
-      wordSpawnTimeoutRef.current = null
+    if (currentWordRef.current !== null) {
+      if (wordSpawnTimeoutRef.current !== null) {
+        window.clearTimeout(wordSpawnTimeoutRef.current)
+        wordSpawnTimeoutRef.current = null
+        deadlinesRef.current.wordSpawn = null
+      }
+      return
     }
-    if (currentWordRef.current !== null) return
-    const intervalMs = randomIntervalMs(settingsRef.current.requiredWordIntervalSeconds)
-    wordSpawnTimeoutRef.current = window.setTimeout(() => {
-      wordSpawnTimeoutRef.current = null
-      spawnRequiredWord()
-    }, intervalMs)
-  }, [spawnRequiredWord])
+    armSpawnTimeout(randomIntervalMs(settingsRef.current.requiredWordIntervalSeconds))
+  }, [armSpawnTimeout])
 
   useEffect(() => {
     armSpawnTimerRef.current = armSpawnTimer
   }, [armSpawnTimer])
+  useEffect(() => {
+    spawnRequiredWordRef.current = spawnRequiredWord
+  }, [spawnRequiredWord])
 
   // ---- Idle timeout ------------------------------------------------------
+  // No-op when the idle timeout is switched off: the player can then think for
+  // as long as they like and only the session timer (or a missed required
+  // word) can end the sprint.
+  const armIdleTimeoutFor = useCallback(
+    (ms: number) => {
+      if (idleTimeoutRef.current !== null) {
+        window.clearTimeout(idleTimeoutRef.current)
+        idleTimeoutRef.current = null
+      }
+      if (!settingsRef.current.idleTimerEnabled) {
+        deadlinesRef.current.idle = null
+        return
+      }
+      deadlinesRef.current.idle = Date.now() + ms
+      idleTimeoutRef.current = window.setTimeout(() => {
+        idleTimeoutRef.current = null
+        deadlinesRef.current.idle = null
+        endGame("idle")
+      }, ms)
+    },
+    [endGame],
+  )
+
   const armIdleTimeout = useCallback(() => {
-    if (idleTimeoutRef.current !== null) {
-      window.clearTimeout(idleTimeoutRef.current)
-    }
-    idleTimeoutRef.current = window.setTimeout(() => {
-      endGame("idle")
-    }, settingsRef.current.mainTimerSeconds * 1000)
-  }, [endGame])
+    armIdleTimeoutFor(settingsRef.current.mainTimerSeconds * 1000)
+  }, [armIdleTimeoutFor])
 
   // ---- Start / restart ---------------------------------------------------
   const beginPlaying = useCallback(
@@ -448,6 +540,23 @@ export function useGameEngine() {
     [beginPlaying, getAccessToken, locale],
   )
 
+  // The session timer is unconditional — its length is picked from the home
+  // dial and there is no "off" any more.
+  const armGlobalTimeout = useCallback(
+    (ms: number) => {
+      if (globalTimeoutRef.current !== null) {
+        window.clearTimeout(globalTimeoutRef.current)
+      }
+      deadlinesRef.current.global = Date.now() + ms
+      globalTimeoutRef.current = window.setTimeout(() => {
+        globalTimeoutRef.current = null
+        deadlinesRef.current.global = null
+        endGame("global")
+      }, ms)
+    },
+    [endGame],
+  )
+
   const armTimers = useCallback(() => {
     const currentSettings = settingsRef.current
     const startedAt = Date.now()
@@ -455,23 +564,84 @@ export function useGameEngine() {
     lastInputAtRef.current = startedAt
 
     armIdleTimeout()
-
-    if (currentSettings.globalTimerEnabled) {
-      globalTimeoutRef.current = window.setTimeout(() => {
-        endGame("global")
-      }, currentSettings.globalTimerSeconds * 1000)
-    }
+    armGlobalTimeout(currentSettings.globalTimerSeconds * 1000)
 
     if (currentSettings.requiredWordIntervalEnabled) {
       armSpawnTimer()
     }
 
-    uiTickRef.current = window.setInterval(() => {
-      setNow(Date.now())
-    }, UI_TICK_MS)
-
+    startUiTick()
     setArmed(true)
-  }, [armIdleTimeout, armSpawnTimer, endGame])
+  }, [armGlobalTimeout, armIdleTimeout, armSpawnTimer, startUiTick])
+
+  // ---- Pause / resume ----------------------------------------------------
+  // Freeze the sprint: cancel every pending timeout, remembering how long each
+  // had left. Also stops the UI tick so the HUD holds its numbers. Pausing
+  // before the first keystroke (not yet `armed`) is still a valid state change
+  // — there is simply nothing to remember.
+  const pause = useCallback(() => {
+    if (gameStateRef.current !== "playing") return
+    const nowMs = Date.now()
+    const remainingFor = (deadline: number | null) =>
+      deadline === null ? null : Math.max(0, deadline - nowMs)
+    const d = deadlinesRef.current
+    const remaining = {
+      idle: remainingFor(d.idle),
+      global: remainingFor(d.global),
+      wordSpawn: remainingFor(d.wordSpawn),
+      wordUse: remainingFor(d.wordUse),
+    }
+    // clearAllTimers resets the deadline/remainder scratch space, so stash the
+    // captured remainders after it runs, not before.
+    clearAllTimers()
+    pausedRemainingRef.current = remaining
+    pausedAtRef.current = nowMs
+    setGameState("paused")
+    setNow(nowMs)
+  }, [clearAllTimers])
+
+  // Unfreeze: re-arm each timer with the time it had left, and shift the
+  // "started at" / "last input at" / "word spawned at" marks forward by the
+  // paused duration so the HUD's elapsed-based countdowns stay in step with
+  // the re-armed timeouts. Focus returns to the editor with the caret at the
+  // end of the story, so the player just keeps typing.
+  const resume = useCallback(() => {
+    if (gameStateRef.current !== "paused") return
+    const remaining = pausedRemainingRef.current
+    const pausedMs = pausedAtRef.current === null ? 0 : Date.now() - pausedAtRef.current
+    pausedAtRef.current = null
+    pausedRemainingRef.current = null
+
+    if (startedAtRef.current !== 0) startedAtRef.current += pausedMs
+    if (lastInputAtRef.current !== 0) lastInputAtRef.current += pausedMs
+    if (wordSpawnedAtRef.current !== null) wordSpawnedAtRef.current += pausedMs
+
+    setGameState("playing")
+
+    if (remaining !== null) {
+      if (remaining.idle !== null) armIdleTimeoutFor(remaining.idle)
+      if (remaining.global !== null) armGlobalTimeout(remaining.global)
+      if (remaining.wordSpawn !== null) armSpawnTimeout(remaining.wordSpawn)
+      if (remaining.wordUse !== null) armWordUseTimeout(remaining.wordUse)
+    }
+    if (armed) startUiTick()
+    setNow(Date.now())
+
+    window.setTimeout(() => {
+      const el = textareaRef.current
+      if (!el) return
+      el.focus()
+      const end = el.value.length
+      el.setSelectionRange(end, end)
+    }, 0)
+  }, [
+    armGlobalTimeout,
+    armIdleTimeoutFor,
+    armSpawnTimeout,
+    armWordUseTimeout,
+    armed,
+    startUiTick,
+  ])
 
   // ---- Logout cleanup: authenticated → anonymous wipes the session -------
   const prevAuthStatusRef = useRef(authStatus)
@@ -521,6 +691,7 @@ export function useGameEngine() {
       if (wordUseTimeoutRef.current !== null) {
         window.clearTimeout(wordUseTimeoutRef.current)
         wordUseTimeoutRef.current = null
+        deadlinesRef.current.wordUse = null
       }
       armSpawnTimer()
     },
@@ -557,22 +728,24 @@ export function useGameEngine() {
   )
 
   // ---- Computed countdown values for the HUD ----------------------------
+  // A live sprint is any state where a countdown is meaningful. `paused` is
+  // included so the bars keep their frozen values instead of snapping back to
+  // full while the game is held.
+  const inSession =
+    gameState === "playing" || gameState === "paused" || gameState === "ended"
+
   const idleSecondsLeft = useMemo(() => {
-    if ((gameState !== "playing" && gameState !== "ended") || !armed) {
-      return settings.mainTimerSeconds
-    }
+    if (!settings.idleTimerEnabled) return null
+    if (!inSession || !armed) return settings.mainTimerSeconds
     const elapsed = (now - lastInputAtRef.current) / 1000
     return Math.max(0, settings.mainTimerSeconds - elapsed)
-  }, [armed, gameState, now, settings.mainTimerSeconds])
+  }, [armed, inSession, now, settings.idleTimerEnabled, settings.mainTimerSeconds])
 
   const globalSecondsLeft = useMemo(() => {
-    if (!settings.globalTimerEnabled) return null
-    if ((gameState !== "playing" && gameState !== "ended") || !armed) {
-      return settings.globalTimerSeconds
-    }
+    if (!inSession || !armed) return settings.globalTimerSeconds
     const elapsed = (now - startedAtRef.current) / 1000
     return Math.max(0, settings.globalTimerSeconds - elapsed)
-  }, [armed, gameState, now, settings.globalTimerEnabled, settings.globalTimerSeconds])
+  }, [armed, inSession, now, settings.globalTimerSeconds])
 
   const useWordIn = useMemo(() => {
     if (!settings.requiredWordUseTimerEnabled) return null
@@ -602,6 +775,7 @@ export function useGameEngine() {
     textareaRef,
     // derived
     isPlaying: gameState === "playing",
+    isPaused: gameState === "paused",
     sessionActive: gameState !== "idle",
     idleSecondsLeft,
     globalSecondsLeft,
@@ -609,6 +783,8 @@ export function useGameEngine() {
     // actions
     setSettings: handleSettingsChange,
     startGame,
+    pause,
+    resume,
     quit: () => endGame("manual"),
     handleChange,
     closeResultsModal,

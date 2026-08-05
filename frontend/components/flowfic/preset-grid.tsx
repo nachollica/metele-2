@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState, type KeyboardEvent, type ReactNode } from "react"
-import { Check, Pencil, Plus, Trash2, X } from "lucide-react"
+import { Check, Pencil, Plus, Trash2, Trophy, X } from "lucide-react"
 
 import {
   AlertDialog,
@@ -14,12 +14,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
 
 import { cn } from "@/lib/utils"
 import { useTranslations } from "@/lib/i18n"
@@ -39,24 +33,34 @@ import {
   type PresetSettings,
 } from "@/lib/flowfic/types"
 
+export type GridMode = "system" | "custom"
+
 type Props = {
-  /** Current settings, used to highlight the matching preset and to snapshot
-   *  the preset-covered subset when saving a new custom preset. */
+  /** Current settings, used to highlight the matching mode and to snapshot the
+   *  preset-covered subset when saving a new custom mode. */
   settings: GameSettings
-  /** Called with the preset-covered subset when the user picks a preset; the
+  /** Which face the grid shows. Owned by the launcher's "Custom modes" button. */
+  mode: GridMode
+  /** Called with the preset-covered subset when the user picks a mode; the
    *  parent merges it into the full settings object. */
   onApply: (preset: PresetSettings) => void
+  /** Start the challenge of the day (applies its settings and plays). */
+  onStartChallenge: () => void
 }
 
-type Mode = "system" | "custom"
+// Every cell keeps the 4:2 proportion the home layout is drawn to, so the grid
+// never reflows as a cell's content changes (mode card → "+" slot → dotted
+// placeholder → naming form). Single-column phone layouts drop the ratio — a
+// 4:2 box at full phone width would be absurdly tall — and use a fixed height.
+const CARD_SHAPE = "h-24 sm:h-auto sm:aspect-[4/2] sm:min-h-20"
 
 /**
- * The preset picker shown at the top of the settings screen: the 5 system
- * presets plus a 6th slot that flips into "custom modes" — the signed-in
- * user's saved presets with create/rename/delete flows against
+ * The 2x2 mode grid in the home screen's session launcher: three system modes
+ * plus the highlighted challenge of the day, or — when flipped — the signed-in
+ * user's custom modes with create/rename/delete flows against
  * `/profile/me/presets`.
  */
-export function PresetGrid({ settings, onApply }: Props) {
+export function PresetGrid({ settings, mode, onApply, onStartChallenge }: Props) {
   const t = useTranslations()
   const { user, getAccessToken, applyLocalUser } = useAuth()
   const customPresets: CustomPreset[] = useMemo(
@@ -65,7 +69,6 @@ export function PresetGrid({ settings, onApply }: Props) {
   )
   const isAuthenticated = user !== null
 
-  const [mode, setMode] = useState<Mode>("system")
   // Index (0..MAX_CUSTOM_PRESETS-1) of the slot the user is currently
   // naming. `null` means no slot is in name-input mode.
   const [namingSlotIndex, setNamingSlotIndex] = useState<number | null>(null)
@@ -82,9 +85,8 @@ export function PresetGrid({ settings, onApply }: Props) {
     null,
   )
 
-  // Delete confirmation dialog (same AlertDialog pattern as the stories
-  // sidebar). `confirmDeleteId` selects the preset; errors render inline in
-  // the dialog so the user can retry or cancel.
+  // Delete confirmation dialog. `confirmDeleteId` selects the preset; errors
+  // render inline in the dialog so the user can retry or cancel.
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [deleteBusy, setDeleteBusy] = useState(false)
   const [deleteError, setDeleteError] = useState(false)
@@ -205,35 +207,31 @@ export function PresetGrid({ settings, onApply }: Props) {
     setConfirmDeleteId(null)
   }
 
-  // Index of the FIRST empty custom-preset slot, when in custom mode.
-  // That slot renders the "+" create-preset action; later empty slots
-  // render disabled placeholders so the user always edits the next free
-  // slot rather than randomly anywhere in the grid.
+  // Index of the FIRST empty custom-preset slot. That slot renders the "+"
+  // create action; later empty slots render disabled placeholders so the user
+  // always fills the next free slot rather than randomly anywhere in the grid.
   const firstEmptyCustomSlot =
     customPresets.length < MAX_CUSTOM_PRESETS ? customPresets.length : null
 
   return (
-    <TooltipProvider delayDuration={150}>
-      <section className="flex flex-col gap-2">
-        <h3 className="text-muted-foreground text-xs font-medium tracking-widest uppercase">
-          {mode === "system"
-            ? t.settings.presetsLabel
-            : t.settings.customModesLabel}
-        </h3>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {mode === "system" ? renderSystemPresets() : renderCustomPresets()}
-        </div>
-        {createError ? (
-          <p role="alert" className="text-destructive text-xs">
-            {createError}
-          </p>
-        ) : null}
-        {presetMutationError ? (
-          <p role="alert" className="text-destructive text-xs">
-            {presetMutationError}
-          </p>
-        ) : null}
-      </section>
+    <>
+      <div
+        className="grid h-full grid-cols-1 gap-3 sm:grid-cols-2"
+        role="group"
+        aria-label={mode === "system" ? t.settings.presetsLabel : t.settings.customModesLabel}
+      >
+        {mode === "system" ? renderSystemPresets() : renderCustomPresets()}
+      </div>
+      {createError ? (
+        <p role="alert" className="text-destructive text-xs">
+          {createError}
+        </p>
+      ) : null}
+      {presetMutationError ? (
+        <p role="alert" className="text-destructive text-xs">
+          {presetMutationError}
+        </p>
+      ) : null}
 
       <AlertDialog
         open={confirmDeleteId !== null}
@@ -272,7 +270,7 @@ export function PresetGrid({ settings, onApply }: Props) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </TooltipProvider>
+    </>
   )
 
   // ---- Render helpers ---------------------------------------------------
@@ -281,39 +279,18 @@ export function PresetGrid({ settings, onApply }: Props) {
     return (
       <>
         {PRESETS.map((preset) => {
-          const isActive = activeSystemPresetId === preset.id
           const meta = t.presets[preset.id]
           return (
             <PresetButton
               key={preset.id}
               title={meta.name}
               subtitle={meta.description}
-              active={isActive}
+              active={activeSystemPresetId === preset.id}
               onClick={() => applySystemPreset(preset.id)}
             />
           )
         })}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <ToggleSlotButton
-              title={t.settings.customModesLabel}
-              subtitle={
-                isAuthenticated
-                  ? t.settings.customModesDescription
-                  : t.settings.signInForCustomModes
-              }
-              onClick={() => {
-                if (isAuthenticated) setMode("custom")
-              }}
-              disabled={!isAuthenticated}
-            />
-          </TooltipTrigger>
-          <TooltipContent>
-            {isAuthenticated
-              ? t.settings.customModesTooltip
-              : t.settings.signInForCustomModes}
-          </TooltipContent>
-        </Tooltip>
+        <ChallengeCard onStart={onStartChallenge} />
       </>
     )
   }
@@ -341,10 +318,16 @@ export function PresetGrid({ settings, onApply }: Props) {
         )
         continue
       }
-      // Empty slot.
+      // Empty slot. Anonymous users get the sign-in explanation once, in the
+      // first cell, rather than repeated across every placeholder.
       const isFirstEmpty = i === firstEmptyCustomSlot
       if (!isFirstEmpty || !isAuthenticated) {
-        slots.push(<EmptySlot key={`empty-${i}`} />)
+        slots.push(
+          <EmptySlot
+            key={`empty-${i}`}
+            hint={!isAuthenticated && i === 0 ? t.settings.signInForCustomModes : null}
+          />,
+        )
         continue
       }
 
@@ -367,55 +350,29 @@ export function PresetGrid({ settings, onApply }: Props) {
         )
       } else {
         slots.push(
-          <Tooltip key={`add-${i}`}>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                onClick={() => startCreatingAt(i)}
-                aria-label={t.settings.createPresetLabel}
-                className={cn(
-                  CARD_SIZE,
-                  "border-border hover:bg-accent/20 focus-visible:ring-ring flex items-center justify-center rounded-md border border-dashed p-3 text-center transition-colors",
-                  "focus-visible:ring-2 focus-visible:outline-none",
-                )}
-              >
-                <Plus
-                  className="text-muted-foreground size-7"
-                  strokeWidth={3}
-                  aria-hidden
-                />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>{t.settings.createPresetTooltip}</TooltipContent>
-          </Tooltip>,
+          <button
+            key={`add-${i}`}
+            type="button"
+            onClick={() => startCreatingAt(i)}
+            aria-label={t.settings.createPresetLabel}
+            title={t.settings.createPresetTooltip}
+            className={cn(
+              CARD_SHAPE,
+              "border-border hover:bg-accent/20 focus-visible:ring-ring flex items-center justify-center rounded-xl border border-dashed p-3 text-center transition-colors",
+              "focus-visible:ring-2 focus-visible:outline-none",
+            )}
+          >
+            <Plus className="text-muted-foreground size-7" strokeWidth={3} aria-hidden />
+          </button>,
         )
       }
     }
-
-    // Final cell: back-to-presets toggle (replaces the 6th slot).
-    slots.push(
-      <ToggleSlotButton
-        key="back"
-        title={t.settings.backToPresetsLabel}
-        subtitle={t.settings.backToPresetsDescription}
-        onClick={() => {
-          cancelCreating()
-          setMode("system")
-        }}
-      />,
-    )
 
     return slots
   }
 }
 
 // ---- Subcomponents ----------------------------------------------------
-
-// Fixed size for every preset cell so the grid doesn't reflow when the
-// content per cell changes (system → custom toggle, "+" slot, dotted empty
-// slot, naming form). Tall enough for ~20-char title + 2 lines of small
-// description text.
-const CARD_SIZE = "h-24 min-h-24"
 
 /**
  * Inline name editor card, shared by the create-preset flow (naming a new
@@ -456,8 +413,8 @@ function InlineNameForm({
   return (
     <div
       className={cn(
-        CARD_SIZE,
-        "border-highlight bg-highlight/20 ring-highlight/30 flex flex-col justify-between gap-2 rounded-md border p-3 ring-1",
+        CARD_SHAPE,
+        "border-highlight bg-highlight/20 ring-highlight/30 flex flex-col justify-center gap-2 rounded-xl border p-3 ring-1",
       )}
     >
       <Input
@@ -468,7 +425,7 @@ function InlineNameForm({
         placeholder={placeholder}
         maxLength={40}
         aria-label={inputLabel}
-        className="h-7 text-sm"
+        className="h-8 text-sm"
         disabled={busy}
       />
       <div className="flex justify-end gap-1">
@@ -512,8 +469,8 @@ function PresetButton({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        CARD_SIZE,
-        "flex flex-col items-center justify-center gap-1 overflow-hidden rounded-md border p-3 text-center transition-colors",
+        CARD_SHAPE,
+        "flex flex-col items-center justify-center gap-1 overflow-hidden rounded-xl border p-3 text-center transition-colors",
         "hover:bg-accent/20 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
         active
           ? "border-highlight bg-highlight/20 ring-highlight/30 ring-1"
@@ -532,35 +489,35 @@ function PresetButton({
   )
 }
 
-function ToggleSlotButton({
-  title,
-  subtitle,
-  onClick,
-  disabled = false,
-}: {
-  title: string
-  subtitle: string
-  onClick: () => void
-  disabled?: boolean
-}) {
+/**
+ * "Challenge of the day" cell — the one card in the grid that is a direct
+ * action rather than a selection: it applies the challenge's settings and
+ * starts the sprint straight away. Wears the primary colour so it reads as the
+ * grid's featured cell. The challenge itself is still a placeholder; the real
+ * per-day rules land with the challenge game flow.
+ */
+function ChallengeCard({ onStart }: { onStart: () => void }) {
+  const t = useTranslations()
   return (
     <button
       type="button"
-      onClick={onClick}
-      disabled={disabled}
-      aria-disabled={disabled}
+      onClick={onStart}
       className={cn(
-        CARD_SIZE,
-        "border-border bg-card flex flex-col items-center justify-center gap-1 overflow-hidden rounded-md border border-dashed p-3 text-center transition-colors",
-        "focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
-        disabled ? "cursor-not-allowed opacity-60" : "hover:bg-accent/20",
+        CARD_SHAPE,
+        "bg-primary text-primary-foreground relative flex flex-col items-center justify-center gap-1 overflow-hidden rounded-xl p-3 text-center shadow-sm transition-colors",
+        "hover:bg-primary/90 focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
       )}
     >
-      <span className="text-foreground line-clamp-1 w-full text-center text-sm font-semibold">
-        {title}
+      <Trophy
+        className="pointer-events-none absolute -top-2 -right-2 size-16 opacity-15"
+        aria-hidden
+      />
+      <span className="relative flex items-center gap-1.5 text-sm font-semibold">
+        <Trophy className="size-4" aria-hidden />
+        {t.dashboard.challengeOfDay}
       </span>
-      <span className="text-muted-foreground line-clamp-2 w-full text-center text-xs leading-snug">
-        {subtitle}
+      <span className="relative line-clamp-2 text-xs leading-snug opacity-90">
+        {t.dashboard.challengeOfDayHint}
       </span>
     </button>
   )
@@ -628,8 +585,8 @@ function CustomPresetCard({
       onKeyDown={handleKey}
       aria-pressed={active}
       className={cn(
-        CARD_SIZE,
-        "group relative flex cursor-pointer flex-col items-center justify-center gap-1 overflow-hidden rounded-md border p-3 text-center transition-colors",
+        CARD_SHAPE,
+        "group relative flex cursor-pointer flex-col items-center justify-center gap-1 overflow-hidden rounded-xl border p-3 text-center transition-colors",
         "hover:bg-accent/20 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
         active
           ? "border-highlight bg-highlight/20 ring-highlight/30 ring-1"
@@ -671,14 +628,18 @@ function CustomPresetCard({
   )
 }
 
-function EmptySlot() {
+/** Dotted placeholder for a not-yet-fillable slot. Anonymous users get the
+ *  sign-in hint in the first cell so the empty grid explains itself. */
+function EmptySlot({ hint }: { hint: string | null }) {
   return (
     <div
-      aria-hidden="true"
+      aria-hidden={hint === null ? "true" : undefined}
       className={cn(
-        CARD_SIZE,
-        "border-border/60 rounded-md border border-dashed",
+        CARD_SHAPE,
+        "border-border/60 text-muted-foreground flex items-center justify-center rounded-xl border border-dashed p-3 text-center text-xs",
       )}
-    />
+    >
+      {hint}
+    </div>
   )
 }

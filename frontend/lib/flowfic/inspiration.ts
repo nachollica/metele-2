@@ -11,14 +11,18 @@
 // generated, gitignored, optional artifact — if it is missing the loader
 // resolves to null and the card simply shows its reserved placeholder.
 //
-// One image is chosen per browsing session and shared by both consumers (the
-// landing card and the game/setup pane) through a tiny external store, so they
-// always agree. The choice is persisted in sessionStorage and only changes when
-// the user clicks the card's refresh control (not on reload). Only the chosen
-// image is ever fetched cross-origin, by a plain <img>; film-grab serves the
-// images with `access-control-allow-origin: *` and a one-year cache.
+// The "current inspiration" is a single shared pick — either a film still or a
+// quote — held in a tiny external store so the home card and the in-game pane
+// always agree. It starts UNSET: the home card renders an invitation, and one
+// click picks (50/50 image vs quote, then a random item from that pool).
+// Clicking again re-rolls. The pick is persisted in sessionStorage so a reload
+// keeps it, and is cleared when a story is finalized. Only the chosen image is
+// ever fetched cross-origin, by a plain <img>; film-grab serves the images with
+// `access-control-allow-origin: *` and a one-year cache.
 
 import { useSyncExternalStore } from "react"
+
+import { loadQuotes, type Quote } from "@/lib/flowfic/quotes"
 
 /** Bump alongside INSPIRATION_VERSION in word-assets/src/contract.py. */
 export const INSPIRATION_VERSION = 1
@@ -108,40 +112,33 @@ export function parseInspirationJsonl(body: string): InspirationImageData[] {
   return images
 }
 
-/**
- * Pick a random film, avoiding `currentLoc` when the pool has alternatives so a
- * refresh visibly changes the image. Assumes a non-empty pool (callers guard).
- * Locs are unique in the catalog, so the loop terminates promptly.
- */
-export function chooseNext(
-  pool: readonly InspirationImageData[],
-  currentLoc?: string,
-): InspirationImageData {
-  if (pool.length === 1) return pool[0]
-  let next: InspirationImageData
-  do {
-    next = pool[Math.floor(Math.random() * pool.length)]
-  } while (next.loc === currentLoc)
-  return next
-}
-
 // ---- Shared "current pick" store ------------------------------------------
 
+/**
+ * The current inspiration.
+ *
+ * `unset` is the resting state: nothing has been picked (or a finished story
+ * just cleared it), and the home card shows its invitation. `picking` covers
+ * the moment between the click and the pools resolving. `unavailable` means
+ * both pools failed to load, so there is nothing to offer.
+ */
 export type InspirationState =
-  | { status: "loading" }
-  | { status: "empty" }
-  | { status: "ready"; image: InspirationImageData }
+  | { status: "unset" }
+  | { status: "picking" }
+  | { status: "unavailable" }
+  | { status: "image"; image: InspirationImageData }
+  | { status: "quote"; quote: Quote }
 
 const STORAGE_KEY = `flowfic:inspiration:v${INSPIRATION_VERSION}`
 
 // Stable references: useSyncExternalStore requires getSnapshot to return the
 // same value until something actually changes.
-const LOADING: InspirationState = { status: "loading" }
-const EMPTY: InspirationState = { status: "empty" }
+const UNSET: InspirationState = { status: "unset" }
+const PICKING: InspirationState = { status: "picking" }
+const UNAVAILABLE: InspirationState = { status: "unavailable" }
 
-let state: InspirationState = LOADING
-let pool: readonly InspirationImageData[] | null = null
-let started = false
+let state: InspirationState = UNSET
+let restored = false
 const listeners = new Set<() => void>()
 
 function setState(next: InspirationState): void {
@@ -149,53 +146,98 @@ function setState(next: InspirationState): void {
   for (const notify of listeners) notify()
 }
 
-function readStoredLoc(): string | null {
+/** What sessionStorage holds: enough to re-resolve the pick after a reload. */
+type StoredPick = { kind: "image"; loc: string } | { kind: "quote"; id: string }
+
+function readStored(): StoredPick | null {
   try {
-    return window.sessionStorage.getItem(STORAGE_KEY)
+    const raw = window.sessionStorage.getItem(STORAGE_KEY)
+    return raw ? (JSON.parse(raw) as StoredPick) : null
   } catch {
     return null
   }
 }
 
-function writeStoredLoc(loc: string): void {
+function writeStored(pick: StoredPick | null): void {
   try {
-    window.sessionStorage.setItem(STORAGE_KEY, loc)
+    if (pick === null) window.sessionStorage.removeItem(STORAGE_KEY)
+    else window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(pick))
   } catch {
     // Private mode / storage disabled: the pick just won't survive a reload.
   }
 }
 
-// Load the pool once, then resolve the initial pick: the session's stored film
-// if it is still present, otherwise a fresh random one.
-function start(): void {
-  if (started) return
-  started = true
-  void loadInspiration().then((loaded) => {
-    if (!loaded || loaded.length === 0) {
-      setState(EMPTY)
-      return
-    }
-    pool = loaded
-    const storedLoc = readStoredLoc()
-    const stored = storedLoc ? loaded.find((p) => p.loc === storedLoc) : undefined
-    const image = stored ?? chooseNext(loaded)
-    writeStoredLoc(image.loc)
-    setState({ status: "ready", image })
-  })
+/** Pick a random member of a non-empty pool, avoiding `exclude` when possible. */
+function sample<T>(pool: readonly T[], isCurrent: (item: T) => boolean): T {
+  if (pool.length === 1) return pool[0]
+  let next: T
+  do {
+    next = pool[Math.floor(Math.random() * pool.length)]
+  } while (isCurrent(next))
+  return next
 }
 
-/** Re-roll to a different film on demand (the card's refresh control). */
-export function refreshInspiration(): void {
-  if (!pool || pool.length === 0) return
-  const current = state.status === "ready" ? state.image.loc : undefined
-  const image = chooseNext(pool, current)
-  writeStoredLoc(image.loc)
-  setState({ status: "ready", image })
+/**
+ * Pick a fresh inspiration: a coin flip between the film-still catalog and the
+ * quote pool, then a random item from the chosen one. Falls back to the other
+ * pool when the first is missing (both artifacts are optional), and reports
+ * `unavailable` only when neither has anything.
+ */
+export async function pickInspiration(): Promise<void> {
+  setState(PICKING)
+  const [images, quotes] = await Promise.all([loadInspiration(), loadQuotes()])
+  const hasImages = Boolean(images && images.length > 0)
+  const hasQuotes = Boolean(quotes && quotes.length > 0)
+  if (!hasImages && !hasQuotes) {
+    setState(UNAVAILABLE)
+    return
+  }
+
+  // 50/50 when both pools are available; otherwise whichever one there is.
+  const wantImage = hasImages && (!hasQuotes || Math.random() < 0.5)
+  if (wantImage) {
+    const currentLoc = state.status === "image" ? state.image.loc : undefined
+    const image = sample(images!, (i) => i.loc === currentLoc)
+    writeStored({ kind: "image", loc: image.loc })
+    setState({ status: "image", image })
+    return
+  }
+  const currentId = state.status === "quote" ? state.quote.id : undefined
+  const quote = sample(quotes!, (q) => q.id === currentId)
+  writeStored({ kind: "quote", id: quote.id })
+  setState({ status: "quote", quote })
+}
+
+/** Drop the current inspiration (called when a story is finalized). */
+export function clearInspiration(): void {
+  writeStored(null)
+  setState(UNSET)
+}
+
+// Re-resolve the session's stored pick, once, on the first subscribe. Nothing
+// is picked here — an absent/stale entry simply leaves the store unset.
+function restore(): void {
+  if (restored) return
+  restored = true
+  const stored = readStored()
+  if (stored === null) return
+  setState(PICKING)
+  if (stored.kind === "image") {
+    void loadInspiration().then((images) => {
+      const image = images?.find((i) => i.loc === stored.loc)
+      setState(image ? { status: "image", image } : UNSET)
+    })
+    return
+  }
+  void loadQuotes().then((quotes) => {
+    const quote = quotes?.find((q) => q.id === stored.id)
+    setState(quote ? { status: "quote", quote } : UNSET)
+  })
 }
 
 function subscribe(onChange: () => void): () => void {
   listeners.add(onChange)
-  start()
+  restore()
   return () => {
     listeners.delete(onChange)
   }
@@ -206,14 +248,32 @@ function getSnapshot(): InspirationState {
 }
 
 function getServerSnapshot(): InspirationState {
-  return LOADING
+  return UNSET
 }
 
 /**
- * Subscribe to the shared inspiration pick. Both the landing card and the game
- * pane use this, so they render the same image; `refresh` re-rolls it for all.
+ * Subscribe to the shared inspiration pick. The home card and the in-game pane
+ * both use this, so they always show the same thing; `pick` re-rolls it for all
+ * and `clear` resets to the unset state.
  */
-export function useInspiration(): { state: InspirationState; refresh: () => void } {
+export function useInspiration(): {
+  state: InspirationState
+  pick: () => void
+  clear: () => void
+} {
   const current = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
-  return { state: current, refresh: refreshInspiration }
+  return {
+    state: current,
+    pick: () => void pickInspiration(),
+    clear: clearInspiration,
+  }
+}
+
+/** Test seam: wipe the module-level store AND the catalog cache between tests. */
+export function resetInspirationStoreForTests(): void {
+  state = UNSET
+  restored = false
+  listeners.clear()
+  cache = undefined
+  inflight = undefined
 }

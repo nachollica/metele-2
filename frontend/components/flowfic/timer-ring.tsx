@@ -1,23 +1,35 @@
 "use client"
 
-// Decorative countdown-style ring for the home quick-start card. It doesn't
-// tick — it displays the session length the player is about to start, echoing
-// the reference dashboard's hero timer. The live in-game countdowns render in
-// the GameHud instead.
+// Decorative countdown-style ring for the home screen's session dial. It
+// doesn't tick — it displays the session length the player is about to start.
+// The live in-game countdowns render in the GameHud instead.
+//
+// Sized entirely by its parent: the SVG scales with a viewBox and the readout
+// uses container-relative units, so the same component fits the launcher's
+// square cell at any breakpoint. Children (the length picker) stack under the
+// mm:ss readout inside the ring.
 
-const SIZE = 220
+import { type ReactNode } from "react"
+
+import { cn } from "@/lib/utils"
+
+// Geometry in viewBox units; the rendered size comes from CSS.
+const BOX = 220
 const STROKE = 12
-const R = (SIZE - STROKE) / 2
-const C = SIZE / 2
+const R = (BOX - STROKE) / 2
+const C = BOX / 2
 
 type Props = {
   /** Seconds to display as mm:ss in the middle of the ring. */
   seconds: number
   /** 0–1 fraction of the ring to fill. Defaults to a full ring. */
   fraction?: number
+  /** Rendered under the readout, inside the ring (the length picker). */
+  children?: ReactNode
+  className?: string
 }
 
-export function TimerRing({ seconds, fraction = 1 }: Props) {
+export function TimerRing({ seconds, fraction = 1, children, className }: Props) {
   const circumference = 2 * Math.PI * R
   const dashOffset = circumference * (1 - Math.max(0, Math.min(1, fraction)))
   const mm = Math.floor(seconds / 60)
@@ -28,16 +40,9 @@ export function TimerRing({ seconds, fraction = 1 }: Props) {
     .padStart(2, "0")
 
   return (
-    <div className="relative mx-auto" style={{ width: SIZE, height: SIZE }}>
-      <svg width={SIZE} height={SIZE} aria-hidden="true">
-        <circle
-          cx={C}
-          cy={C}
-          r={R}
-          fill="none"
-          stroke="var(--muted)"
-          strokeWidth={STROKE}
-        />
+    <div className={cn("relative aspect-square", className)}>
+      <svg viewBox={`0 0 ${BOX} ${BOX}`} className="size-full" aria-hidden="true">
+        <circle cx={C} cy={C} r={R} fill="none" stroke="var(--muted)" strokeWidth={STROKE} />
         <circle
           cx={C}
           cy={C}
@@ -51,10 +56,12 @@ export function TimerRing({ seconds, fraction = 1 }: Props) {
           transform={`rotate(-90 ${C} ${C})`}
         />
       </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-primary font-mono text-5xl font-extrabold tabular-nums">
+      {/* Inset so the content never collides with the stroke. */}
+      <div className="absolute inset-[14%] flex flex-col items-center justify-center gap-2">
+        <span className="text-primary font-mono text-4xl font-extrabold tabular-nums sm:text-5xl">
           {mm}:{ss}
         </span>
+        {children}
       </div>
     </div>
   )

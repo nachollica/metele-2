@@ -42,14 +42,14 @@ export const en = {
   },
 
   settings: {
-    title: "Session settings",
-    description: "Pick a preset or tweak below.",
-    presetsLabel: "Quick presets",
+    title: "Advanced settings",
+    description: "Fine-tune the timers and the required words.",
+    presetsLabel: "Game modes",
+    moreOptions: "More options",
+    sessionLengthLabel: "Session length",
     mainTimerLabel: "Idle timeout",
     mainTimerHelp: "Seconds idle before the session ends.",
-    globalTimerLabel: "Session length",
-    globalTimerHelp: "Total session length. Disable for open-ended.",
-    globalTimerEnable: "Limit session length",
+    idleTimerEnable: "Enable the idle timeout",
     requiredWordIntervalEnable: "Enable required words",
     requiredWordIntervalLabel: "New required word every",
     requiredWordIntervalHelp: "Average gap between new words; randomized.",
@@ -76,11 +76,8 @@ export const en = {
     minutesSuffix: "m",
     start: "Start writing",
     startShort: "Write",
-    customModesLabel: "Custom game modes",
-    customModesDescription: "Your saved presets. Click to apply.",
-    customModesTooltip: "Edit or delete your custom modes from your profile.",
-    backToPresetsLabel: "Back to original presets",
-    backToPresetsDescription: "Show the built-in game modes.",
+    customModesLabel: "Custom modes",
+    backToPresetsLabel: "Default modes",
     createPresetLabel: "Save current settings",
     createPresetTooltip: "Save the settings above as a new custom mode.",
     customNamePlaceholder: "Mode name",
@@ -95,23 +92,15 @@ export const en = {
   presets: {
     classic: {
       name: "Classic",
-      description: "Balanced defaults for a 5-minute session.",
+      description: "Balanced defaults. A good place to start.",
     },
     speed: {
-      name: "Speed typing",
-      description: "Tight idle, fast new words. Don't stop.",
-    },
-    relaxed: {
-      name: "Relaxed",
-      description: "No global timer, slower words, gentler deadlines.",
+      name: "Fast",
+      description: "Tight idle, no required words. Don't stop.",
     },
     creative: {
-      name: "Too creative",
+      name: "Super creative",
       description: "Required words come constantly. Stay agile.",
-    },
-    nolimit: {
-      name: "No Limit",
-      description: "No global timer, slower words, play as long as you want.",
     },
   },
 
@@ -123,9 +112,25 @@ export const en = {
     sessionEndsIn: "Session ends in",
     characters: "characters",
     placeholder: "Begin your story. Don't stop typing…",
-    pause: "Give up",
+    pause: "Pause",
+    // The controls sit in a small square block, so the visible labels are kept
+    // to roughly the width of "Quit"; the accessible names carry the full word.
+    resume: "Resume",
+    resumeShort: "Play",
+    paused: "Paused",
+    pausedHint: "Your timers are on hold. Resume to keep writing.",
     quit: "Quit session",
     quitShort: "Quit",
+    quitConfirmTitle: "Quit this session?",
+    quitConfirmDescription:
+      "Your sprint ends here and you'll see your stats. The story stays editable afterwards.",
+    quitConfirm: "Quit",
+    quitCancel: "Keep writing",
+    // Final checkout of a finished sprint: save the story and return home.
+    finish: "Create a story",
+    finishShort: "Finish",
+    inspirationShow: "Show inspiration",
+    inspirationHide: "Hide inspiration",
     viewingStory: "Viewing a previous story (read-only).",
     saveFailed: "Couldn't save your last story.",
     saveRetry: "Retry",
@@ -252,11 +257,6 @@ export const en = {
     challenges: "Challenges",
     stats: "Statistics",
     achievements: "Achievements",
-    newStory: "Create a story",
-    // Short game-button labels shown only on mobile; the full versions above
-    // show from `sm` up and remain the accessible names.
-    newStoryShort: "Create",
-    backToHomeShort: "Home",
     showAll: "Show all",
     backToHome: "Back to home",
     // Back-arrow label on a single story / a not-found reached from one, where
@@ -294,16 +294,16 @@ export const en = {
     wordsWritten: "Words written",
     writingTime: "Writing time",
     sessionsCompleted: "Sessions completed",
+    minutes: "minutes",
     quoteOfDay: "Quote of the day",
     challengeOfDay: "Challenge of the day",
+    challengeOfDayHint: "Jump straight in",
     writeNow: "Write now",
     recentStories: "Recent stories",
     inspirationAlt: "Inspiration image",
-    inspirationTitle: "Inspiration",
-    inspirationCredit: "View in film-grab.com",
-    inspirationCreditShort: "film-grab.com",
-    inspirationCreditLabel: "View {title} on film-grab.com (opens in a new tab)",
-    inspirationRefresh: "Show another image",
+    inspirationPrompt: "Click here to get some inspiration",
+    inspirationAnother: "Show me another inspiration",
+    inspirationUnavailable: "No inspiration available right now.",
   },
 
   achievements: {

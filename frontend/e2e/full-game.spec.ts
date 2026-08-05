@@ -22,10 +22,10 @@ test("full session: required word satisfied (+1) and stats shown on finish", asy
   await page.clock.install()
   await page.goto("/")
 
-  // New story reveals the session settings. Configure there: a seed makes
-  // startGame fetch the (stubbed) related pool, and the minimum interval makes a
-  // word spawn quickly.
-  await page.getByRole("button", { name: "Create a story" }).click()
+  // "More options" reveals the advanced session settings. Configure there: a
+  // seed makes startGame fetch the (stubbed) related pool, and the minimum
+  // interval makes a word spawn quickly.
+  await page.getByRole("button", { name: "More options" }).click()
   await page.getByRole("textbox", { name: "Word seeds" }).fill("fruit")
   const interval = page.getByRole("slider", { name: "New required word every" })
   await interval.focus()
@@ -57,6 +57,7 @@ test("full session: required word satisfied (+1) and stats shown on finish", asy
 
   // Finish the session; the results modal reports the stats.
   await page.getByRole("button", { name: "Quit session" }).click()
+  await page.getByRole("button", { name: "Quit", exact: true }).click()
 
   const results = page.getByRole("dialog")
   await expect(results.getByText("Session ended")).toBeVisible()

@@ -76,8 +76,8 @@ export type BackendMock = {
 // the e2e stub, instead of the stub silently "saving" a payload the real API
 // would reject with 422. Keep in sync with the model + GameSettings.
 const REQUIRED_SETTINGS_KEYS = [
+  "idleTimerEnabled",
   "mainTimerSeconds",
-  "globalTimerEnabled",
   "globalTimerSeconds",
   "requiredWordIntervalEnabled",
   "requiredWordIntervalSeconds",

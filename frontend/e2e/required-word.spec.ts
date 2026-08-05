@@ -20,10 +20,10 @@ test("a required word spawns and is cleared by typing it", async ({ page }) => {
   await page.clock.install()
   await page.goto("/")
 
-  // Session config lives on the configuring screen, reached via New story. The
-  // word source defaults to "Free words"; typing a seed makes startGame fetch
-  // the related pool.
-  await page.getByRole("button", { name: "Create a story" }).click()
+  // Session config lives in the home screen's swappable panel, behind "More
+  // options". The word source defaults to "Free words"; typing a seed makes
+  // startGame fetch the related pool.
+  await page.getByRole("button", { name: "More options" }).click()
   await page.getByRole("textbox", { name: "Word seeds" }).fill("fruit")
 
   // Drive "New required word every" to its minimum (5s) so a word spawns

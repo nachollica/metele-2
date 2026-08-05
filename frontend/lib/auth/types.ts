@@ -37,5 +37,6 @@ export type CustomPreset = {
 }
 
 // Hard cap on user-defined presets. Mirrors `MAX_CUSTOM_PRESETS` in the
-// backend — also dictates the number of slots the settings screen draws.
-export const MAX_CUSTOM_PRESETS = 5
+// backend — also dictates the number of cells the home screen's mode grid
+// draws when it is flipped to custom modes.
+export const MAX_CUSTOM_PRESETS = 4

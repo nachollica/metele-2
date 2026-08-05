@@ -1,15 +1,12 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
-import { ExternalLink, RotateCw } from "lucide-react"
+import { Loader2, Wand2 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
 import { useLocale, useTranslations } from "@/lib/i18n"
-import { loadQuotes, quoteBlocks, quoteOfTheDay, quoteTitle, type Quote } from "@/lib/flowfic/quotes"
-import { useInspiration, type InspirationImageData } from "@/lib/flowfic/inspiration"
-
-import { CARD_TITLE_CLASS, HEADER_ACTION_CLASS, QuoteCard } from "./dashboard-widgets"
+import { quoteBlocks, quoteTitle, type Quote } from "@/lib/flowfic/quotes"
+import { useInspiration } from "@/lib/flowfic/inspiration"
 
 // How fast the wheel zooms. Multiplicative per wheel delta so it feels even
 // across the range.
@@ -19,12 +16,12 @@ const ZOOM_SENSITIVITY = 0.0015
  * Cross-fade <img>: starts transparent and fades in once the (cross-origin)
  * film-grab image has loaded, so a slow network reveals the picture softly into
  * its already-reserved box instead of popping. Resets on every `src` change
- * (e.g. a refresh) so each new image fades in too.
+ * (e.g. a re-roll) so each new image fades in too.
  *
  * Aspect guardrail: `object-cover` + `size-full` make the still fill its parent
- * frame (the card's fixed 16:9 box) by cropping the overflowing edge — never by
- * stretching. So any source proportion (16:9, 4:3, wide cinema, even portrait)
- * renders consistently and is never distorted; at most it is cropped a little.
+ * frame by cropping the overflowing edge — never by stretching. So any source
+ * proportion (16:9, 4:3, wide cinema, even portrait) renders consistently and is
+ * never distorted; at most it is cropped a little.
  */
 function FadeInImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
   const [loaded, setLoaded] = useState(false)
@@ -47,84 +44,114 @@ function FadeInImage({ src, alt, className }: { src: string; alt: string; classN
 }
 
 /**
- * External credit link to the film's film-grab page, styled like a section
- * "Show all" action (ghost Button) but rendered as a real anchor that opens in a
- * new tab. Responsive label: the full sentence on wide cards, just the domain at
- * mid width, and the icon alone when narrow — the accessible name stays complete
- * at every size.
+ * A quote rendered as the inspiration itself: large, centred, with the serif
+ * quote mark that used to head the quote-of-the-day card. Fills whatever box it
+ * is given (the home card's 4:3 frame, or the in-game pane), scrolling inside
+ * rather than pushing the frame around for a long multi-block passage.
  */
-function InspirationCredit({ image }: { image: InspirationImageData }) {
-  const t = useTranslations()
-  const label = t.dashboard.inspirationCreditLabel.replace("{title}", image.title)
+export function InspirationQuote({ quote, className }: { quote: Quote; className?: string }) {
+  const locale = useLocale()
+  const blocks = quoteBlocks(quote, locale)
   return (
-    <Button
-      asChild
-      variant="ghost"
-      size="sm"
-      className={cn(HEADER_ACTION_CLASS, "shrink-0")}
-    >
-      <a href={image.loc} target="_blank" rel="noopener noreferrer" aria-label={label}>
-        <span className="hidden lg:inline">{t.dashboard.inspirationCredit}</span>
-        <span className="hidden md:inline lg:hidden">{t.dashboard.inspirationCreditShort}</span>
-        <ExternalLink className="size-3.5" aria-hidden />
-      </a>
-    </Button>
-  )
-}
-
-/**
- * Landscape (16:9) inspiration image, wrapped as a dashboard card. Unlike the
- * other landing cards its title is dynamic: it *is* the picked film's name, with
- * the refresh control preceding it (while the catalog loads or is absent the
- * title falls back to a generic label and the actions hide). The title truncates
- * with an ellipsis instead of wrapping, since film-grab names can run arbitrarily
- * long. The film-grab credit link stays at the far end of the header; below sits
- * the image in a reserved 16:9 box that fades in on load.
- */
-export function InspirationImage({ className }: { className?: string }) {
-  const t = useTranslations()
-  const { state, refresh } = useInspiration()
-  const image = state.status === "ready" ? state.image : null
-
-  return (
-    <div
+    <figure
       className={cn(
-        "bg-card text-card-foreground overflow-hidden rounded-2xl border shadow-sm",
+        "relative flex size-full flex-col items-center justify-center overflow-y-auto p-6 text-center sm:p-10",
         className,
       )}
     >
-      <div className="flex items-center justify-between gap-2 px-5 pt-5 pb-4">
-        <div className="flex min-w-0 items-center gap-1">
-          {image ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              onClick={refresh}
-              aria-label={t.dashboard.inspirationRefresh}
-              className={cn(HEADER_ACTION_CLASS, "shrink-0")}
-            >
-              <RotateCw className="size-4" aria-hidden />
-            </Button>
-          ) : null}
-          <h3 className={cn(CARD_TITLE_CLASS, "text-muted-foreground min-w-0 truncate")}>
-            {image ? image.title : t.dashboard.inspirationTitle}
-          </h3>
-        </div>
-        {image ? <InspirationCredit image={image} /> : null}
-      </div>
-
-      <div className="bg-muted aspect-video w-full">
-        {image ? <FadeInImage src={image.img} alt="" /> : null}
-      </div>
-    </div>
+      <span
+        aria-hidden
+        className="text-primary/25 pointer-events-none absolute top-2 left-4 font-serif text-7xl leading-none select-none"
+      >
+        &ldquo;
+      </span>
+      <blockquote className="text-foreground relative space-y-3 font-serif text-xl leading-relaxed italic sm:text-2xl">
+        {blocks.map((block, i) => (
+          <p key={i}>{block}</p>
+        ))}
+      </blockquote>
+      <figcaption className="text-muted-foreground relative mt-5 text-sm font-medium not-italic">
+        — {quote.author} · {quoteTitle(quote, locale)}
+      </figcaption>
+    </figure>
   )
 }
 
 /**
- * Inspiration image for the split game/setup pane, zoomable and pannable.
+ * The home screen's inspiration card: a full-width 4:3 frame that starts as an
+ * invitation (magic wand + legend) and, on click, reveals a random film still or
+ * quote — a 50/50 coin flip between the two pools. Clicking again re-rolls, so
+ * the whole card is one big button; there is no title, credit link, or separate
+ * refresh control by design.
+ */
+export function InspirationCard({ className }: { className?: string }) {
+  const t = useTranslations()
+  const { state, pick } = useInspiration()
+
+  const label =
+    state.status === "unset" || state.status === "unavailable"
+      ? t.dashboard.inspirationPrompt
+      : t.dashboard.inspirationAnother
+
+  return (
+    <button
+      type="button"
+      onClick={pick}
+      aria-label={label}
+      className={cn(
+        "bg-card text-card-foreground group relative aspect-[4/3] w-full overflow-hidden rounded-2xl border shadow-sm transition-colors",
+        "hover:border-primary/40 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
+        className,
+      )}
+    >
+      {state.status === "image" ? (
+        <FadeInImage src={state.image.img} alt="" />
+      ) : state.status === "quote" ? (
+        <InspirationQuote quote={state.quote} />
+      ) : state.status === "picking" ? (
+        <span role="status" className="flex size-full items-center justify-center">
+          <Loader2 className="text-primary size-8 animate-spin" aria-hidden />
+        </span>
+      ) : (
+        <span className="text-muted-foreground group-hover:text-foreground flex size-full flex-col items-center justify-center gap-3 transition-colors">
+          <Wand2 className="text-primary size-10" aria-hidden />
+          <span className="text-sm font-medium">
+            {state.status === "unavailable"
+              ? t.dashboard.inspirationUnavailable
+              : t.dashboard.inspirationPrompt}
+          </span>
+        </span>
+      )}
+    </button>
+  )
+}
+
+/**
+ * The in-game inspiration pane: whatever the player picked before starting,
+ * frozen for the sprint (there is no control to change it mid-session). An image
+ * gets the zoom/pan viewport below; a quote renders statically.
+ */
+export function InspirationPane({ className }: { className?: string }) {
+  const { state } = useInspiration()
+  if (state.status === "quote") {
+    return (
+      <div
+        className={cn(
+          "bg-card text-card-foreground h-full w-full overflow-hidden rounded-2xl border shadow-sm",
+          className,
+        )}
+      >
+        <InspirationQuote quote={state.quote} />
+      </div>
+    )
+  }
+  return <ZoomableInspirationImage className={className} />
+}
+
+/**
+ * Inspiration image for the split game pane, zoomable and pannable.
  *
- * Unlike the landing card (a fixed 16:9 cover-crop), this pane shows the still at
+ * Unlike the home card (a fixed 4:3 cover-crop), this pane shows the still at
  * its ORIGINAL proportions: `object-contain` fits the whole frame inside the
  * viewport, so at rest it fits the width and is centered vertically (min zoom =
  * fully visible, reaching the left/right edges) whatever the source ratio. The
@@ -152,7 +179,7 @@ export function ZoomableInspirationImage({ className }: { className?: string }) 
   const [dragging, setDragging] = useState(false)
   const [loaded, setLoaded] = useState(false)
   const { state } = useInspiration()
-  const image = state.status === "ready" ? state.image : null
+  const image = state.status === "image" ? state.image : null
 
   // Fade a newly picked image (or the first arrival) back in from transparent.
   useEffect(() => {
@@ -288,42 +315,5 @@ export function ZoomableInspirationImage({ className }: { className?: string }) 
         />
       ) : null}
     </div>
-  )
-}
-
-/**
- * Full-width "quote of the day" card (landing only). Loads the curated quote pool
- * once, picks today's deterministically, and renders it with attribution. Shows a
- * skeleton until the pool loads; renders nothing if it is empty/unavailable.
- */
-export function QuoteOfDay({ className }: { className?: string }) {
-  const t = useTranslations()
-  const locale = useLocale()
-  const [quotes, setQuotes] = useState<readonly Quote[] | null | undefined>(undefined)
-
-  useEffect(() => {
-    let cancelled = false
-    void loadQuotes().then((q) => {
-      if (!cancelled) setQuotes(q)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  if (quotes === undefined) {
-    return <QuoteCard title={t.dashboard.quoteOfDay} skeleton className={className} />
-  }
-
-  const quote = quotes ? quoteOfTheDay(quotes) : null
-  if (!quote) return null
-
-  return (
-    <QuoteCard
-      title={t.dashboard.quoteOfDay}
-      blocks={quoteBlocks(quote, locale)}
-      attribution={`${quote.author} · ${quoteTitle(quote, locale)}`}
-      className={className}
-    />
   )
 }
