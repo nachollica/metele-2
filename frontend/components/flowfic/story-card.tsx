@@ -163,7 +163,14 @@ export function StoryCard({ story, onSelect, onDelete, onUpdateTitle, fill = fal
             aria-label={`${title} — ${meta}`}
           >
             <div className="truncate pr-8 text-sm font-bold">{title}</div>
-            <p className="text-muted-foreground mt-1 line-clamp-2 text-sm leading-relaxed">
+            {/* Filling a fixed row leaves less vertical room than a naturally
+                sized card, so the preview drops to a single line there. */}
+            <p
+              className={cn(
+                "text-muted-foreground mt-1 text-sm leading-relaxed",
+                fill ? "line-clamp-1" : "line-clamp-2",
+              )}
+            >
               {story.text}
             </p>
             <div className="text-muted-foreground mt-2 text-xs">{meta}</div>

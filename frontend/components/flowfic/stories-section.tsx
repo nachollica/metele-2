@@ -24,9 +24,10 @@ import { filterAndSortStories, type SortOrder } from "@/lib/flowfic/story-search
 import { EmptyHint, Panel, SectionHeader, ShowAllButton } from "./dashboard-widgets"
 import { StoryCard } from "./story-card"
 
-// How many stories the landing preview shows before "Show all". Sized to more
-// than fills the landing's fixed-height panel, which scrolls for the rest.
-const PREVIEW_COUNT = 6
+// How many stories the landing preview shows before "Show all". The landing's
+// panel divides its fixed height into exactly this many rows, so the number is
+// a layout decision as much as a content one — raising it shrinks every row.
+const PREVIEW_COUNT = 3
 
 type Props = {
   stories: Story[] | null
