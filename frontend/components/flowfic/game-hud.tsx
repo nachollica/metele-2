@@ -97,10 +97,12 @@ export function GameHud({
       <div className="flex min-w-0 flex-1 flex-col justify-center gap-2">
         {/* While paused the bars hold frozen values, which on their own look
             identical to a running game. Say so, and announce it: the greyed
-            editor is a visual-only cue. */}
+            editor is a visual-only cue. One compact line, so pausing barely
+            nudges the timers below it. */}
         {paused ? (
-          <p role="status" className="text-muted-foreground text-sm font-medium">
-            {t.game.paused} — {t.game.pausedHint}
+          <p role="status" className="text-muted-foreground truncate text-sm font-medium">
+            {t.game.paused}
+            <span className="sr-only"> — {t.game.pausedHint}</span>
           </p>
         ) : null}
         {idleBar}

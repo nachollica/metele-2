@@ -50,9 +50,9 @@ type Props = {
 
 // Every cell keeps the 4:2 proportion the home layout is drawn to, so the grid
 // never reflows as a cell's content changes (mode card → "+" slot → dotted
-// placeholder → naming form). Single-column phone layouts drop the ratio — a
-// 4:2 box at full phone width would be absurdly tall — and use a fixed height.
-const CARD_SHAPE = "h-24 sm:h-auto sm:aspect-[4/2] sm:min-h-20"
+// placeholder → naming form). The grid stays 2x2 at every width, so the ratio
+// holds on a phone too rather than stretching a full-width card absurdly tall.
+const CARD_SHAPE = "aspect-[4/2] min-h-20"
 
 /**
  * The 2x2 mode grid in the home screen's session launcher: three system modes
@@ -216,7 +216,7 @@ export function PresetGrid({ settings, mode, onApply, onStartChallenge }: Props)
   return (
     <>
       <div
-        className="grid h-full grid-cols-1 gap-3 sm:grid-cols-2"
+        className="grid h-full grid-cols-2 gap-3 md:gap-4"
         role="group"
         aria-label={mode === "system" ? t.settings.presetsLabel : t.settings.customModesLabel}
       >

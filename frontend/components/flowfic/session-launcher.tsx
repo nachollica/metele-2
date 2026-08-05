@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
+import { cn } from "@/lib/utils"
 import { useTranslations } from "@/lib/i18n"
 import {
   PRESETS,
@@ -79,13 +80,25 @@ export function SessionLauncher({
   }
 
   return (
+    // Desktop: the 12:5 canvas as a 3x3 grid — dial (4:4) spanning the two
+    // upper rows of column one, the 2x2 mode grid across columns two and three
+    // (4:2 a cell), and a row of 4:1 buttons underneath. The gutters are part
+    // of the ratio: each cell keeps its proportion including its share of the
+    // gap, which is what lets the spacing breathe without redrawing the grid.
+    //
+    // Mobile: two columns, reordered — dial across the top, then Start beside
+    // Custom modes, then the four cards 2x2. "More options" is desktop-only,
+    // since the advanced settings panel is too (so `/new` on a phone just
+    // renders the normal home screen and needs no redirect).
     <section
       aria-label={t.settings.title}
-      className="grid grid-cols-1 gap-3 md:aspect-[12/5] md:grid-cols-3 md:grid-rows-[2fr_2fr_1fr]"
+      className={cn(
+        "grid grid-cols-2 gap-4",
+        "md:aspect-[12/5] md:grid-cols-3 md:grid-rows-[2fr_2fr_1fr] md:gap-6",
+      )}
     >
-      {/* Session dial — square cell spanning the two upper rows. Capped on
-          phones so the hero doesn't eat the whole first screen. */}
-      <div className="flex min-h-0 items-center justify-center md:row-span-2">
+      {/* Session dial. Capped on phones so the hero doesn't eat the screen. */}
+      <div className="order-1 col-span-2 flex min-h-0 items-center justify-center md:order-none md:col-span-1 md:col-start-1 md:row-span-2 md:row-start-1">
         <TimerRing seconds={minutes * 60} className="h-full max-h-full w-56 md:w-auto">
           <Select
             value={String(minutes)}
@@ -111,8 +124,8 @@ export function SessionLauncher({
         </TimerRing>
       </div>
 
-      {/* Mode grid — the two right columns of the two upper rows. */}
-      <div className="flex min-h-0 flex-col gap-2 md:col-span-2 md:row-span-2">
+      {/* Mode grid. Last on a phone, top-right on desktop. */}
+      <div className="order-3 col-span-2 flex min-h-0 flex-col gap-2 md:order-none md:col-start-2 md:row-span-2 md:row-start-1">
         <PresetGrid
           settings={settings}
           mode={gridMode}
@@ -121,8 +134,12 @@ export function SessionLauncher({
         />
       </div>
 
-      {/* Bottom row: the primary Start plus the two panel toggles. */}
-      <Button type="button" size="lg" onClick={onStart} className="h-full min-h-11 gap-2 text-base font-bold">
+      <Button
+        type="button"
+        size="lg"
+        onClick={onStart}
+        className="order-2 h-full min-h-11 gap-2 text-base font-bold md:order-none md:col-start-1 md:row-start-3"
+      >
         <Play className="size-5" aria-hidden />
         {t.settings.start}
       </Button>
@@ -132,7 +149,7 @@ export function SessionLauncher({
         size="lg"
         onClick={onToggleSettings}
         aria-expanded={settingsOpen}
-        className="h-full min-h-11 gap-2"
+        className="hidden h-full min-h-11 gap-2 md:col-start-2 md:row-start-3 md:inline-flex"
       >
         {settingsOpen ? (
           <ChevronUp className="size-4" aria-hidden />
@@ -147,7 +164,7 @@ export function SessionLauncher({
         size="lg"
         onClick={onToggleGridMode}
         aria-pressed={gridMode === "custom"}
-        className="h-full min-h-11"
+        className="order-2 h-full min-h-11 md:order-none md:col-start-3 md:row-start-3"
       >
         {gridMode === "custom" ? t.settings.backToPresetsLabel : t.settings.customModesLabel}
       </Button>
