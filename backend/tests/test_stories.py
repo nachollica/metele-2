@@ -13,8 +13,8 @@ URL = "/stories"
 # A complete, valid GameSettings/GameResult pair. Stories now persist typed
 # settings/stats, so seeds and create payloads must carry the full shape.
 VALID_SETTINGS: dict[str, object] = {
+    "idleTimerEnabled": True,
     "mainTimerSeconds": 15,
-    "globalTimerEnabled": True,
     "globalTimerSeconds": 600,
     "requiredWordIntervalEnabled": True,
     "requiredWordIntervalSeconds": 30,

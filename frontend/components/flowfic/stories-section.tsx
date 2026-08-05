@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { Fragment, useMemo, useState } from "react"
 import {
   ArrowDownWideNarrow,
   ArrowUpWideNarrow,
@@ -24,7 +24,9 @@ import { filterAndSortStories, type SortOrder } from "@/lib/flowfic/story-search
 import { EmptyHint, Panel, SectionHeader, ShowAllButton } from "./dashboard-widgets"
 import { StoryCard } from "./story-card"
 
-// How many stories the landing preview card shows before "Show all".
+// How many stories the landing preview shows before "Show all". The landing's
+// panel divides its fixed height into exactly this many rows, so the number is
+// a layout decision as much as a content one — raising it shrinks every row.
 const PREVIEW_COUNT = 3
 
 type Props = {
@@ -35,6 +37,8 @@ type Props = {
   onUpdateTitle: (id: number, title: string | null) => Promise<boolean>
   /** Render a trimmed card for the landing dashboard instead of the full screen. */
   preview?: boolean
+  /** Drop the preview's own card chrome — the landing already supplies it. */
+  flush?: boolean
   /** Open the expanded My-stories screen (preview only). */
   onShowAll?: () => void
 }
@@ -54,6 +58,7 @@ export function StoriesSection({
   onDeleteStory,
   onUpdateTitle,
   preview = false,
+  flush = false,
   onShowAll,
 }: Props) {
   const t = useTranslations()
@@ -82,8 +87,12 @@ export function StoriesSection({
           PREVIEW_COUNT,
         )
       : []
+    // Flush drops the card chrome (the landing panel already supplies it) and,
+    // with it, the wrapper element — so the preview's own flex column is the
+    // direct child of that fixed-height panel and can fill it.
+    const Wrapper = flush ? Fragment : Panel
     return (
-      <Panel>
+      <Wrapper>
         <SectionHeader
           title={t.dashboard.recentStories}
           action={
@@ -97,10 +106,14 @@ export function StoriesSection({
             ) : null
           }
         />
+        {/* Exactly PREVIEW_COUNT rows, each taking an equal share of the
+            panel's fixed height — nothing scrolls. With fewer stories the rows
+            keep their share and the remainder is simply left empty, rather
+            than stretching one card over the whole box. */}
         {stories === null ? (
-          <div className="flex flex-col gap-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-24 rounded-2xl" />
+          <div className="flex min-h-0 flex-1 flex-col gap-3">
+            {Array.from({ length: PREVIEW_COUNT }).map((_, i) => (
+              <Skeleton key={i} className="min-h-0 flex-1 rounded-2xl" />
             ))}
           </div>
         ) : recent.length === 0 ? (
@@ -112,19 +125,26 @@ export function StoriesSection({
                 : t.dashboard.emptyStories}
           </EmptyHint>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="flex min-h-0 flex-1 flex-col gap-3">
             {recent.map((s) => (
-              <StoryCard
-                key={s.id}
-                story={s}
-                onSelect={onViewStory}
-                onDelete={onDeleteStory}
-                onUpdateTitle={onUpdateTitle}
-              />
+              <div key={s.id} className="min-h-0 flex-1">
+                <StoryCard
+                  story={s}
+                  onSelect={onViewStory}
+                  onDelete={onDeleteStory}
+                  onUpdateTitle={onUpdateTitle}
+                  fill
+                />
+              </div>
+            ))}
+            {/* Reserve the unused rows so three stories and one story lay the
+                panel out identically. */}
+            {Array.from({ length: PREVIEW_COUNT - recent.length }).map((_, i) => (
+              <div key={`spacer-${i}`} aria-hidden className="min-h-0 flex-1" />
             ))}
           </div>
         )}
-      </Panel>
+      </Wrapper>
     )
   }
 

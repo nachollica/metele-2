@@ -15,11 +15,10 @@ test.describe("English locale", () => {
     await dismissWelcomeBeforeLoad(page)
     await page.goto("/")
 
-    // Landing action is localized; opening it shows the localized settings.
-    await expect(page.getByRole("button", { name: "Create a story" })).toBeVisible()
-    await page.getByRole("button", { name: "Create a story" }).click()
-    await expect(page.getByRole("heading", { name: "Session settings" })).toBeVisible()
+    // The launcher is localized; "More options" reveals the localized settings.
     await expect(page.getByRole("button", { name: "Start writing" })).toBeVisible()
+    await page.getByRole("button", { name: "More options" }).click()
+    await expect(page.getByRole("heading", { name: "Advanced settings" })).toBeVisible()
   })
 })
 
@@ -31,9 +30,8 @@ test.describe("Spanish locale", () => {
     await dismissWelcomeBeforeLoad(page)
     await page.goto("/")
 
-    await expect(page.getByRole("button", { name: "Crear una historia" })).toBeVisible()
-    await page.getByRole("button", { name: "Crear una historia" }).click()
-    await expect(page.getByRole("heading", { name: "Configuración de sesión" })).toBeVisible()
     await expect(page.getByRole("button", { name: "Empezar a escribir" })).toBeVisible()
+    await page.getByRole("button", { name: "Más opciones" }).click()
+    await expect(page.getByRole("heading", { name: "Ajustes avanzados" })).toBeVisible()
   })
 })

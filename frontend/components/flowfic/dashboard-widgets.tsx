@@ -10,12 +10,12 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { TONE_BAR, TONE_CHIP, type Tone } from "@/lib/flowfic/gamification"
 
-// Shared "overline" treatment for every card/section title: small uppercase
-// letter-spaced label. The one definition keeps titles consistent across the
-// dashboard cards (SectionHeader), the quote hero, and the inspiration card.
-// Colour is layered on per card (neutral muted by default; the amber quote
-// card overrides it), so this token carries only the shape, not the colour.
-export const CARD_TITLE_CLASS = "text-2xl font-semibold uppercase tracking-wide"
+// Shared treatment for every card/section title. One definition keeps them
+// consistent wherever two cards share a region of the screen — the home
+// screen's swappable panel shows "Recent stories" and "Advanced settings" in
+// the very same box, so they must not read as different kinds of heading.
+// Colour is layered on per card, so this token carries only the shape.
+export const CARD_TITLE_CLASS = "text-xl font-semibold"
 
 // The muted → accent ghost styling shared by the "Show all" links and the
 // inspiration credit link, so every soft header action reads the same.
@@ -97,17 +97,76 @@ export function Panel({
   )
 }
 
+/**
+ * Title row for a card or section: an `h2` plus an optional trailing action.
+ *
+ * `h2` and not `h3` — the page's `h1` is the screen title (`DetailScreen`, or
+ * the landing's visually-hidden one), so cards sit directly under it with no
+ * level to skip. `description` renders a muted sub-line for cards that need one.
+ */
 export function SectionHeader({
   title,
+  description,
   action,
+  id,
 }: {
   title: ReactNode
+  description?: ReactNode
   action?: ReactNode
+  /** Set when the section labels itself via `aria-labelledby`. */
+  id?: string
 }) {
   return (
-    <div className="mb-4 flex items-center justify-between gap-3">
-      <h3 className={cn(CARD_TITLE_CLASS, "text-muted-foreground min-w-0 truncate")}>{title}</h3>
+    <div className="mb-4 flex items-start justify-between gap-3">
+      <div className="flex min-w-0 flex-col gap-1">
+        <h2 id={id} className={cn(CARD_TITLE_CLASS, "min-w-0 truncate")}>
+          {title}
+        </h2>
+        {description ? (
+          <p className="text-muted-foreground text-sm">{description}</p>
+        ) : null}
+      </div>
       {action}
+    </div>
+  )
+}
+
+/**
+ * The one centred content measure shared by the landing, the detail screens,
+ * and the in-game writing column — so a story reads at the same width wherever
+ * it appears, and the game area lands exactly where the home screen was.
+ */
+export function ContentColumn({
+  children,
+  className,
+}: {
+  children: ReactNode
+  className?: string
+}) {
+  return <div className={cn("mx-auto flex w-full max-w-5xl flex-col", className)}>{children}</div>
+}
+
+/**
+ * Small "overline" label for a block nested inside a larger card — the merged
+ * journey card uses it to keep the "Challenge of the day" / "Weekly summary"
+ * labels visible now that they are no longer card titles of their own. Smaller
+ * and lighter than `SectionHeader` so it reads as a sub-label, not a heading.
+ */
+export function CardSubtitle({
+  children,
+  className,
+}: {
+  children: ReactNode
+  className?: string
+}) {
+  return (
+    <div
+      className={cn(
+        "text-muted-foreground mb-2 text-xs font-semibold uppercase tracking-wide",
+        className,
+      )}
+    >
+      {children}
     </div>
   )
 }
@@ -399,65 +458,5 @@ export function FeaturedChallenge({
         )}
       </div>
     </div>
-  )
-}
-
-// ---- Quote card -----------------------------------------------------------
-
-/**
- * Full-width "quote of the day" hero card. `blocks` are already-normalized
- * paragraph blocks (one per line/turn), so a multi-block dialogue renders across
- * several paragraphs. `title` is the localized section label; `attribution` is
- * the localized "author · source" line. `skeleton` renders a muted placeholder
- * while the pool loads.
- */
-export function QuoteCard({
-  title,
-  blocks,
-  attribution,
-  skeleton = false,
-  className,
-}: {
-  title: string
-  blocks?: string[]
-  attribution?: string
-  skeleton?: boolean
-  className?: string
-}) {
-  return (
-    <figure
-      className={cn(
-        "relative overflow-hidden rounded-2xl border border-amber-300/60 bg-gradient-to-br from-amber-50 to-orange-50 p-6 shadow-sm dark:border-amber-500/30 dark:from-amber-500/10 dark:to-orange-500/10",
-        className,
-      )}
-    >
-      <div className={cn(CARD_TITLE_CLASS, "text-amber-700/80 dark:text-amber-300/80 mb-2 truncate")}>
-        {title}
-      </div>
-      <span
-        aria-hidden
-        className="pointer-events-none absolute top-3 right-5 font-serif text-7xl leading-none text-amber-400/40 select-none dark:text-amber-300/25"
-      >
-        &rdquo;
-      </span>
-      {skeleton ? (
-        <div className="space-y-2" aria-hidden>
-          <div className="bg-amber-500/15 h-4 w-full rounded" />
-          <div className="bg-amber-500/15 h-4 w-11/12 rounded" />
-          <div className="bg-amber-500/15 h-4 w-2/3 rounded" />
-        </div>
-      ) : (
-        <>
-          <blockquote className="space-y-3 font-serif text-lg leading-relaxed text-amber-950 italic sm:text-xl dark:text-amber-50">
-            {blocks?.map((block, i) => <p key={i}>{block}</p>)}
-          </blockquote>
-          {attribution ? (
-            <figcaption className="text-amber-800/90 mt-4 text-sm font-medium not-italic dark:text-amber-200/90">
-              — {attribution}
-            </figcaption>
-          ) : null}
-        </>
-      )}
-    </figure>
   )
 }

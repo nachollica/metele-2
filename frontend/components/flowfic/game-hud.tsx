@@ -1,15 +1,16 @@
 "use client"
 
-import { Timer, Clock } from "lucide-react"
+import { Check, Timer, Clock, Pause, Play, X } from "lucide-react"
 
+import { Button } from "@/components/ui/button"
 import { cn, clamp01 } from "@/lib/utils"
 import { useTranslations } from "@/lib/i18n"
 import { formatSeconds } from "@/lib/flowfic/format"
 import { RequiredWordPanel } from "./required-word-panel"
 
 type Props = {
-  /** Seconds remaining before idle timeout fires. */
-  idleSecondsLeft: number
+  /** Seconds remaining before idle timeout fires, or null when it's disabled. */
+  idleSecondsLeft: number | null
   /** Total idle timeout (for proportional bar). */
   idleSecondsTotal: number
   /** Seconds remaining for the global session timer, or null when disabled. */
@@ -24,12 +25,22 @@ type Props = {
   useWordIn: number | null
   /** Total deadline length used for the progress ring. */
   useWordTotal: number | null
+  /** Whether the sprint is currently frozen (flips Pause into Resume). */
+  paused: boolean
+  /** Whether the sprint is over and the text is in its editable epilogue. */
+  ended: boolean
+  onPause: () => void
+  onResume: () => void
+  /** Opens the quit confirmation (which pauses while it is up). */
+  onQuit: () => void
+  /** Final checkout: save the finished story and return home. */
+  onFinish: () => void
 }
 
 /**
- * Body card for the game screen: timer bars and the required-word panel.
- * The screen-level chrome (title, primary action, auth) lives in the shared
- * AppHeader so it stays identical to the settings screen.
+ * Body card for the game screen: the session controls, the timer bars, and the
+ * required-word panel. The controls live here rather than in the app bar so
+ * everything that acts on the running sprint is in one place.
  */
 export function GameHud({
   idleSecondsLeft,
@@ -40,18 +51,26 @@ export function GameHud({
   requiredWord,
   useWordIn,
   useWordTotal,
+  paused,
+  ended,
+  onPause,
+  onResume,
+  onQuit,
+  onFinish,
 }: Props) {
   const t = useTranslations()
 
-  const idleBar = (
-    <TimerBar
-      icon={<Timer className="size-3.5" aria-hidden />}
-      label={t.game.idleEndsIn}
-      seconds={idleSecondsLeft}
-      total={idleSecondsTotal}
-      urgent={idleSecondsLeft <= 3}
-    />
-  )
+  const idleBar =
+    idleSecondsLeft !== null ? (
+      <TimerBar
+        icon={<Timer className="size-3.5" aria-hidden />}
+        label={t.game.idleEndsIn}
+        seconds={idleSecondsLeft}
+        total={idleSecondsTotal}
+        urgent={idleSecondsLeft <= 3}
+        dimmed={paused}
+      />
+    ) : null
   const globalBar =
     globalSecondsLeft !== null ? (
       <TimerBar
@@ -60,45 +79,120 @@ export function GameHud({
         seconds={globalSecondsLeft}
         total={globalSecondsTotal}
         urgent={globalSecondsLeft <= 10}
+        dimmed={paused}
       />
     ) : null
 
-  // Layout: when required-words mechanic is on, stack timer bars on the left
-  // and put the required-word panel on the right. When it's off, fall back to
-  // a simpler layout: idle | global side-by-side, or idle full-width.
-  let body: React.ReactNode
-  if (requiredWordsEnabled) {
-    body = (
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-4">
-        <div className="flex flex-col justify-center gap-2">
-          {idleBar}
-          {globalBar}
-        </div>
-        <RequiredWordPanel
-          word={requiredWord}
-          useWordIn={useWordIn}
-          useWordTotal={useWordTotal}
-        />
-      </div>
-    )
-  } else if (globalBar) {
-    body = (
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+  // Session controls + timers share the left half; the required-word panel
+  // takes the right half when the mechanic is on, otherwise the timers spread
+  // across the full width.
+  //
+  // Pause carries no banner of its own: a line of copy here would grow the
+  // card and shove everything below it. The state reads from the controls
+  // (Pause has become Play) plus the greyed timers and editor, and is
+  // announced through the toggle's own accessible name.
+  const timers = (
+    <div className="flex items-center gap-3">
+      <SessionControls
+        paused={paused}
+        ended={ended}
+        onPause={onPause}
+        onResume={onResume}
+        onQuit={onQuit}
+        onFinish={onFinish}
+      />
+      <div className="flex min-w-0 flex-1 flex-col justify-center gap-2">
         {idleBar}
         {globalBar}
       </div>
-    )
-  } else {
-    body = idleBar
-  }
+    </div>
+  )
 
   return (
     <section
       aria-label={t.app.title}
       className="bg-card text-card-foreground rounded-lg border p-4 shadow-sm"
     >
-      {body}
+      {requiredWordsEnabled ? (
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-4">
+          {timers}
+          <RequiredWordPanel
+            word={requiredWord}
+            useWordIn={useWordIn}
+            useWordTotal={useWordTotal}
+          />
+        </div>
+      ) : (
+        timers
+      )}
     </section>
+  )
+}
+
+/**
+ * The session controls, at the head of the timer row: two icon-only squares
+ * side by side (Pause/Resume and Quit), their meaning carried by the icons plus
+ * their accessible names. These replace the app bar's old primary action, so
+ * the finished-sprint checkout lives here too — once the sprint ends the pair
+ * collapses into one "Save story" button occupying the same footprint.
+ */
+function SessionControls({
+  paused,
+  ended,
+  onPause,
+  onResume,
+  onQuit,
+  onFinish,
+}: {
+  paused: boolean
+  ended: boolean
+  onPause: () => void
+  onResume: () => void
+  onQuit: () => void
+  onFinish: () => void
+}) {
+  const t = useTranslations()
+
+  // Two size-11 squares plus their gap; the ended button spans the same width
+  // so the timers beside it never reflow between states.
+  const FOOTPRINT = "w-[5.75rem]"
+
+  if (ended) {
+    return (
+      <div className={cn("flex shrink-0", FOOTPRINT)}>
+        <Button type="button" size="sm" onClick={onFinish} className="w-full gap-1.5">
+          <Check className="size-3.5" aria-hidden />
+          {t.game.finish}
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <div className={cn("flex shrink-0 gap-1.5", FOOTPRINT)}>
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={paused ? onResume : onPause}
+        aria-label={paused ? t.game.resume : t.game.pause}
+        className="size-11"
+      >
+        {paused ? (
+          <Play className="size-5" aria-hidden />
+        ) : (
+          <Pause className="size-5" aria-hidden />
+        )}
+      </Button>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={onQuit}
+        aria-label={t.game.quit}
+        className="size-11"
+      >
+        <X className="size-5" aria-hidden />
+      </Button>
+    </div>
   )
 }
 
@@ -108,17 +202,20 @@ function TimerBar({
   seconds,
   total,
   urgent,
+  dimmed = false,
 }: {
   icon: React.ReactNode
   label: string
   seconds: number
   total: number
   urgent: boolean
+  /** Frozen (paused): grey the bar out, since its value is no longer moving. */
+  dimmed?: boolean
 }) {
   const t = useTranslations()
   const progress = clamp01(seconds / total)
   return (
-    <div className="flex flex-col gap-1">
+    <div className={cn("flex flex-col gap-1 transition-opacity", dimmed && "opacity-40")}>
       <div className="flex items-center justify-between text-xs">
         <span className="text-muted-foreground flex items-center gap-1.5">
           {icon}

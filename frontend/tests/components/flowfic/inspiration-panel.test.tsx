@@ -2,9 +2,8 @@ import { screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { InspirationImage, QuoteOfDay } from "@/components/flowfic/inspiration-panel"
+import { InspirationCard, InspirationPane } from "@/components/flowfic/inspiration-panel"
 import { ShowAllButton } from "@/components/flowfic/dashboard-widgets"
-import * as quotesModule from "@/lib/flowfic/quotes"
 import type { Quote } from "@/lib/flowfic/quotes"
 import * as inspirationModule from "@/lib/flowfic/inspiration"
 import type { InspirationImageData, InspirationState } from "@/lib/flowfic/inspiration"
@@ -16,80 +15,92 @@ const IMAGE: InspirationImageData = {
   img: "https://film-grab.com/wp-content/uploads/And-The-Ship-01.jpg",
 }
 
-describe("InspirationImage", () => {
+const QUOTE: Quote = {
+  id: "carroll-0001",
+  author: "Lewis Carroll",
+  source: "Alice's Adventures in Wonderland",
+  kind: "dialogue",
+  lang_source: "en",
+  origin: { file: "x", md5: "y", char_start: 0, char_end: 1 },
+  text: { en: ["Curiouser and curiouser!"], es: ["¡Cada vez más raro!"] },
+}
+
+function mockStore(state: InspirationState, pick = vi.fn()): ReturnType<typeof vi.fn> {
+  vi.spyOn(inspirationModule, "useInspiration").mockReturnValue({
+    state,
+    pick,
+    clear: vi.fn(),
+  })
+  return pick
+}
+
+describe("InspirationCard", () => {
   afterEach(() => vi.restoreAllMocks())
 
-  function mockPick(state: InspirationState, refresh = vi.fn()): ReturnType<typeof vi.fn> {
-    vi.spyOn(inspirationModule, "useInspiration").mockReturnValue({ state, refresh })
-    return refresh
-  }
+  it("invites a first pick while unset, and picking is the whole card", async () => {
+    const pick = mockStore({ status: "unset" })
+    const { container } = renderWithLocale(<InspirationCard />)
 
-  it("uses the picked film's name as the (dynamic) card title, with image + credit link", () => {
-    mockPick({ status: "ready", image: IMAGE })
-    const { container } = renderWithLocale(<InspirationImage />)
-    // The card title itself is the film name now (styled uppercase in CSS; the
-    // accessible name is the raw derived slug) — no static "Inspiration" label.
-    expect(screen.getByRole("heading", { name: "and the ship sails on" })).toBeInTheDocument()
-    expect(screen.queryByText("Inspiration")).toBeNull()
-    expect(container.querySelector("img")).toHaveAttribute("src", IMAGE.img)
-
-    const link = screen.getByRole("link", { name: /film-grab\.com/i })
-    expect(link).toHaveAttribute("href", IMAGE.loc)
-    expect(link).toHaveAttribute("target", "_blank")
-    expect(link).toHaveAttribute("rel", "noopener noreferrer")
-  })
-
-  it("re-rolls the shared pick when the refresh control is clicked", async () => {
-    const refresh = mockPick({ status: "ready", image: IMAGE })
-    renderWithLocale(<InspirationImage />)
-    await userEvent.click(screen.getByRole("button", { name: "Show another image" }))
-    expect(refresh).toHaveBeenCalledOnce()
-  })
-
-  it("shows just the title (no image, link, or actions) while the catalog loads", () => {
-    mockPick({ status: "loading" })
-    const { container } = renderWithLocale(<InspirationImage />)
-    expect(screen.getByText("Inspiration")).toBeInTheDocument()
+    const card = screen.getByRole("button", { name: "Click here to get some inspiration" })
+    expect(screen.getByText("Click here to get some inspiration")).toBeInTheDocument()
     expect(container.querySelector("img")).toBeNull()
+
+    await userEvent.click(card)
+    expect(pick).toHaveBeenCalledOnce()
+  })
+
+  it("renders a picked image and offers a re-roll", async () => {
+    const pick = mockStore({ status: "image", image: IMAGE })
+    const { container } = renderWithLocale(<InspirationCard />)
+
+    expect(container.querySelector("img")).toHaveAttribute("src", IMAGE.img)
+    // No title, credit link, or separate refresh control by design.
     expect(screen.queryByRole("link")).toBeNull()
-    expect(screen.queryByRole("button")).toBeNull()
+    expect(screen.queryByText(IMAGE.title)).toBeNull()
+
+    await userEvent.click(screen.getByRole("button", { name: "Show me another inspiration" }))
+    expect(pick).toHaveBeenCalledOnce()
+  })
+
+  it("renders a picked quote with its attribution", () => {
+    mockStore({ status: "quote", quote: QUOTE })
+    renderWithLocale(<InspirationCard />)
+    expect(screen.getByText("Curiouser and curiouser!")).toBeInTheDocument()
+    expect(
+      screen.getByText(/Lewis Carroll · Alice's Adventures in Wonderland/),
+    ).toBeInTheDocument()
+  })
+
+  it("renders the localized quote text for the active locale", () => {
+    mockStore({ status: "quote", quote: QUOTE })
+    renderWithLocale(<InspirationCard />, { locale: "es" })
+    expect(screen.getByText("¡Cada vez más raro!")).toBeInTheDocument()
+  })
+
+  it("says so when neither pool is available", () => {
+    mockStore({ status: "unavailable" })
+    renderWithLocale(<InspirationCard />)
+    expect(screen.getByText("No inspiration available right now.")).toBeInTheDocument()
   })
 })
 
-const FIXTURE: Quote[] = [
-  {
-    id: "carroll-0001",
-    author: "Lewis Carroll",
-    source: "Alice's Adventures in Wonderland",
-    kind: "dialogue",
-    lang_source: "en",
-    origin: { file: "x", md5: "y", char_start: 0, char_end: 1 },
-    text: { en: ["Curiouser and curiouser!"], es: ["¡Cada vez más raro!"] },
-  },
-]
-
-describe("QuoteOfDay", () => {
+describe("InspirationPane", () => {
   afterEach(() => vi.restoreAllMocks())
 
-  it("shows the quote-of-the-day header, today's quote, and attribution", async () => {
-    vi.spyOn(quotesModule, "loadQuotes").mockResolvedValue(FIXTURE)
-    renderWithLocale(<QuoteOfDay />)
-    expect(screen.getByText("Quote of the day")).toBeInTheDocument()
-    expect(await screen.findByText("Curiouser and curiouser!")).toBeInTheDocument()
-    expect(screen.getByText(/Lewis Carroll · Alice's Adventures in Wonderland/)).toBeInTheDocument()
+  it("shows the zoomable image viewport for an image pick", () => {
+    mockStore({ status: "image", image: IMAGE })
+    const { container } = renderWithLocale(<InspirationPane />)
+    expect(
+      screen.getByRole("img", { name: `Inspiration image: ${IMAGE.title}` }),
+    ).toBeInTheDocument()
+    expect(container.querySelector("img")).toHaveAttribute("src", IMAGE.img)
   })
 
-  it("renders the localized text for the active locale", async () => {
-    vi.spyOn(quotesModule, "loadQuotes").mockResolvedValue(FIXTURE)
-    renderWithLocale(<QuoteOfDay />, { locale: "es" })
-    expect(await screen.findByText("¡Cada vez más raro!")).toBeInTheDocument()
-  })
-
-  it("renders nothing when the pool is unavailable", async () => {
-    vi.spyOn(quotesModule, "loadQuotes").mockResolvedValue(null)
-    const { container } = renderWithLocale(<QuoteOfDay />)
-    // Wait a tick for the effect to resolve, then the card is gone.
-    await vi.waitFor(() => expect(container).toBeEmptyDOMElement())
+  it("shows a static quote (no zoom viewport) for a quote pick", () => {
+    mockStore({ status: "quote", quote: QUOTE })
+    renderWithLocale(<InspirationPane />)
+    expect(screen.getByText("Curiouser and curiouser!")).toBeInTheDocument()
+    expect(screen.queryByRole("img")).toBeNull()
   })
 })
 

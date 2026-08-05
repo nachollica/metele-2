@@ -12,8 +12,8 @@ from app.models import StorySettings, StoryStats
 URL = "/stats"
 
 _SETTINGS: dict[str, object] = {
+    "idleTimerEnabled": True,
     "mainTimerSeconds": 15,
-    "globalTimerEnabled": True,
     "globalTimerSeconds": 600,
     "requiredWordIntervalEnabled": True,
     "requiredWordIntervalSeconds": 30,

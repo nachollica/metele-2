@@ -16,6 +16,9 @@ type Props = {
   matches: MatchedRange[]
   disabled?: boolean
   readOnly?: boolean
+  /** Paused mid-sprint: the story stays fully legible, just greyed out and
+   *  read-only so it is obvious nothing can be typed until it resumes. */
+  paused?: boolean
 }
 
 // Shared typography classes for the textarea.
@@ -40,17 +43,23 @@ export function WritingArea({
   matches: _matches,
   disabled,
   readOnly,
+  paused = false,
 }: Props) {
   const t = useTranslations()
 
   return (
-    <div className="bg-card focus-within:ring-ring/40 relative h-full w-full overflow-hidden rounded-lg border shadow-sm transition-shadow focus-within:ring-4">
+    <div
+      className={cn(
+        "bg-card focus-within:ring-ring/40 relative h-full w-full overflow-hidden rounded-lg border shadow-sm transition-shadow focus-within:ring-4",
+        paused && "bg-muted",
+      )}
+    >
       <textarea
         ref={ref}
         value={value}
         onChange={onChange}
         disabled={disabled}
-        readOnly={readOnly}
+        readOnly={readOnly || paused}
         spellCheck={false}
         autoFocus={!readOnly}
         placeholder={t.game.placeholder}
@@ -58,6 +67,7 @@ export function WritingArea({
           "text-card-foreground placeholder:text-muted-foreground/60 relative h-full w-full resize-none bg-transparent outline-none",
           SHARED_TEXT_CLASSES,
           "selection:bg-highlight/25",
+          paused && "text-muted-foreground cursor-default",
         )}
         aria-label={t.game.placeholder}
       />

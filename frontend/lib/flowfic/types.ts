@@ -7,11 +7,15 @@ export type SoundMode = "bell" | "speak"
 export type WordSource = "free" | "universe"
 
 export type GameSettings = {
-  /** Seconds without keystrokes before the session ends. */
+  /** Whether the idle timeout is enforced. When false the player can pause as
+   *  long as they like and only the session timer (or a missed required word)
+   *  can end the sprint. */
+  idleTimerEnabled: boolean
+  /** Seconds without keystrokes before the session ends (when enabled). */
   mainTimerSeconds: number
-  /** Whether the global session timer is enabled. */
-  globalTimerEnabled: boolean
-  /** Total session duration in seconds (when enabled). */
+  /** Total session duration in seconds. The session timer is always on — it is
+   *  picked from the home screen's dial rather than the advanced settings, so
+   *  there is no "enabled" companion flag. */
   globalTimerSeconds: number
   /** Master toggle for the required-words mechanic. When false, no required
    *  words appear and the per-word deadline is moot. */
@@ -60,10 +64,17 @@ export type MatchedRange = {
   end: number
 }
 
+/** Session lengths (minutes) offered by the home screen's timer dial. */
+export const SESSION_MINUTES = [5, 10, 15, 25, 45] as const
+
+/** Fallback when a stored/preset session length is not one of the dial's
+ *  options — the dial has to show something, so it snaps to the default. */
+export const DEFAULT_SESSION_MINUTES = 10
+
 export const DEFAULT_SETTINGS: GameSettings = {
+  idleTimerEnabled: true,
   mainTimerSeconds: 15,
-  globalTimerEnabled: true,
-  globalTimerSeconds: 600,
+  globalTimerSeconds: DEFAULT_SESSION_MINUTES * 60,
   requiredWordIntervalEnabled: true,
   requiredWordIntervalSeconds: 30,
   requiredWordUseTimerEnabled: false,
@@ -90,8 +101,8 @@ export const DEFAULT_SETTINGS: GameSettings = {
 // listed here is a personal setting: ignored during preset matching and
 // untouched when a preset is applied.
 export const PRESET_KEYS = [
+  "idleTimerEnabled",
   "mainTimerSeconds",
-  "globalTimerEnabled",
   "globalTimerSeconds",
   "requiredWordIntervalEnabled",
   "requiredWordIntervalSeconds",
@@ -99,12 +110,22 @@ export const PRESET_KEYS = [
   "requiredWordUseTimerSeconds",
 ] as const
 
+// Subset of PRESET_KEYS compared when deciding which mode card is highlighted.
+// `globalTimerSeconds` is deliberately excluded: it is stored in the mode (so
+// picking a mode moves the home dial) but the dial is also a first-class
+// control of its own, and re-dialling the length should not silently
+// un-highlight the mode the player chose.
+export const PRESET_MATCH_KEYS = PRESET_KEYS.filter(
+  (k) => k !== "globalTimerSeconds",
+)
+
 export type PresetKey = (typeof PRESET_KEYS)[number]
 export type PresetSettings = Pick<GameSettings, PresetKey>
 
-// System presets shipped with the app. The settings screen reserves the
-// 6th slot for the "custom modes" toggle, so this list MUST stay at 5.
-export type PresetId = "classic" | "speed" | "relaxed" | "creative" | "nolimit"
+// System presets shipped with the app. The home screen's mode grid has four
+// cells — three system modes plus the challenge of the day — so this list
+// MUST stay at 3.
+export type PresetId = "classic" | "speed" | "creative"
 
 export type Preset = {
   id: PresetId
@@ -116,8 +137,8 @@ export const PRESETS: Preset[] = [
   {
     id: "classic",
     settings: {
+      idleTimerEnabled: DEFAULT_SETTINGS.idleTimerEnabled,
       mainTimerSeconds: DEFAULT_SETTINGS.mainTimerSeconds,
-      globalTimerEnabled: DEFAULT_SETTINGS.globalTimerEnabled,
       globalTimerSeconds: DEFAULT_SETTINGS.globalTimerSeconds,
       requiredWordIntervalEnabled: DEFAULT_SETTINGS.requiredWordIntervalEnabled,
       requiredWordIntervalSeconds: DEFAULT_SETTINGS.requiredWordIntervalSeconds,
@@ -128,8 +149,8 @@ export const PRESETS: Preset[] = [
   {
     id: "speed",
     settings: {
+      idleTimerEnabled: true,
       mainTimerSeconds: 5,
-      globalTimerEnabled: true,
       globalTimerSeconds: 300,
       requiredWordIntervalEnabled: false,
       requiredWordIntervalSeconds: 15,
@@ -138,39 +159,15 @@ export const PRESETS: Preset[] = [
     },
   },
   {
-    id: "relaxed",
-    settings: {
-      mainTimerSeconds: 30,
-      globalTimerEnabled: true,
-      globalTimerSeconds: 1200,
-      requiredWordIntervalEnabled: true,
-      requiredWordIntervalSeconds: 90,
-      requiredWordUseTimerEnabled: false,
-      requiredWordUseTimerSeconds: 60,
-    },
-  },
-  {
     id: "creative",
     settings: {
+      idleTimerEnabled: true,
       mainTimerSeconds: 10,
-      globalTimerEnabled: true,
       globalTimerSeconds: 600,
       requiredWordIntervalEnabled: true,
       requiredWordIntervalSeconds: 20,
       requiredWordUseTimerEnabled: true,
       requiredWordUseTimerSeconds: 10,
-    },
-  },
-  {
-    id: "nolimit",
-    settings: {
-      mainTimerSeconds: 30,
-      globalTimerEnabled: false,
-      globalTimerSeconds: 1800,
-      requiredWordIntervalEnabled: true,
-      requiredWordIntervalSeconds: 90,
-      requiredWordUseTimerEnabled: false,
-      requiredWordUseTimerSeconds: 60,
     },
   },
 ]
@@ -179,8 +176,8 @@ export const PRESETS: Preset[] = [
  *  Used when saving the settings panel's current state as a custom preset. */
 export function extractPresetSettings(s: GameSettings): PresetSettings {
   return {
+    idleTimerEnabled: s.idleTimerEnabled,
     mainTimerSeconds: s.mainTimerSeconds,
-    globalTimerEnabled: s.globalTimerEnabled,
     globalTimerSeconds: s.globalTimerSeconds,
     requiredWordIntervalEnabled: s.requiredWordIntervalEnabled,
     requiredWordIntervalSeconds: s.requiredWordIntervalSeconds,
@@ -189,10 +186,11 @@ export function extractPresetSettings(s: GameSettings): PresetSettings {
   }
 }
 
-/** Find which preset (if any) matches the preset-covered keys of a settings object. */
+/** Find which preset (if any) matches the settings object. Compares
+ *  `PRESET_MATCH_KEYS`, so the session length is not part of the decision. */
 export function findMatchingPreset(s: GameSettings): PresetId | null {
   for (const p of PRESETS) {
-    if (PRESET_KEYS.every((k) => p.settings[k] === s[k])) return p.id
+    if (PRESET_MATCH_KEYS.every((k) => p.settings[k] === s[k])) return p.id
   }
   return null
 }
@@ -204,7 +202,15 @@ export function findMatchingCustomPreset(
   presets: ReadonlyArray<{ id: string; settings: PresetSettings }>,
 ): string | null {
   for (const p of presets) {
-    if (PRESET_KEYS.every((k) => p.settings[k] === s[k])) return p.id
+    if (PRESET_MATCH_KEYS.every((k) => p.settings[k] === s[k])) return p.id
   }
   return null
+}
+
+/** Session length in whole minutes, snapped to one of `SESSION_MINUTES`. */
+export function sessionMinutes(s: GameSettings): number {
+  const minutes = Math.round(s.globalTimerSeconds / 60)
+  return (SESSION_MINUTES as readonly number[]).includes(minutes)
+    ? minutes
+    : DEFAULT_SESSION_MINUTES
 }

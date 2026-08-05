@@ -14,8 +14,8 @@ from app.models import MAX_CUSTOM_PRESETS
 def _valid_settings() -> dict:
     """Settings payload that satisfies ``PresetSettings`` validation."""
     return {
+        "idleTimerEnabled": True,
         "mainTimerSeconds": 7,
-        "globalTimerEnabled": True,
         "globalTimerSeconds": 300,
         "requiredWordIntervalEnabled": True,
         "requiredWordIntervalSeconds": 30,
@@ -96,7 +96,7 @@ def test_create_enforces_max_limit(auth_client) -> None:
         json={"name": "Overflow", "settings": _valid_settings()},
     )
     assert res.status_code == 409, res.text
-    assert "5" in res.json()["detail"]
+    assert str(MAX_CUSTOM_PRESETS) in res.json()["detail"]
 
 
 def test_update_custom_preset_renames(auth_client) -> None:

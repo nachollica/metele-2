@@ -3,20 +3,20 @@
 // nav-item list any more — just the union of detail screens. Kept framework
 // -light (no JSX) so the shell, tests, and game wiring can all import it.
 
-import { BarChart3, BookOpen, Zap, type LucideIcon } from "lucide-react"
+import { BookOpen, Compass, type LucideIcon } from "lucide-react"
 
 import type { Translations } from "@/lib/i18n"
 
-// Expanded subsections. "home" is the landing dashboard (not a subsection);
-// "profile" is reached from the account menu; session settings live on the
-// configuring screen — none of those are here. Achievements has no section of
-// its own: it was merged into the expanded Challenges screen.
-export type Section = "stories" | "challenges" | "stats"
+// Expanded subsections. Just two for signed-in users: "stories" (their saved
+// stories) and "journey" — the merged progress screen that folds together the
+// former Statistics, Challenges, and Achievements sections. "home" is the
+// landing dashboard (not a subsection); "profile" is reached from the account
+// menu; session settings live on the configuring screen — none are here.
+export type Section = "stories" | "journey"
 
 // Icon + localized title for each expanded subsection, used by the detail
-// screen header and (via the section's own preview card) the landing.
+// screen header, the landing's combined card, and the account-menu links.
 export const SECTION_META: Record<Section, { icon: LucideIcon; title: (t: Translations) => string }> = {
   stories: { icon: BookOpen, title: (t) => t.nav.stories },
-  challenges: { icon: Zap, title: (t) => t.nav.challenges },
-  stats: { icon: BarChart3, title: (t) => t.nav.stats },
+  journey: { icon: Compass, title: (t) => t.nav.journey },
 }

@@ -80,6 +80,12 @@ export async function loadQuotes(): Promise<readonly Quote[] | null> {
   return inflight
 }
 
+/** Test seam: drop the memoized pool so a test can re-stub the fetch. */
+export function resetQuotesCacheForTests(): void {
+  cache = undefined
+  inflight = undefined
+}
+
 /** Parse the JSONL body into quotes, skipping blank lines. Exported for tests. */
 export function parseQuotesJsonl(body: string): Quote[] {
   const quotes: Quote[] = []

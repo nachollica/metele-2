@@ -19,9 +19,9 @@ test("first visit shows the welcome modal, which dismisses to the landing dashbo
   await expect(skip).toBeVisible()
   await skip.click()
 
-  // Dismissed -> the landing dashboard is shown; the header's New story action
-  // is ready (clicking it reveals the session settings).
-  await expect(page.getByRole("button", { name: "Create a story" })).toBeVisible()
+  // Dismissed -> the landing dashboard is shown, with the session launcher
+  // ready to start a sprint straight away.
+  await expect(page.getByRole("button", { name: "Start writing" })).toBeVisible()
   await expect(skip).toBeHidden()
 })
 
@@ -31,8 +31,8 @@ test("start -> type -> quit shows the results modal with session stats", async (
   await dismissWelcomeBeforeLoad(page)
   await page.goto("/")
 
-  // New story reveals the settings; Start writing begins the sprint.
-  await page.getByRole("button", { name: "Create a story" }).click()
+  // The launcher's Start button begins the sprint directly — there is no
+  // separate configurator screen any more.
   await page.getByRole("button", { name: "Start writing" }).click()
 
   const textarea = page.getByRole("textbox")
@@ -40,7 +40,9 @@ test("start -> type -> quit shows the results modal with session stats", async (
   // Typing arms the timers; once armed, an explicit quit scores the session.
   await textarea.fill("The quick brown fox jumps over the lazy dog. ")
 
+  // Quit asks for confirmation before ending the sprint.
   await page.getByRole("button", { name: "Quit session" }).click()
+  await page.getByRole("button", { name: "Quit", exact: true }).click()
 
   const results = page.getByRole("dialog")
   await expect(results.getByText("Session ended")).toBeVisible()
@@ -57,7 +59,6 @@ test("the idle timeout ends the session on its own", async ({ page }) => {
   await dismissWelcomeBeforeLoad(page)
   await page.goto("/")
 
-  await page.getByRole("button", { name: "Create a story" }).click()
   await page.getByRole("button", { name: "Start writing" }).click()
 
   const textarea = page.getByRole("textbox")

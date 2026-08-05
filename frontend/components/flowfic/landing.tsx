@@ -1,113 +1,107 @@
 "use client"
 
-import { Clock, Flame, Sparkles } from "lucide-react"
+import { useTranslations } from "@/lib/i18n"
+import { type GameSettings } from "@/lib/flowfic/types"
+import { type Story } from "@/lib/flowfic/stories-api"
 
-import { useLocale, useTranslations } from "@/lib/i18n"
-import { emptyOverview, formatCount, formatHoursMinutes } from "@/lib/flowfic/gamification"
-import type { Story } from "@/lib/flowfic/stories-api"
-
-import { ChallengesSection } from "./challenges-section"
 import { type Section } from "./dashboard-nav"
-import { Panel, SectionHeader, StatTile } from "./dashboard-widgets"
-import { useGamification } from "./gamification-context"
-import { InspirationImage, QuoteOfDay } from "./inspiration-panel"
-import { StatsSection } from "./stats-section"
+import { ContentColumn } from "./dashboard-widgets"
+import { type GridMode } from "./preset-grid"
+import { InspirationCard } from "./inspiration-panel"
+import { SessionLauncher } from "./session-launcher"
+import { SettingsPanel } from "./settings-panel"
 import { StoriesSection } from "./stories-section"
 
-// Landing order: full-width quote of the day, the inspiration-image widget,
-// weekly summary + challenge of the day (half/half), the full-width statistics
-// widget, and the full-width recent-stories list. Half-width rows stack on
-// mobile. Achievements no longer has its own card — it lives inside the expanded
-// Challenges screen.
+// Landing order: the session launcher (dial + modes + actions), a fixed-height
+// panel that swaps between recent stories and the advanced settings, then the
+// full-width inspiration card.
+
+// Height of the swappable panel. Sized so the settings face fits exactly —
+// nothing inside it scrolls, and the stories face lays its three rows out to
+// fill the same box (see StoriesSection's preview).
+const PANEL_HEIGHT = "h-[30rem]"
 
 type Props = {
+  settings: GameSettings
+  onChangeSettings: (settings: GameSettings) => void
+  /** Begin the sprint with the current settings. */
+  onStart: () => void
+  /** Whether the swappable panel shows the settings face (URL-backed: /new). */
+  settingsOpen: boolean
+  onToggleSettings: () => void
   /** Open an expanded subsection (from a "Show all" link). */
   onShowSection: (section: Section) => void
-  /** Begin the new-story flow (challenge call-to-action). */
-  onNewStory: () => void
   stories: Story[] | null
   storiesError: boolean
   onViewStory: (story: Story) => void
   onDeleteStory: (id: number) => Promise<boolean>
   onUpdateStoryTitle: (id: number, title: string | null) => Promise<boolean>
+  /** Mode grid face, lifted here so it survives the panel toggling. */
+  gridMode: GridMode
+  onToggleGridMode: () => void
 }
 
-/**
- * Landing dashboard: everything the old Home screen showed (minus the session
- * settings, now on the configuring screen) aggregated with the previously
- * sidebar-navigated sections. Order: inspiration image, prompt + this week's
- * totals, then a preview card per subsection, each with a "Show all" link into
- * its expanded screen.
- */
 export function LandingHome({
+  settings,
+  onChangeSettings,
+  onStart,
+  settingsOpen,
+  onToggleSettings,
   onShowSection,
-  onNewStory,
   stories,
   storiesError,
   onViewStory,
   onDeleteStory,
   onUpdateStoryTitle,
+  gridMode,
+  onToggleGridMode,
 }: Props) {
   const t = useTranslations()
-  const locale = useLocale()
-  const { overview } = useGamification()
-  const ov = overview ?? emptyOverview()
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-5">
+    <ContentColumn className="gap-6">
       {/* The landing has no visible title by design; this names the screen for
           assistive tech so the page still has a top-level heading. */}
       <h1 className="sr-only">{t.app.title}</h1>
 
-      {/* Quote of the day — full width, top of the dashboard. */}
-      <QuoteOfDay />
+      <SessionLauncher
+        settings={settings}
+        onChange={onChangeSettings}
+        onStart={onStart}
+        settingsOpen={settingsOpen}
+        onToggleSettings={onToggleSettings}
+        gridMode={gridMode}
+        onToggleGridMode={onToggleGridMode}
+      />
 
-      {/* Inspiration image — full-width titled widget. */}
-      <InspirationImage />
-
-      {/* This week's totals + challenge of the day (half/half). The grid stretches
-          both cards to a shared height on wide screens; the summary centers its
-          tiles in the extra space so the two cards read as a consistent pair. */}
-      <div className="grid gap-5 lg:grid-cols-2">
-        <Panel className="flex h-full flex-col">
-          <SectionHeader title={t.dashboard.weeklySummary} />
-          <div className="my-auto grid grid-cols-3 gap-2">
-            <StatTile
-              icon={Sparkles}
-              tone="green"
-              value={formatCount(ov.weekly.sessions, locale)}
-              label={t.dashboard.sessions}
-            />
-            <StatTile
-              icon={Flame}
-              tone="amber"
-              value={formatCount(ov.weekly.words, locale)}
-              label={t.dashboard.words}
-            />
-            <StatTile
-              icon={Clock}
-              tone="violet"
-              value={formatHoursMinutes(ov.weekly.durationMs)}
-              label={t.dashboard.totalTime}
-            />
+      {/* Swappable panel: recent stories by default, advanced settings behind
+          "More options". Fixed height so toggling never jumps the page, and
+          deliberately NOT scrollable — each face is sized to fit it exactly.
+          The settings face is desktop-only (see SessionLauncher), so on a phone
+          this always shows the stories and `/new` needs no redirect. */}
+      <div
+        className={`bg-card text-card-foreground ${PANEL_HEIGHT} flex flex-col overflow-hidden rounded-2xl border p-5 shadow-sm`}
+      >
+        {settingsOpen ? (
+          <div className="hidden min-h-0 flex-1 md:block">
+            <SettingsPanel settings={settings} onChange={onChangeSettings} />
           </div>
-        </Panel>
-        <ChallengesSection preview onNewStory={onNewStory} onShowAll={() => onShowSection("challenges")} />
+        ) : null}
+        <div className={settingsOpen ? "flex min-h-0 flex-1 flex-col md:hidden" : "flex min-h-0 flex-1 flex-col"}>
+          <StoriesSection
+            preview
+            flush
+            onShowAll={() => onShowSection("stories")}
+            stories={stories}
+            error={storiesError}
+            onViewStory={onViewStory}
+            onDeleteStory={onDeleteStory}
+            onUpdateTitle={onUpdateStoryTitle}
+          />
+        </div>
       </div>
 
-      {/* Statistics — full width. */}
-      <StatsSection preview onShowAll={() => onShowSection("stats")} />
-
-      {/* Recent stories — full width. */}
-      <StoriesSection
-        preview
-        onShowAll={() => onShowSection("stories")}
-        stories={stories}
-        error={storiesError}
-        onViewStory={onViewStory}
-        onDeleteStory={onDeleteStory}
-        onUpdateTitle={onUpdateStoryTitle}
-      />
-    </div>
+      <InspirationCard />
+    </ContentColumn>
   )
 }

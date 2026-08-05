@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { LogIn, LogOut, User, UserCog } from "lucide-react"
+import { BookOpen, Compass, LogIn, LogOut, User, UserCog } from "lucide-react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -19,10 +19,13 @@ import { useAuth } from "@/lib/auth"
 import { useBackendStatus } from "@/lib/backend"
 import { useTranslations } from "@/lib/i18n"
 
+import { type Section } from "./dashboard-nav"
 import { LevelBadge } from "./dashboard-widgets"
 import { useGamification } from "./gamification-context"
 
 type Props = {
+  /** Open an expanded subsection (My stories / My Journey menu entries). */
+  onShowSection?: (section: Section) => void
   /** Invoked from the account menu's "Profile" entry. */
   onOpenProfile?: () => void
   /** Locks the control while a sprint is running. */
@@ -33,13 +36,14 @@ type Props = {
  * Account control anchored to the top-right of the app header. Anonymous users
  * get a single "Log in" button (the social login modal doubles as sign-up);
  * signed-in users get their avatar, opening a menu with their name/email, a
- * level badge, Profile, and Logout.
+ * level badge, quick links into their sections (My stories, My Journey),
+ * Profile, and Logout.
  *
  * The dev-user backdoor is intentionally NOT surfaced here — it stays a
  * header-only dev shortcut rendered separately. Like the old control, the whole
  * thing is hidden when the backend is unreachable (there's no offline auth).
  */
-export function AccountMenu({ onOpenProfile, disabled = false }: Props) {
+export function AccountMenu({ onShowSection, onOpenProfile, disabled = false }: Props) {
   const t = useTranslations()
   const { status, user, logout } = useAuth()
   const { status: backendStatus } = useBackendStatus()
@@ -122,6 +126,18 @@ export function AccountMenu({ onOpenProfile, disabled = false }: Props) {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        {onShowSection ? (
+          <>
+            <DropdownMenuItem onClick={() => onShowSection("stories")}>
+              <BookOpen className="size-4" aria-hidden />
+              {t.nav.stories}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onShowSection("journey")}>
+              <Compass className="size-4" aria-hidden />
+              {t.nav.journey}
+            </DropdownMenuItem>
+          </>
+        ) : null}
         {onOpenProfile ? (
           <DropdownMenuItem onClick={onOpenProfile}>
             <UserCog className="size-4" aria-hidden />

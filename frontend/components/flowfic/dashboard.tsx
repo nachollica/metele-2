@@ -1,31 +1,45 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { AlertTriangle, Home, Loader2, Pencil, Sparkles, X } from "lucide-react"
+import { AlertTriangle, Loader2, Wand2 } from "lucide-react"
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 
 import { useAuth } from "@/lib/auth"
 import { useBackendStatus } from "@/lib/backend"
 import { useTranslations } from "@/lib/i18n"
+import { useInspiration } from "@/lib/flowfic/inspiration"
+import { deriveTitle } from "@/lib/flowfic/gamification"
 import { useGameEngine } from "@/lib/flowfic/use-game-engine"
 import { useStories } from "@/lib/flowfic/use-stories"
+import type { GameSettings } from "@/lib/flowfic/types"
 import type { Story } from "@/lib/flowfic/stories-api"
 
 import { SECTION_META, type Section } from "./dashboard-nav"
 import { pathToScreen, screenToPath, type Screen } from "./navigation"
 import { AppHeader } from "./app-header"
-import { ChallengesSection } from "./challenges-section"
 import { DetailScreen } from "./detail-screen"
 import { GamificationProvider } from "./gamification-context"
 import { GameHud } from "./game-hud"
-import { ZoomableInspirationImage } from "./inspiration-panel"
+import { InspirationPane } from "./inspiration-panel"
+import { JourneySection } from "./journey-section"
 import { LandingHome } from "./landing"
+import { type GridMode } from "./preset-grid"
 import { ProfilePanel } from "./profile-panel"
 import { ResultsModal } from "./results-modal"
-import { SettingsPanel } from "./settings-panel"
-import { StatsSection } from "./stats-section"
 import { StoriesSection } from "./stories-section"
 import { WelcomeModal } from "./welcome-modal"
 import { WritingArea } from "./writing-area"
@@ -53,13 +67,27 @@ export function Dashboard() {
       : pathToScreen(window.location.pathname),
   )
   const [welcomeOpen, setWelcomeOpen] = useState(false)
+  // Mode grid face, held here so flipping it survives the panel toggling and
+  // a trip into a detail screen and back.
+  const [gridMode, setGridMode] = useState<GridMode>("system")
+  // Quit confirmation. Opening it pauses the sprint; cancelling leaves it
+  // paused, since the player can't interact with the editor while it is up.
+  const [quitConfirmOpen, setQuitConfirmOpen] = useState(false)
+  // Whether the in-game inspiration pane is expanded (desktop only).
+  const [inspirationOpen, setInspirationOpen] = useState(true)
+  const { state: inspirationState } = useInspiration()
+  const hasInspiration =
+    inspirationState.status === "image" || inspirationState.status === "quote"
 
-  const inGame = engine.gameState === "playing" || engine.gameState === "ended"
+  const inGame =
+    engine.gameState === "playing" ||
+    engine.gameState === "paused" ||
+    engine.gameState === "ended"
   const loading = engine.gameState === "loading"
-  // Left/right split (settings or game on the left, inspiration on the right)
-  // is used whenever a session is being configured or played. Desktop only —
-  // the inspiration column is hidden on mobile.
-  const splitLayout = screen.name === "configuring" || loading || inGame
+  // Left/right split (the game on the left, inspiration on the right) applies
+  // once a session starts. Desktop only — the inspiration column is hidden on
+  // mobile — and only when the player actually picked an inspiration.
+  const splitLayout = loading || inGame
 
   // ---- First-visit welcome (anonymous only) ------------------------------
   useEffect(() => {
@@ -157,120 +185,146 @@ export function Dashboard() {
     navigate({ name: "story", id: story.id })
   }
 
-  // "New story": reveal the session configurator (engine stays idle). This
-  // pushes the /new entry so Back during setup/play returns here in-app.
-  function beginNewStory() {
-    leaveGame()
-    navigate({ name: "configuring" })
-  }
-
-  // "Start writing": start the sprint with the configured settings.
+  // "Start writing": start the sprint with the configured settings. Reached
+  // from the launcher's Start button and its challenge card.
   function startWriting() {
     engine.saveCurrentStoryIfNeeded()
     engine.startGame(engine.settings)
   }
 
-  // "Create a story" (ended state): finalize the finished sprint, back to home.
+  // Final checkout of a finished sprint: save, wipe, back to home.
   function finishStory() {
     engine.finishAndReset()
     navigate({ name: "landing" })
   }
 
-  // ---- Primary action ----------------------------------------------------
-  // New story (Sparkles) → Start writing (Pencil, on the configuring screen)
-  // → Quit (X, while playing) → Create a story (Sparkles, ended state).
-  const primaryAction = primaryActionFor()
-
-  function primaryActionFor() {
-    if (engine.isPlaying) {
-      return (
-        <ActionButton
-          icon={<X className="size-4" aria-hidden />}
-          label={t.game.quit}
-          shortLabel={t.game.quitShort}
-          onClick={engine.quit}
-        />
-      )
-    }
-    if (engine.gameState === "ended") {
-      // Finished sprint, text still editable: the action just returns home
-      // (saving the story on the way out via finishStory -> leaveGame path).
-      return (
-        <ActionButton
-          icon={<Home className="size-4" aria-hidden />}
-          label={t.nav.backToHome}
-          shortLabel={t.nav.backToHomeShort}
-          onClick={finishStory}
-        />
-      )
-    }
-    if (loading) return null
-    if (screen.name === "configuring") {
-      return (
-        <ActionButton
-          icon={<Pencil className="size-4" aria-hidden />}
-          label={t.settings.start}
-          shortLabel={t.settings.startShort}
-          onClick={startWriting}
-        />
-      )
-    }
-    return (
-      <ActionButton
-        icon={<Sparkles className="size-4" aria-hidden />}
-        label={t.nav.newStory}
-        shortLabel={t.nav.newStoryShort}
-        onClick={beginNewStory}
-      />
-    )
+  // The advanced-settings face of the home panel is URL-backed (/new), so it
+  // survives a refresh and Back closes it.
+  const settingsOpen = screen.name === "configuring"
+  function toggleSettingsPanel() {
+    navigate({ name: settingsOpen ? "landing" : "configuring" })
   }
 
-  const controlsDisabled = engine.isPlaying || loading
+  // Quit asks first, and the confirmation freezes the sprint while it is up —
+  // cancelling leaves it paused rather than dropping the player back into a
+  // running clock they weren't watching. Before the first keystroke there is
+  // nothing to lose, so it just leaves.
+  function requestQuit() {
+    if (!engine.armed) {
+      engine.quit()
+      return
+    }
+    engine.pause()
+    setQuitConfirmOpen(true)
+  }
+  function confirmQuit() {
+    setQuitConfirmOpen(false)
+    engine.quit()
+  }
+
+  const controlsDisabled = engine.isPlaying || engine.isPaused || loading
 
   return (
     <GamificationProvider refreshKey={engine.storiesRefreshKey}>
       <div className="bg-background text-foreground flex h-dvh flex-col">
         <AppHeader
-          primaryAction={primaryAction}
           authStatus={authStatus}
           devUserEnabled={devUserEnabled}
           disabled={controlsDisabled}
           onGoHome={goHome}
+          onShowSection={showSection}
           onOpenProfile={openProfile}
         />
 
         <main className="min-h-0 flex-1">
           {splitLayout ? (
+            // Two shapes, depending on whether the inspiration pane is up:
+            //   shown  — writing column beside a 5/12 pane, as the split has
+            //            always been.
+            //   hidden — the writing column falls back to the app's shared
+            //            centred measure (the same one the home screen uses),
+            //            with the wand parked in the right margin. With no
+            //            inspiration picked at all there is no wand either, so
+            //            the game is simply centred.
             <div className="flex h-full min-h-0">
-              {/* Left: game area or session settings. */}
+              {/* Left gutter, mirroring the wand's margin so the writing column
+                  lands dead centre rather than merely off to one side. */}
+              {!(hasInspiration && inspirationOpen) ? (
+                <div className="hidden flex-1 md:block" aria-hidden />
+              ) : null}
+
               <div
                 className={cn(
-                  "flex min-w-0 flex-1 flex-col gap-4 p-4 sm:p-6",
-                  inGame || loading ? "overflow-hidden" : "overflow-y-auto",
+                  "flex min-w-0 flex-col gap-4 overflow-hidden p-4 sm:p-6",
+                  // Beside an open pane it takes whatever is left. Centred, it
+                  // claims the shared measure outright and the flex-1 gutters
+                  // split the remainder — it must NOT be flex-1 itself, or it
+                  // would just take a third of the row alongside them.
+                  hasInspiration && inspirationOpen ? "flex-1" : "w-full max-w-5xl",
                 )}
               >
                 {loading ? (
                   <LoadingSplash />
-                ) : inGame ? (
-                  <GameArea engine={engine} />
                 ) : (
-                  <SettingsPanel settings={engine.settings} onChange={engine.setSettings} />
+                  <GameArea engine={engine} onQuit={requestQuit} onFinish={finishStory} />
                 )}
               </div>
-              {/* Right: inspiration image only (5/12), desktop only. Fills the
-                  pane height; scroll to zoom (see ZoomableInspirationImage). */}
-              <aside className="bg-card/40 hidden w-5/12 shrink-0 overflow-hidden border-l p-4 sm:p-6 md:block">
-                <ZoomableInspirationImage />
-              </aside>
+
+              {/* The pane itself is the hide control: the pick is frozen for
+                  the sprint, so a click can't mean "re-roll" the way it does on
+                  the home card. Desktop only. */}
+              {hasInspiration && inspirationOpen ? (
+                <aside className="bg-card/40 hidden w-5/12 shrink-0 overflow-hidden border-l p-4 sm:p-6 md:block">
+                  <button
+                    type="button"
+                    onClick={() => setInspirationOpen(false)}
+                    aria-expanded
+                    aria-label={t.game.inspirationHide}
+                    className="focus-visible:ring-ring block size-full cursor-pointer rounded-2xl focus-visible:ring-2 focus-visible:outline-none"
+                  >
+                    <InspirationPane />
+                  </button>
+                </aside>
+              ) : null}
+
+              {/* Hidden: a large wand fills the right margin. Barely tinted at
+                  rest so it reads as a quiet affordance beside the story rather
+                  than competing with it, and it is the ICON that lights up on
+                  hover — a button plate out here would look like a stray
+                  control floating in the margin. */}
+              {hasInspiration && !inspirationOpen ? (
+                <div className="hidden flex-1 items-center justify-center md:flex">
+                  <button
+                    type="button"
+                    onClick={() => setInspirationOpen(true)}
+                    aria-expanded={false}
+                    aria-label={t.game.inspirationShow}
+                    className="focus-visible:ring-ring group cursor-pointer rounded-2xl p-4 focus-visible:ring-2 focus-visible:outline-none"
+                  >
+                    <Wand2
+                      className="text-muted-foreground/25 group-hover:text-primary size-24 transition-colors"
+                      aria-hidden
+                    />
+                  </button>
+                </div>
+              ) : null}
             </div>
           ) : (
             <div className="h-full min-h-0 overflow-y-auto p-4 sm:p-6">
               <ScreenContent
                 screen={screen}
+                settings={engine.settings}
+                onChangeSettings={engine.setSettings}
+                onStart={startWriting}
+                settingsOpen={settingsOpen}
+                onToggleSettings={toggleSettingsPanel}
+                gridMode={gridMode}
+                onToggleGridMode={() =>
+                  setGridMode((m) => (m === "system" ? "custom" : "system"))
+                }
                 stories={stories}
                 storiesError={storiesError}
                 onShowSection={showSection}
-                onNewStory={beginNewStory}
                 onViewStory={onViewStory}
                 onDeleteStory={removeStory}
                 onUpdateStoryTitle={updateStoryTitle}
@@ -281,6 +335,33 @@ export function Dashboard() {
           )}
         </main>
       </div>
+
+      <AlertDialog
+        open={quitConfirmOpen}
+        onOpenChange={(open) => {
+          if (!open) setQuitConfirmOpen(false)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t.game.quitConfirmTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{t.game.quitConfirmDescription}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            {/* Cancelling deliberately leaves the sprint paused. */}
+            <AlertDialogCancel>{t.game.quitCancel}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault()
+                confirmQuit()
+              }}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
+              {t.game.quitConfirm}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <WelcomeModal open={welcomeOpen && authStatus !== "loading"} onContinue={dismissWelcome} />
       <ResultsModal
@@ -304,7 +385,15 @@ function LoadingSplash() {
   )
 }
 
-function GameArea({ engine }: { engine: ReturnType<typeof useGameEngine> }) {
+function GameArea({
+  engine,
+  onQuit,
+  onFinish,
+}: {
+  engine: ReturnType<typeof useGameEngine>
+  onQuit: () => void
+  onFinish: () => void
+}) {
   const t = useTranslations()
   return (
     <>
@@ -349,13 +438,41 @@ function GameArea({ engine }: { engine: ReturnType<typeof useGameEngine> }) {
         useWordTotal={
           engine.settings.requiredWordUseTimerEnabled ? engine.settings.requiredWordUseTimerSeconds : null
         }
+        paused={engine.isPaused}
+        ended={engine.gameState === "ended"}
+        onPause={engine.pause}
+        onResume={engine.resume}
+        onQuit={onQuit}
+        onFinish={onFinish}
       />
+      {/* Ended: the story is finished but still editable, so this is where it
+          gets named. Sits between the HUD and the text, pushing the editor down
+          — a shift the player never sees mid-flow, since the results modal is
+          over it when the state changes. */}
+      {engine.gameState === "ended" ? (
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="story-title" className="text-sm font-semibold">
+            {t.game.titleLabel}
+          </Label>
+          <Input
+            id="story-title"
+            type="text"
+            value={engine.storyTitle}
+            onChange={(e) => engine.setStoryTitle(e.target.value)}
+            maxLength={200}
+            placeholder={deriveTitle(engine.text, t.dashboard.untitledStory)}
+            className="text-base"
+          />
+        </div>
+      ) : null}
+
       <div className="flex min-h-0 flex-1">
         <WritingArea
           ref={engine.textareaRef}
           value={engine.text}
           onChange={engine.handleChange}
           matches={engine.matches}
+          paused={engine.isPaused}
         />
       </div>
     </>
@@ -366,10 +483,16 @@ function GameArea({ engine }: { engine: ReturnType<typeof useGameEngine> }) {
 
 function ScreenContent({
   screen,
+  settings,
+  onChangeSettings,
+  onStart,
+  settingsOpen,
+  onToggleSettings,
+  gridMode,
+  onToggleGridMode,
   stories,
   storiesError,
   onShowSection,
-  onNewStory,
   onViewStory,
   onDeleteStory,
   onUpdateStoryTitle,
@@ -377,10 +500,16 @@ function ScreenContent({
   onBackToStories,
 }: {
   screen: Screen
+  settings: GameSettings
+  onChangeSettings: (settings: GameSettings) => void
+  onStart: () => void
+  settingsOpen: boolean
+  onToggleSettings: () => void
+  gridMode: GridMode
+  onToggleGridMode: () => void
   stories: Story[] | null
   storiesError: boolean
   onShowSection: (section: Section) => void
-  onNewStory: () => void
   onViewStory: (story: Story) => void
   onDeleteStory: (id: number) => Promise<boolean>
   onUpdateStoryTitle: (id: number, title: string | null) => Promise<boolean>
@@ -390,11 +519,20 @@ function ScreenContent({
   const t = useTranslations()
 
   switch (screen.name) {
+    // `landing` and `configuring` are the same screen; the latter just has the
+    // advanced-settings face of its panel open (and owns the /new URL).
     case "landing":
+    case "configuring":
       return (
         <LandingHome
+          settings={settings}
+          onChangeSettings={onChangeSettings}
+          onStart={onStart}
+          settingsOpen={settingsOpen}
+          onToggleSettings={onToggleSettings}
+          gridMode={gridMode}
+          onToggleGridMode={onToggleGridMode}
           onShowSection={onShowSection}
-          onNewStory={onNewStory}
           stories={stories}
           storiesError={storiesError}
           onViewStory={onViewStory}
@@ -409,7 +547,7 @@ function ScreenContent({
             section={screen.section}
             stories={stories}
             storiesError={storiesError}
-            onNewStory={onNewStory}
+            onNewStory={onBackHome}
             onViewStory={onViewStory}
             onDeleteStory={onDeleteStory}
             onUpdateStoryTitle={onUpdateStoryTitle}
@@ -501,38 +639,7 @@ function SectionDetail({
           onUpdateTitle={onUpdateStoryTitle}
         />
       )
-    case "challenges":
-      return <ChallengesSection onNewStory={onNewStory} />
-    case "stats":
-      return <StatsSection />
+    case "journey":
+      return <JourneySection onNewStory={onNewStory} />
   }
-}
-
-function ActionButton({
-  icon,
-  label,
-  shortLabel,
-  onClick,
-}: {
-  icon: React.ReactNode
-  /** Full text: shown from `sm` up and used as the accessible name (+ e2e handle). */
-  label: string
-  /** Compact text (Create / Write / Quit / Home) shown only on mobile. */
-  shortLabel: string
-  onClick: () => void
-}) {
-  return (
-    // Top-bar height (h-10). Mobile shows the short label at natural width; from
-    // `sm` up it swaps to the full label with a fixed width so the button never
-    // resizes between game states. The full label is always the accessible name.
-    <Button
-      onClick={onClick}
-      aria-label={label}
-      className="h-10 w-auto justify-center gap-1.5 sm:w-48"
-    >
-      {icon}
-      <span className="sm:hidden">{shortLabel}</span>
-      <span className="hidden sm:inline">{label}</span>
-    </Button>
-  )
 }

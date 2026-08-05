@@ -83,6 +83,8 @@ export async function fetchStories(
 export type StorySaveStats = Omit<GameResult, "text">
 
 export type CreateStoryInput = {
+  /** Player-supplied title, or null to leave it derived from the text. */
+  title: string | null
   text: string
   lang: string
   // The full GameSettings snapshot — the backend validates it strictly

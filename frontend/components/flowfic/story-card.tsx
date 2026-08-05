@@ -41,6 +41,9 @@ type Props = {
   onDelete?: (id: number) => Promise<boolean>
   /** Rename handler (title only; null clears back to the derived title). */
   onUpdateTitle?: (id: number, title: string | null) => Promise<boolean>
+  /** Stretch to the height of the parent row (the landing's fixed-height
+   *  preview panel divides its space into equal rows). */
+  fill?: boolean
 }
 
 /**
@@ -48,7 +51,7 @@ type Props = {
  * and a words + date meta line. The overflow menu offers Rename (inline
  * editing) and Delete when the respective handlers are provided.
  */
-export function StoryCard({ story, onSelect, onDelete, onUpdateTitle }: Props) {
+export function StoryCard({ story, onSelect, onDelete, onUpdateTitle, fill = false }: Props) {
   const t = useTranslations()
   const locale = useLocale()
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -108,7 +111,12 @@ export function StoryCard({ story, onSelect, onDelete, onUpdateTitle }: Props) {
   }
 
   return (
-    <div className="group bg-card relative flex gap-4 rounded-2xl border p-4 shadow-sm transition hover:shadow-md">
+    <div
+      className={cn(
+        "group bg-card relative flex gap-4 overflow-hidden rounded-2xl border p-4 shadow-sm transition hover:shadow-md",
+        fill && "h-full",
+      )}
+    >
       <IconChip icon={icon} tone={tone} className="size-12 shrink-0" />
 
       <div className="min-w-0 flex-1">
@@ -155,7 +163,14 @@ export function StoryCard({ story, onSelect, onDelete, onUpdateTitle }: Props) {
             aria-label={`${title} — ${meta}`}
           >
             <div className="truncate pr-8 text-sm font-bold">{title}</div>
-            <p className="text-muted-foreground mt-1 line-clamp-2 text-sm leading-relaxed">
+            {/* Filling a fixed row leaves less vertical room than a naturally
+                sized card, so the preview drops to a single line there. */}
+            <p
+              className={cn(
+                "text-muted-foreground mt-1 text-sm leading-relaxed",
+                fill ? "line-clamp-1" : "line-clamp-2",
+              )}
+            >
               {story.text}
             </p>
             <div className="text-muted-foreground mt-2 text-xs">{meta}</div>

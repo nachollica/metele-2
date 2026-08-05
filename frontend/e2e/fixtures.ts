@@ -27,6 +27,7 @@ export const DEV_USER = {
 // Server (wire) shape of a Story, as the backend returns it (snake_case).
 export type StoryWire = {
   id: number
+  title: string | null
   text: string
   lang: string
   created_at: string
@@ -76,8 +77,8 @@ export type BackendMock = {
 // the e2e stub, instead of the stub silently "saving" a payload the real API
 // would reject with 422. Keep in sync with the model + GameSettings.
 const REQUIRED_SETTINGS_KEYS = [
+  "idleTimerEnabled",
   "mainTimerSeconds",
-  "globalTimerEnabled",
   "globalTimerSeconds",
   "requiredWordIntervalEnabled",
   "requiredWordIntervalSeconds",
@@ -240,6 +241,9 @@ export async function mockBackend(
       handle.postedStories.push(body)
       const created: StoryWire = {
         id: handle.stories.length + 1,
+        // Echo the title back like the real API, so a spec can assert the
+        // player-supplied name actually round-trips into the stories list.
+        title: typeof body.title === "string" ? body.title : null,
         text: String(body.text ?? ""),
         lang: String(body.lang ?? "en"),
         created_at: new Date().toISOString(),
