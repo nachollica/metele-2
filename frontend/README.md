@@ -34,14 +34,34 @@ it is the single source of truth. The short version:
 - Every `NEXT_PUBLIC_*` var is baked into the client bundle at build time, so
   none of them are secret.
 
+## Game flow
+
+The app is a single static route; its stable screens are addressable through
+client-side History API routing (`components/flowfic/navigation.ts`) and the top
+bar names whichever one is up (`screen-header.ts`).
+
+- **Home** (`landing.tsx`) is the launcher (`session-launcher.tsx`) — a session
+  dial whose readout doubles as the 5/10/15/25/45-minute picker, a 2x2 grid of
+  the 3 system modes plus the challenge of the day, and Start writing / More
+  options / Custom modes — over a fixed-height panel that swaps between recent
+  stories and the advanced settings (`/new`), then the inspiration card.
+- **Sprint**: the writing column with the HUD's timers, required word, and the
+  pause/quit controls. An inspiration picked beforehand sits beside it, frozen
+  for the session and collapsible.
+- **End**: a stats modal, then the story stays editable so it can be named and
+  saved.
+
+There is no game action in the top bar — the whole lifecycle runs from the
+launcher and, mid-sprint, from the HUD. `../CLAUDE.md` has the full description
+including the layout invariants worth not breaking.
+
 ## Auth
 
-Social login only (Google, Facebook, X/Twitter), via the Auth0 SPA flow with
-PKCE — there is no email/password path. When the three `NEXT_PUBLIC_AUTH0_*`
-vars are unset the app renders an "unconfigured" shell that stays anonymous,
-which is what the test suites use. A dev-user backdoor (gated by the backend's
-`/ping` `devUserEnabled` flag) provides a localStorage-only session for local
-QA without a real tenant.
+Google social login only, via the Auth0 SPA flow with PKCE — there is no
+email/password path. When the three `NEXT_PUBLIC_AUTH0_*` vars are unset the app
+renders an "unconfigured" shell that stays anonymous, which is what the test
+suites use. A dev-user backdoor (gated by the backend's `/ping` `devUserEnabled`
+flag) provides a localStorage-only session for local QA without a real tenant.
 
 ## Internationalization
 
@@ -55,7 +75,7 @@ in both files when touching UI strings.
 | Path | What lives there |
 | --- | --- |
 | [`app/`](app/) | Next.js routes. The game tree is dynamically imported with `ssr: false`. |
-| [`components/flowfic/`](components/flowfic/) | Game components (settings, HUD, writing area, results, profile). |
+| [`components/flowfic/`](components/flowfic/) | The app shell (`dashboard.tsx` — screen state, routing, layout), the home launcher, the game HUD and writing area, inspiration, and the detail screens. |
 | [`components/auth/`](components/auth/) | Login modal, account button, dev-login. |
 | [`components/ui/`](components/ui/) | In-house Radix UI + Tailwind primitives (originally scaffolded via the shadcn CLI); only the components actually used elsewhere are kept, adapt as needed. |
 | [`lib/`](lib/) | Auth, backend-status, i18n, preferences, and the game logic + API clients under `lib/flowfic/`. |

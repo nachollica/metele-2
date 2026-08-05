@@ -55,15 +55,21 @@ values are duplicated in the consumers and must be kept in sync. They live in
 
 Bump a version here and in its counterpart when the format changes.
 
-## Quote of the day
+## Quotes
 
-The landing dashboard shows a rotating literary "quote of the day". Unlike the
-pool/match-map artifacts (large, generated, gitignored), the quotes file is
-small, hand-curated content and **is committed**:
+The quote pool is one of the two things the home screen's inspiration card can
+reveal (the other is a film still — see [Inspiration image](#inspiration-image)).
+A click flips a coin between the two pools and draws a random item from the
+winner; the pick then stays beside the player for the whole sprint. It was
+originally a fixed "quote of the day" card, hence the `dailyIndex` helper the
+loader still exposes.
+
+Unlike the pool/match-map artifacts (large, generated, gitignored), the quotes
+file is small, hand-curated content and **is committed**:
 
 | Artifact | Written to | Consumed by |
 | --- | --- | --- |
-| Quotes `quotes.vN.jsonl` | `frontend/public/quotes/` | frontend (quote of the day) |
+| Quotes `quotes.vN.jsonl` | `frontend/public/quotes/` | frontend (inspiration card + in-game pane) |
 
 ### Source corpus
 
@@ -147,8 +153,10 @@ the text moved, the `char_start`/`char_end`) are refreshed.
 
 ## Inspiration image
 
-The landing card and the game/setup pane show a film still from
-[film-grab.com](https://film-grab.com/). film-grab publishes its catalog as
+A film still from [film-grab.com](https://film-grab.com/) is the other thing the
+home screen's inspiration card can reveal (see [Quotes](#quotes) for the pool it
+is drawn against); the chosen still then fills the in-game pane, where it is
+zoomable and pannable. film-grab publishes its catalog as
 `image-sitemap-N.xml` files (linked from `image-sitemap-index-1.xml`); each
 `<url>` pairs a page with a still. [`src/build_inspiration.py`](src/build_inspiration.py)
 parses whatever sitemaps you have downloaded into one JSON-Lines catalog:
@@ -174,11 +182,12 @@ other sitemap entries (numeric junk slugs, archive pages) are dropped, as is any
 `<image:loc>` not hosted on film-grab.com (a handful of sitemap entries point
 off-site, and there is no shared prefix to strip for those).
 
-Unlike the word artifacts this one is **optional and decorative**: if it is
-missing the card just shows its reserved placeholder, so no build hard-fails on
-it. Like them it is gitignored (a full dump is large and re-sliced freely).
+Unlike the word artifacts this one is **optional and decorative**: with it
+missing the card simply draws from the quote pool instead (and says so only if
+neither pool is available), so no build hard-fails on it. Like them it is
+gitignored (a full dump is large and re-sliced freely).
 
-### Usage
+### Building the catalog
 
 The command lives in the **root** justfile (it only needs the stdlib, no NLP
 deps). robots.txt allows the sitemaps; download the ones you want first, then:

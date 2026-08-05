@@ -1,8 +1,14 @@
 # Flowfic
 
-A browser game about writing stories under time pressure. Two timers and a
+A browser game about writing stories under time pressure. A session timer and a
 stream of "required words" keep you typing — stay idle too long and it's game
-over. Sessions can be saved to your account and replayed later.
+over. Sessions can be saved to your account and read back later.
+
+You start from the home screen: dial a length (5–45 minutes), pick a game mode,
+and hit Start writing. Optionally take an "inspiration" first — a film still or
+a literary quote — and it stays beside you for the whole sprint. Mid-sprint you
+can pause or quit; when the timer runs out you get your stats, then the story
+stays editable so you can polish and name it before saving.
 
 ## Layout
 

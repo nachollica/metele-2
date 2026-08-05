@@ -1,7 +1,15 @@
 # Frontend revamp — session summary
 
-A consolidated description of the current state after this session's work. It
-describes the result, not the intermediate iterations.
+> **Historical.** This records one past session and is no longer an accurate
+> description of the app. The home screen has since been rebuilt around a
+> session launcher, the top-bar game button is gone, and the inspiration feature
+> covers quotes as well as film stills. For how the game actually works today
+> see [CLAUDE.md](CLAUDE.md) ("Game flow") and
+> [frontend/README.md](frontend/README.md). Kept only as a record of how the
+> layout got here; safe to delete.
+
+A consolidated description of the state after that session's work. It describes
+the result, not the intermediate iterations.
 
 ## Overview
 
