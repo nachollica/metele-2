@@ -83,6 +83,7 @@ test("a story deep link resolves the story; the back arrow returns to /stories",
 }) => {
   const story: StoryWire = {
     id: 7,
+    title: null,
     text: "Once upon a deep link, the story rendered itself.",
     lang: "en",
     created_at: new Date().toISOString(),

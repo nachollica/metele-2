@@ -34,7 +34,7 @@ test("story CRUD persists through the real backend and DB", async ({ page, reque
   await page.getByRole("button", { name: "Quit", exact: true }).click()
   await expect(page.getByRole("dialog").getByText("Session ended")).toBeVisible()
   await page.getByRole("button", { name: "Continue editing" }).click()
-  await page.getByRole("button", { name: "Create a story" }).click()
+  await page.getByRole("button", { name: "Save story" }).click()
 
   // Persisted via the real API…
   await expect

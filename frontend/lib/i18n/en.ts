@@ -127,8 +127,8 @@ export const en = {
     quitConfirm: "Quit",
     quitCancel: "Keep writing",
     // Final checkout of a finished sprint: save the story and return home.
-    finish: "Create a story",
-    finishShort: "Finish",
+    finish: "Save story",
+    titleLabel: "Story title",
     inspirationShow: "Show inspiration",
     inspirationHide: "Hide inspiration",
     viewingStory: "Viewing a previous story (read-only).",

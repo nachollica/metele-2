@@ -95,6 +95,14 @@ export function GameHud({
         onFinish={onFinish}
       />
       <div className="flex min-w-0 flex-1 flex-col justify-center gap-2">
+        {/* While paused the bars hold frozen values, which on their own look
+            identical to a running game. Say so, and announce it: the greyed
+            editor is a visual-only cue. */}
+        {paused ? (
+          <p role="status" className="text-muted-foreground text-sm font-medium">
+            {t.game.paused} — {t.game.pausedHint}
+          </p>
+        ) : null}
         {idleBar}
         {globalBar}
       </div>
@@ -123,11 +131,11 @@ export function GameHud({
 }
 
 /**
- * Pause/Resume over Quit, stacked in a square block at the head of the timer
- * row. Icon-led with short labels — "Quit" is the longest thing that fits, and
- * the accessible names carry the full wording. These replace the app bar's old
- * primary action, so the finished-sprint checkout lives here too: once the
- * sprint ends, the two controls collapse into a single Finish button.
+ * The session controls, at the head of the timer row: two icon-only squares
+ * side by side (Pause/Resume and Quit), their meaning carried by the icons plus
+ * their accessible names. These replace the app bar's old primary action, so
+ * the finished-sprint checkout lives here too — once the sprint ends the pair
+ * collapses into one "Save story" button occupying the same footprint.
  */
 function SessionControls({
   paused,
@@ -146,50 +154,44 @@ function SessionControls({
 }) {
   const t = useTranslations()
 
+  // Two size-11 squares plus their gap; the ended button spans the same width
+  // so the timers beside it never reflow between states.
+  const FOOTPRINT = "w-[5.75rem]"
+
   if (ended) {
     return (
-      <div className="flex size-20 shrink-0 flex-col justify-center">
-        <Button
-          type="button"
-          size="sm"
-          onClick={onFinish}
-          aria-label={t.game.finish}
-          className="w-full gap-1.5"
-        >
+      <div className={cn("flex shrink-0", FOOTPRINT)}>
+        <Button type="button" size="sm" onClick={onFinish} className="w-full gap-1.5">
           <Check className="size-3.5" aria-hidden />
-          {t.game.finishShort}
+          {t.game.finish}
         </Button>
       </div>
     )
   }
 
   return (
-    <div className="flex size-20 shrink-0 flex-col justify-center gap-1.5">
+    <div className={cn("flex shrink-0 gap-1.5", FOOTPRINT)}>
       <Button
         type="button"
-        size="sm"
         variant="secondary"
         onClick={paused ? onResume : onPause}
         aria-label={paused ? t.game.resume : t.game.pause}
-        className="w-full gap-1.5"
+        className="size-11"
       >
         {paused ? (
-          <Play className="size-3.5" aria-hidden />
+          <Play className="size-5" aria-hidden />
         ) : (
-          <Pause className="size-3.5" aria-hidden />
+          <Pause className="size-5" aria-hidden />
         )}
-        {paused ? t.game.resumeShort : t.game.pause}
       </Button>
       <Button
         type="button"
-        size="sm"
         variant="outline"
         onClick={onQuit}
         aria-label={t.game.quit}
-        className="w-full gap-1.5"
+        className="size-11"
       >
-        <X className="size-3.5" aria-hidden />
-        {t.game.quitShort}
+        <X className="size-5" aria-hidden />
       </Button>
     </div>
   )

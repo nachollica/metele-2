@@ -46,13 +46,16 @@ test("pause freezes the timers; the idle timeout can't fire while held", async (
   ).toBeVisible()
 })
 
-test("the editor is read-only while paused and regains focus, caret at the end, on resume", async ({
+test("the editor stays visible but read-only while paused, and regains focus with the caret at the end on resume", async ({
   page,
 }) => {
   const editor = await startArmedSprint(page)
 
   await page.getByRole("button", { name: "Pause" }).click()
   await expect(editor).toHaveAttribute("readonly", "")
+  // Greyed out, not veiled: the story the player just wrote stays legible.
+  await expect(editor).toBeVisible()
+  await expect(editor).toHaveValue("Once upon a time")
 
   // Typing while paused changes nothing.
   await editor.pressSequentially(" ignored", { timeout: 2000 }).catch(() => {})
@@ -100,4 +103,19 @@ test("quit asks first: cancelling leaves the game paused, confirming ends it", a
   await page.getByRole("button", { name: "Quit", exact: true }).click()
   await expect(page.getByRole("dialog").getByText("Session ended")).toBeVisible()
   await expect(page.getByRole("dialog").getByText("You ended the session.")).toBeVisible()
+})
+
+test("quitting before the first keystroke skips the confirmation entirely", async ({
+  page,
+}) => {
+  await page.goto("/")
+  await page.getByRole("button", { name: "Start writing" }).click()
+  await expect(page.getByRole("textbox")).toBeVisible()
+
+  // Nothing written yet, so there is nothing to lose and nothing to score:
+  // quit leaves straight away, with no dialog and no results modal.
+  await page.getByRole("button", { name: "Quit session" }).click()
+  await expect(page.getByRole("alertdialog")).toBeHidden()
+  await expect(page.getByRole("dialog")).toBeHidden()
+  await expect(page.getByRole("button", { name: "Start writing" })).toBeVisible()
 })

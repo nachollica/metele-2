@@ -14,12 +14,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 
 import { useAuth } from "@/lib/auth"
 import { useBackendStatus } from "@/lib/backend"
 import { useTranslations } from "@/lib/i18n"
 import { useInspiration } from "@/lib/flowfic/inspiration"
+import { deriveTitle } from "@/lib/flowfic/gamification"
 import { useGameEngine } from "@/lib/flowfic/use-game-engine"
 import { useStories } from "@/lib/flowfic/use-stories"
 import type { GameSettings } from "@/lib/flowfic/types"
@@ -202,10 +205,15 @@ export function Dashboard() {
     navigate({ name: settingsOpen ? "landing" : "configuring" })
   }
 
-  // Quit asks first. The confirmation freezes the sprint while it is up —
+  // Quit asks first, and the confirmation freezes the sprint while it is up —
   // cancelling leaves it paused rather than dropping the player back into a
-  // running clock they weren't watching.
+  // running clock they weren't watching. Before the first keystroke there is
+  // nothing to lose, so it just leaves.
   function requestQuit() {
+    if (!engine.armed) {
+      engine.quit()
+      return
+    }
     engine.pause()
     setQuitConfirmOpen(true)
   }
@@ -230,46 +238,62 @@ export function Dashboard() {
 
         <main className="min-h-0 flex-1">
           {splitLayout ? (
-            <div className="flex h-full min-h-0">
-              {/* Left: the game area. */}
-              <div className="flex min-w-0 flex-1 flex-col gap-4 overflow-hidden p-4 sm:p-6">
+            // Two shapes, depending on whether the inspiration pane is up:
+            //   shown  — writing column beside a 5/12 pane, as the split has
+            //            always been.
+            //   hidden — the writing column falls back to the app's shared
+            //            centred measure (the same one the home screen uses),
+            //            with the wand parked in the right margin. With no
+            //            inspiration picked at all there is no wand either, so
+            //            the game is simply centred.
+            <div className="relative flex h-full min-h-0">
+              <div
+                className={cn(
+                  "flex min-w-0 flex-1 flex-col gap-4 overflow-hidden p-4 sm:p-6",
+                  // Centred on the shared measure whenever the pane is down, so
+                  // the writing area sits in the same place it would with no
+                  // inspiration at all.
+                  !(hasInspiration && inspirationOpen) && "mx-auto w-full max-w-5xl",
+                )}
+              >
                 {loading ? (
                   <LoadingSplash />
                 ) : (
                   <GameArea engine={engine} onQuit={requestQuit} onFinish={finishStory} />
                 )}
               </div>
-              {/* Right: the inspiration the player picked before starting —
-                  only when they picked one. Collapsible via the wand rail, so
-                  the writing column can take the full width. Desktop only. */}
-              {hasInspiration ? (
-                <aside
-                  className={cn(
-                    "bg-card/40 hidden shrink-0 overflow-hidden border-l md:flex",
-                    inspirationOpen ? "w-5/12" : "w-auto",
-                  )}
-                >
-                  <div className="flex flex-col items-center p-2">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => setInspirationOpen((open) => !open)}
-                      aria-expanded={inspirationOpen}
-                      aria-label={
-                        inspirationOpen ? t.game.inspirationHide : t.game.inspirationShow
-                      }
-                      className="text-muted-foreground hover:text-primary transition-colors"
-                    >
-                      <Wand2 className="size-4" aria-hidden />
-                    </Button>
-                  </div>
-                  {inspirationOpen ? (
-                    <div className="min-w-0 flex-1 py-4 pr-4 sm:py-6 sm:pr-6">
-                      <InspirationPane />
-                    </div>
-                  ) : null}
+
+              {/* The pane itself is the hide control: the pick is frozen for
+                  the sprint, so a click can't mean "re-roll" the way it does on
+                  the home card. Desktop only. */}
+              {hasInspiration && inspirationOpen ? (
+                <aside className="bg-card/40 hidden w-5/12 shrink-0 overflow-hidden border-l p-4 sm:p-6 md:block">
+                  <button
+                    type="button"
+                    onClick={() => setInspirationOpen(false)}
+                    aria-expanded
+                    aria-label={t.game.inspirationHide}
+                    className="focus-visible:ring-ring block size-full cursor-pointer rounded-2xl focus-visible:ring-2 focus-visible:outline-none"
+                  >
+                    <InspirationPane />
+                  </button>
                 </aside>
+              ) : null}
+
+              {/* Hidden: the wand floats in the right margin so bringing the
+                  pane back never shifts the (centred) writing column. */}
+              {hasInspiration && !inspirationOpen ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setInspirationOpen(true)}
+                  aria-expanded={false}
+                  aria-label={t.game.inspirationShow}
+                  className="text-muted-foreground hover:text-primary absolute top-1/2 right-4 hidden -translate-y-1/2 transition-colors md:inline-flex"
+                >
+                  <Wand2 className="size-5" aria-hidden />
+                </Button>
               ) : null}
             </div>
           ) : (
@@ -408,25 +432,35 @@ function GameArea({
         onQuit={onQuit}
         onFinish={onFinish}
       />
-      <div className="relative flex min-h-0 flex-1">
+      {/* Ended: the story is finished but still editable, so this is where it
+          gets named. Sits between the HUD and the text, pushing the editor down
+          — a shift the player never sees mid-flow, since the results modal is
+          over it when the state changes. */}
+      {engine.gameState === "ended" ? (
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="story-title" className="text-sm font-semibold">
+            {t.game.titleLabel}
+          </Label>
+          <Input
+            id="story-title"
+            type="text"
+            value={engine.storyTitle}
+            onChange={(e) => engine.setStoryTitle(e.target.value)}
+            maxLength={200}
+            placeholder={deriveTitle(engine.text, t.dashboard.untitledStory)}
+            className="text-base"
+          />
+        </div>
+      ) : null}
+
+      <div className="flex min-h-0 flex-1">
         <WritingArea
           ref={engine.textareaRef}
           value={engine.text}
           onChange={engine.handleChange}
           matches={engine.matches}
-          readOnly={engine.isPaused}
+          paused={engine.isPaused}
         />
-        {/* Paused: veil the story so the frozen state is unmistakable and the
-            text can't be read/edited past the pause. */}
-        {engine.isPaused ? (
-          <div
-            role="status"
-            className="bg-background/80 absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-lg backdrop-blur-sm"
-          >
-            <span className="text-xl font-semibold">{t.game.paused}</span>
-            <span className="text-muted-foreground text-sm">{t.game.pausedHint}</span>
-          </div>
-        ) : null}
       </div>
     </>
   )

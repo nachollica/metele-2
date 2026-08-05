@@ -132,8 +132,8 @@ export const es = {
     quitConfirm: "Salir",
     quitCancel: "Seguir escribiendo",
     // Cierre final de una sesión terminada: guarda la historia y vuelve al inicio.
-    finish: "Crear una historia",
-    finishShort: "Terminar",
+    finish: "Guardar historia",
+    titleLabel: "Título de la historia",
     inspirationShow: "Mostrar inspiración",
     inspirationHide: "Ocultar inspiración",
     viewingStory: "Viendo una historia anterior (solo lectura).",

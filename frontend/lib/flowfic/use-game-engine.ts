@@ -86,6 +86,10 @@ export function useGameEngine() {
   const [failedSave, setFailedSave] = useState<CreateStoryInput | null>(null)
   const [retryingSave, setRetryingSave] = useState(false)
   const unsavedStoryRef = useRef(false)
+  // Title the player types on the ended screen. Empty means "leave it derived
+  // from the text", which is what the backend stores as NULL.
+  const [storyTitle, setStoryTitle] = useState("")
+  const storyTitleRef = useRef("")
 
   // ---- Live game data ----------------------------------------------------
   const [text, setText] = useState("")
@@ -151,6 +155,9 @@ export function useGameEngine() {
   useEffect(() => {
     gameStateRef.current = gameState
   }, [gameState])
+  useEffect(() => {
+    storyTitleRef.current = storyTitle
+  }, [storyTitle])
 
   // Prefetch the required-word match map for the active locale so it is warm
   // before a game starts. It is versioned/immutable, so this is effectively a
@@ -282,6 +289,7 @@ export function useGameEngine() {
     const finalText = textRef.current
     if (snapshot === null || finalText.trim().length === 0) return
     const payload: CreateStoryInput = {
+      title: storyTitleRef.current.trim() || null,
       text: finalText,
       lang: locale,
       settings: settingsRef.current,
@@ -320,6 +328,8 @@ export function useGameEngine() {
     clearAllTimers()
     setText("")
     textRef.current = ""
+    setStoryTitle("")
+    storyTitleRef.current = ""
     setMatches([])
     setCurrentRequiredWord(null)
     currentWordRef.current = null
@@ -467,6 +477,8 @@ export function useGameEngine() {
       setMatches([])
       setCurrentRequiredWord(null)
       setResult(null)
+      setStoryTitle("")
+      storyTitleRef.current = ""
       textRef.current = ""
       currentWordRef.current = null
       usedWordsRef.current = new Set()
@@ -773,6 +785,8 @@ export function useGameEngine() {
     retryingSave,
     storiesRefreshKey,
     textareaRef,
+    storyTitle,
+    setStoryTitle,
     // derived
     isPlaying: gameState === "playing",
     isPaused: gameState === "paused",
