@@ -51,6 +51,9 @@ export const es = {
     presetsLabel: "Modos de juego",
     moreOptions: "Más opciones",
     sessionLengthLabel: "Duración de la sesión",
+    // Encabezado visible sobre el dial de la sesión (el control del dial
+    // conserva `sessionLengthLabel` como nombre accesible).
+    selectDuration: "Elige una duración",
     mainTimerLabel: "Tiempo de inactividad",
     mainTimerHelp: "Segundos inactivo antes de terminar.",
     idleTimerEnable: "Activar el tiempo de inactividad",
@@ -218,9 +221,10 @@ export const es = {
 
   prefs: {
     sectionLabel: "Preferencias",
-    modeLabel: "Modo",
-    modeLight: "Claro",
-    modeDark: "Oscuro",
+    // El botón de la cabecera es solo icono, así que su nombre accesible debe
+    // decir qué hace el clic en vez de nombrar el control.
+    modeSwitchToDark: "Cambiar al modo oscuro",
+    modeSwitchToLight: "Cambiar al modo claro",
     languageLabel: "Idioma",
   },
 
@@ -261,6 +265,9 @@ export const es = {
     stats: "Estadísticas",
     achievements: "Logros",
     showAll: "Ver todo",
+    // Título en la cabecera de la pantalla de inicio: la única pantalla sin
+    // título propio, nombrada por aquello para lo que sirve.
+    createStory: "Crea una historia",
     backToHome: "Volver al inicio",
     // Etiqueta de la flecha atrás en una historia / un "no encontrado" que se
     // alcanzó desde ella: vuelve a la lista de historias, no al inicio.

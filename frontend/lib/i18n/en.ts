@@ -47,6 +47,9 @@ export const en = {
     presetsLabel: "Game modes",
     moreOptions: "More options",
     sessionLengthLabel: "Session length",
+    // Visible heading above the session dial (the dial's own control keeps the
+    // `sessionLengthLabel` accessible name).
+    selectDuration: "Select a duration",
     mainTimerLabel: "Idle timeout",
     mainTimerHelp: "Seconds idle before the session ends.",
     idleTimerEnable: "Enable the idle timeout",
@@ -213,9 +216,10 @@ export const en = {
 
   prefs: {
     sectionLabel: "Preferences",
-    modeLabel: "Mode",
-    modeLight: "Light",
-    modeDark: "Dark",
+    // The header toggle is icon-only, so its accessible name has to say what a
+    // click does rather than name the control.
+    modeSwitchToDark: "Switch to dark mode",
+    modeSwitchToLight: "Switch to light mode",
     languageLabel: "Language",
   },
 
@@ -256,6 +260,9 @@ export const en = {
     stats: "Statistics",
     achievements: "Achievements",
     showAll: "Show all",
+    // Header title of the landing screen — the one screen with no title of its
+    // own, named after what it is for.
+    createStory: "Create a story",
     backToHome: "Back to home",
     // Back-arrow label on a single story / a not-found reached from one, where
     // the arrow returns to the stories list rather than the landing.

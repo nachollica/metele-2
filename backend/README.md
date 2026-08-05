@@ -25,14 +25,14 @@ The frontend talks to the API via `NEXT_PUBLIC_API_URL` (same origin in dev).
 
 ## Authentication
 
-Real users authenticate exclusively through Auth0's hosted social-login
-flow (Google, Facebook, X/Twitter). The backend validates the Auth0-issued
-RS256 access tokens against the tenant's JWKS — no email/password endpoint
-exists. The first time we see a given `sub`, we hit Auth0's `/userinfo` to
-populate the local `User` row's `name`, `picture`, and `email`. The
-`email` field is best-effort: providers that omit it (older Twitter
-configurations, some custom OIDC) simply leave it `NULL` on the row, and
-the user can fill it in later via `PATCH /profile/me`.
+Real users authenticate exclusively through Auth0's hosted social-login flow.
+The frontend offers Google only; the backend stays provider-agnostic and
+validates any Auth0-issued RS256 access token against the tenant's JWKS — no
+email/password endpoint exists. The first time we see a given `sub`, we hit
+Auth0's `/userinfo` to populate the local `User` row's `name`, `picture`, and
+`email`. The `email` field is best-effort: a provider that omits it simply
+leaves it `NULL` on the row, and the user can fill it in later via
+`PATCH /profile/me`.
 
 For manual QA without a real Auth0 tenant there is a dev-user backdoor —
 see [Dev-user backdoor](#dev-user-backdoor) below.
@@ -71,7 +71,7 @@ require auth.
 | --- | --- |
 | `GET /profile/me` | Same shape as `/auth/me`; here for symmetry with PATCH. |
 | `PATCH /profile/me` | Partial update: name / email / picture. |
-| `POST /profile/me/presets` | Add a custom session preset (max 5). |
+| `POST /profile/me/presets` | Add a custom session mode (max 4 — `MAX_CUSTOM_PRESETS`, mirroring the four cells of the home screen's mode grid). |
 | `PATCH /profile/me/presets/{id}` | Rename and/or replace a preset's settings. |
 | `DELETE /profile/me/presets/{id}` | Remove one preset. |
 

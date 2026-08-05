@@ -76,6 +76,18 @@ describe("SessionLauncher", () => {
     expect(screen.getByText("10:00")).toBeInTheDocument()
   })
 
+  it("heads each half of the launcher", async () => {
+    authState.current = makeAuth()
+    renderWithLocale(<Harness />)
+    expect(screen.getByRole("heading", { name: "Select a duration" })).toBeInTheDocument()
+    expect(screen.getByRole("heading", { name: "Game modes" })).toBeInTheDocument()
+
+    // The heading names the grid, not the face it shows: flipping to the
+    // custom modes is still picking a game mode.
+    await userEvent.click(screen.getByRole("button", { name: "Custom modes" }))
+    expect(screen.getByRole("heading", { name: "Game modes" })).toBeInTheDocument()
+  })
+
   it("re-dials the session length without un-highlighting the selected mode", async () => {
     authState.current = makeAuth()
     const onChange = vi.fn()

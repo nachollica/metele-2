@@ -1,9 +1,10 @@
-# Task: build the "quote of the day" pool
+# Task: build the quote pool
 
 This is a self-contained brief for an agent (or a person) to curate the literary
-quote pool the Flowfic landing dashboard rotates through. All the tooling,
-schema, and verification already exist — your job is the curation and
-translation.
+quote pool Flowfic draws inspiration from — the home screen's inspiration card
+picks between this pool and the film stills, and the winner stays beside the
+player for the sprint. All the tooling, schema, and verification already exist —
+your job is the curation and translation.
 
 ## Goal
 

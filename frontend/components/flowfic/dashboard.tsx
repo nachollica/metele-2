@@ -28,10 +28,11 @@ import { useStories } from "@/lib/flowfic/use-stories"
 import type { GameSettings } from "@/lib/flowfic/types"
 import type { Story } from "@/lib/flowfic/stories-api"
 
-import { SECTION_META, type Section } from "./dashboard-nav"
+import { type Section } from "./dashboard-nav"
 import { pathToScreen, screenToPath, type Screen } from "./navigation"
+import { screenHeader } from "./screen-header"
 import { AppHeader } from "./app-header"
-import { DetailScreen } from "./detail-screen"
+import { ContentColumn } from "./dashboard-widgets"
 import { GamificationProvider } from "./gamification-context"
 import { GameHud } from "./game-hud"
 import { InspirationPane } from "./inspiration-panel"
@@ -78,6 +79,10 @@ export function Dashboard() {
   const { state: inspirationState } = useInspiration()
   const hasInspiration =
     inspirationState.status === "image" || inspirationState.status === "quote"
+  // The pane is only up when there is something to put in it AND the player
+  // hasn't collapsed it. Everything else — collapsed, or never picked — is the
+  // same centred layout, so the two cases share one flag.
+  const paneShown = hasInspiration && inspirationOpen
 
   const inGame =
     engine.gameState === "playing" ||
@@ -224,6 +229,17 @@ export function Dashboard() {
 
   const controlsDisabled = engine.isPlaying || engine.isPaused || loading
 
+  // A story screen only carries the id (so a deep link / refresh at
+  // /stories/:id reconstructs it); resolve the record once here, and share the
+  // verdict with both the header and the screen so the two never disagree.
+  // `stories === null` means the first load is still in flight.
+  const currentStory = screen.name === "story" ? (stories?.find((s) => s.id === screen.id) ?? null) : null
+  const storyMissing = screen.name === "story" && stories !== null && currentStory === null
+
+  // Title + back arrow for the header. Mid-sprint the bar stays empty.
+  const header = screenHeader(screen, t, { storyMissing })
+  const headerBack = header.backTo === "stories" ? () => showSection("stories") : goHome
+
   return (
     <GamificationProvider refreshKey={engine.storiesRefreshKey}>
       <div className="bg-background text-foreground flex h-dvh flex-col">
@@ -231,6 +247,9 @@ export function Dashboard() {
           authStatus={authStatus}
           devUserEnabled={devUserEnabled}
           disabled={controlsDisabled}
+          title={splitLayout ? null : header.title}
+          onBack={header.backTo !== null ? headerBack : undefined}
+          backLabel={header.backLabel}
           onGoHome={goHome}
           onShowSection={showSection}
           onOpenProfile={openProfile}
@@ -241,17 +260,15 @@ export function Dashboard() {
             // Two shapes, depending on whether the inspiration pane is up:
             //   shown  — writing column beside a 5/12 pane, as the split has
             //            always been.
-            //   hidden — the writing column falls back to the app's shared
-            //            centred measure (the same one the home screen uses),
-            //            with the wand parked in the right margin. With no
-            //            inspiration picked at all there is no wand either, so
-            //            the game is simply centred.
+            //   centred — the writing column falls back to the app's shared
+            //            measure (the same one the home screen uses) between two
+            //            equal gutters. The right one holds the wand when there
+            //            is a hidden inspiration to bring back, and is simply
+            //            empty when none was ever picked. BOTH gutters have to
+            //            render either way: one alone would push the column off
+            //            to the opposite edge.
             <div className="flex h-full min-h-0">
-              {/* Left gutter, mirroring the wand's margin so the writing column
-                  lands dead centre rather than merely off to one side. */}
-              {!(hasInspiration && inspirationOpen) ? (
-                <div className="hidden flex-1 md:block" aria-hidden />
-              ) : null}
+              {paneShown ? null : <div className="hidden flex-1 md:block" aria-hidden />}
 
               <div
                 className={cn(
@@ -260,7 +277,7 @@ export function Dashboard() {
                   // claims the shared measure outright and the flex-1 gutters
                   // split the remainder — it must NOT be flex-1 itself, or it
                   // would just take a third of the row alongside them.
-                  hasInspiration && inspirationOpen ? "flex-1" : "w-full max-w-5xl",
+                  paneShown ? "flex-1" : "w-full max-w-5xl",
                 )}
               >
                 {loading ? (
@@ -273,7 +290,7 @@ export function Dashboard() {
               {/* The pane itself is the hide control: the pick is frozen for
                   the sprint, so a click can't mean "re-roll" the way it does on
                   the home card. Desktop only. */}
-              {hasInspiration && inspirationOpen ? (
+              {paneShown ? (
                 <aside className="bg-card/40 hidden w-5/12 shrink-0 overflow-hidden border-l p-4 sm:p-6 md:block">
                   <button
                     type="button"
@@ -285,34 +302,37 @@ export function Dashboard() {
                     <InspirationPane />
                   </button>
                 </aside>
-              ) : null}
-
-              {/* Hidden: a large wand fills the right margin. Barely tinted at
-                  rest so it reads as a quiet affordance beside the story rather
-                  than competing with it, and it is the ICON that lights up on
-                  hover — a button plate out here would look like a stray
-                  control floating in the margin. */}
-              {hasInspiration && !inspirationOpen ? (
+              ) : (
+                /* Right gutter. Mirrors the left one so the column lands dead
+                   centre, and carries the wand only when there is something to
+                   bring back — large and barely tinted at rest so it reads as a
+                   quiet affordance beside the story rather than competing with
+                   it, with the ICON lighting up on hover (a button plate out
+                   here would look like a stray control floating in the margin). */
                 <div className="hidden flex-1 items-center justify-center md:flex">
-                  <button
-                    type="button"
-                    onClick={() => setInspirationOpen(true)}
-                    aria-expanded={false}
-                    aria-label={t.game.inspirationShow}
-                    className="focus-visible:ring-ring group cursor-pointer rounded-2xl p-4 focus-visible:ring-2 focus-visible:outline-none"
-                  >
-                    <Wand2
-                      className="text-muted-foreground/25 group-hover:text-primary size-24 transition-colors"
-                      aria-hidden
-                    />
-                  </button>
+                  {hasInspiration ? (
+                    <button
+                      type="button"
+                      onClick={() => setInspirationOpen(true)}
+                      aria-expanded={false}
+                      aria-label={t.game.inspirationShow}
+                      className="focus-visible:ring-ring group cursor-pointer rounded-2xl p-4 focus-visible:ring-2 focus-visible:outline-none"
+                    >
+                      <Wand2
+                        className="text-muted-foreground/25 group-hover:text-primary size-24 transition-colors"
+                        aria-hidden
+                      />
+                    </button>
+                  ) : null}
                 </div>
-              ) : null}
+              )}
             </div>
           ) : (
             <div className="h-full min-h-0 overflow-y-auto p-4 sm:p-6">
               <ScreenContent
                 screen={screen}
+                story={currentStory}
+                storyMissing={storyMissing}
                 settings={engine.settings}
                 onChangeSettings={engine.setSettings}
                 onStart={startWriting}
@@ -483,6 +503,8 @@ function GameArea({
 
 function ScreenContent({
   screen,
+  story,
+  storyMissing,
   settings,
   onChangeSettings,
   onStart,
@@ -500,6 +522,10 @@ function ScreenContent({
   onBackToStories,
 }: {
   screen: Screen
+  /** The record behind a `story` screen, resolved by the parent (which shares
+   *  the verdict with the header). `null` while loading or when missing. */
+  story: Story | null
+  storyMissing: boolean
   settings: GameSettings
   onChangeSettings: (settings: GameSettings) => void
   onStart: () => void
@@ -542,7 +568,7 @@ function ScreenContent({
       )
     case "section":
       return (
-        <DetailScreen title={SECTION_META[screen.section].title(t)} onBack={onBackHome}>
+        <ContentColumn className="gap-5">
           <SectionDetail
             section={screen.section}
             stories={stories}
@@ -552,39 +578,36 @@ function ScreenContent({
             onDeleteStory={onDeleteStory}
             onUpdateStoryTitle={onUpdateStoryTitle}
           />
-        </DetailScreen>
+        </ContentColumn>
       )
     case "profile":
       return (
-        <DetailScreen title={t.profile.title} onBack={onBackHome}>
+        <ContentColumn className="gap-5">
           <ProfilePanel />
-        </DetailScreen>
+        </ContentColumn>
       )
-    case "story": {
-      // The screen only carries the id (so a deep link / refresh at
-      // /stories/:id reconstructs it); resolve the record from the loaded
-      // list. `null` list means the first load is still in flight.
-      const story = stories?.find((s) => s.id === screen.id) ?? null
-      if (stories === null) {
+    case "story":
+      // The title and the back arrow are in the header; here it is just the
+      // spinner, the not-found body, or the read-only story.
+      if (story === null && !storyMissing) {
         return (
-          <DetailScreen title={t.game.viewingStory} onBack={onBackToStories} backLabel={t.nav.backToStories}>
+          <ContentColumn className="gap-5">
             <div role="status" aria-live="polite" className="flex justify-center py-16">
               <Loader2 className="text-primary size-8 animate-spin" aria-hidden />
             </div>
-          </DetailScreen>
+          </ContentColumn>
         )
       }
-      if (story === null) return <NotFoundScreen onBack={onBackToStories} backLabel={t.nav.backToStories} />
+      if (story === null) return <NotFoundBody onBack={onBackToStories} label={t.nav.backToStories} />
       return (
-        <DetailScreen title={t.game.viewingStory} onBack={onBackToStories} backLabel={t.nav.backToStories}>
+        <ContentColumn className="gap-5">
           <div className="h-[65vh]">
             <WritingArea value={story.text} onChange={() => {}} matches={[]} readOnly />
           </div>
-        </DetailScreen>
+        </ContentColumn>
       )
-    }
     case "notfound":
-      return <NotFoundScreen onBack={onBackHome} />
+      return <NotFoundBody onBack={onBackHome} label={t.notFound.backHome} />
     // `configuring` is rendered by the split layout, not here.
     default:
       return null
@@ -593,21 +616,19 @@ function ScreenContent({
 
 // Client-rendered not-found screen (no server 404 — the shell is served for
 // every app path). Reached for an unknown URL or a story id that doesn't
-// resolve; the back arrow returns to a sensible in-app screen.
-function NotFoundScreen({ onBack, backLabel }: { onBack: () => void; backLabel?: string }) {
+// resolve; its title and back arrow are in the header, and this button shares
+// the arrow's destination, so both are labelled after where they lead.
+function NotFoundBody({ onBack, label }: { onBack: () => void; label: string }) {
   const t = useTranslations()
-  // The arrow + button share one destination; label both after it so the copy
-  // matches where they lead (home by default, the stories list from a story).
-  const label = backLabel ?? t.notFound.backHome
   return (
-    <DetailScreen title={t.notFound.title} onBack={onBack} backLabel={label}>
+    <ContentColumn className="gap-5">
       <div className="flex flex-col items-start gap-4 py-8">
         <p className="text-muted-foreground">{t.notFound.body}</p>
         <Button type="button" variant="outline" onClick={onBack}>
           {label}
         </Button>
       </div>
-    </DetailScreen>
+    </ContentColumn>
   )
 }
 

@@ -100,9 +100,9 @@ export function Panel({
 /**
  * Title row for a card or section: an `h2` plus an optional trailing action.
  *
- * `h2` and not `h3` — the page's `h1` is the screen title (`DetailScreen`, or
- * the landing's visually-hidden one), so cards sit directly under it with no
- * level to skip. `description` renders a muted sub-line for cards that need one.
+ * `h2` and not `h3` — the page's `h1` is the screen title in the app header, so
+ * cards sit directly under it with no level to skip. `description` renders a
+ * muted sub-line for cards that need one.
  */
 export function SectionHeader({
   title,

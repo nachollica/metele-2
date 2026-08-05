@@ -8,8 +8,10 @@ import { usePreferences } from "@/lib/preferences"
 
 /**
  * Header light/dark toggle. The icon reflects the active theme (sun when light,
- * moon when dark); clicking flips it. Full label shows on `md+`, icon-only on
- * mobile. Disabled until next-themes resolves the theme on the client.
+ * moon when dark); clicking flips it. Icon-only at every width — the accessible
+ * name carries the meaning instead, and names the *destination* theme since a
+ * bare "Mode" says nothing once the visible label is gone. Disabled until
+ * next-themes resolves the theme on the client.
  */
 export function ThemeToggle({ disabled = false }: { disabled?: boolean }) {
   const t = useTranslations()
@@ -24,14 +26,10 @@ export function ThemeToggle({ disabled = false }: { disabled?: boolean }) {
       variant="outline"
       size="icon-lg"
       disabled={disabled || !mounted}
-      aria-label={t.prefs.modeLabel}
+      aria-label={isDark ? t.prefs.modeSwitchToLight : t.prefs.modeSwitchToDark}
       onClick={() => setTheme(isDark ? "light" : "dark")}
-      className="md:w-auto md:px-3"
     >
       {isDark ? <Moon className="size-4" aria-hidden /> : <Sun className="size-4" aria-hidden />}
-      <span className="hidden text-sm font-medium md:inline">
-        {isDark ? t.prefs.modeDark : t.prefs.modeLight}
-      </span>
     </Button>
   )
 }

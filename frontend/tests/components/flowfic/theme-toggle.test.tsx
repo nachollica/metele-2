@@ -25,14 +25,15 @@ vi.mock("@/lib/preferences", () => ({
 afterEach(() => vi.clearAllMocks())
 
 describe("ThemeToggle", () => {
-  it("shows the active theme and switches to dark from light", async () => {
+  // The toggle is icon-only, so its accessible name is the whole label: it
+  // names the theme a click would switch TO, not the active one.
+  it("switches to dark from light", async () => {
     const setTheme = vi.fn()
     prefs.current = { theme: "light", setTheme, locale: "en", setLocale: vi.fn() }
     renderWithLocale(<ThemeToggle />)
 
-    const btn = screen.getByRole("button", { name: "Mode" })
+    const btn = screen.getByRole("button", { name: "Switch to dark mode" })
     expect(btn).toBeEnabled()
-    expect(screen.getByText("Light")).toBeInTheDocument()
 
     await userEvent.click(btn)
     expect(setTheme).toHaveBeenCalledWith("dark")
@@ -43,14 +44,14 @@ describe("ThemeToggle", () => {
     prefs.current = { theme: "dark", setTheme, locale: "en", setLocale: vi.fn() }
     renderWithLocale(<ThemeToggle />)
 
-    expect(screen.getByText("Dark")).toBeInTheDocument()
-    await userEvent.click(screen.getByRole("button", { name: "Mode" }))
+    await userEvent.click(screen.getByRole("button", { name: "Switch to light mode" }))
     expect(setTheme).toHaveBeenCalledWith("light")
   })
 
   it("is disabled until the theme resolves", () => {
     prefs.current = { theme: null, setTheme: vi.fn(), locale: "en", setLocale: vi.fn() }
     renderWithLocale(<ThemeToggle />)
-    expect(screen.getByRole("button", { name: "Mode" })).toBeDisabled()
+    // Unresolved theme reads as light, so the label offers dark.
+    expect(screen.getByRole("button", { name: "Switch to dark mode" })).toBeDisabled()
   })
 })
