@@ -1,6 +1,5 @@
 "use client"
 
-import { useTranslations } from "@/lib/i18n"
 import { type GameSettings } from "@/lib/flowfic/types"
 import { type Story } from "@/lib/flowfic/stories-api"
 
@@ -56,14 +55,10 @@ export function LandingHome({
   gridMode,
   onToggleGridMode,
 }: Props) {
-  const t = useTranslations()
-
   return (
     <ContentColumn className="gap-6">
-      {/* The landing has no visible title by design; this names the screen for
-          assistive tech so the page still has a top-level heading. */}
-      <h1 className="sr-only">{t.app.title}</h1>
-
+      {/* No heading here: the app header carries this screen's `h1`
+          ("Create a story"), like every other screen. */}
       <SessionLauncher
         settings={settings}
         onChange={onChangeSettings}
