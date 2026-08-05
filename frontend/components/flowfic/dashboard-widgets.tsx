@@ -10,12 +10,12 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { TONE_BAR, TONE_CHIP, type Tone } from "@/lib/flowfic/gamification"
 
-// Shared "overline" treatment for every card/section title: small uppercase
-// letter-spaced label. The one definition keeps titles consistent across the
-// dashboard cards (SectionHeader), the quote hero, and the inspiration card.
-// Colour is layered on per card (neutral muted by default; the amber quote
-// card overrides it), so this token carries only the shape, not the colour.
-export const CARD_TITLE_CLASS = "text-2xl font-semibold uppercase tracking-wide"
+// Shared treatment for every card/section title. One definition keeps them
+// consistent wherever two cards share a region of the screen — the home
+// screen's swappable panel shows "Recent stories" and "Advanced settings" in
+// the very same box, so they must not read as different kinds of heading.
+// Colour is layered on per card, so this token carries only the shape.
+export const CARD_TITLE_CLASS = "text-xl font-semibold"
 
 // The muted → accent ghost styling shared by the "Show all" links and the
 // inspiration credit link, so every soft header action reads the same.
@@ -97,19 +97,53 @@ export function Panel({
   )
 }
 
+/**
+ * Title row for a card or section: an `h2` plus an optional trailing action.
+ *
+ * `h2` and not `h3` — the page's `h1` is the screen title (`DetailScreen`, or
+ * the landing's visually-hidden one), so cards sit directly under it with no
+ * level to skip. `description` renders a muted sub-line for cards that need one.
+ */
 export function SectionHeader({
   title,
+  description,
   action,
+  id,
 }: {
   title: ReactNode
+  description?: ReactNode
   action?: ReactNode
+  /** Set when the section labels itself via `aria-labelledby`. */
+  id?: string
 }) {
   return (
-    <div className="mb-4 flex items-center justify-between gap-3">
-      <h3 className={cn(CARD_TITLE_CLASS, "text-muted-foreground min-w-0 truncate")}>{title}</h3>
+    <div className="mb-4 flex items-start justify-between gap-3">
+      <div className="flex min-w-0 flex-col gap-1">
+        <h2 id={id} className={cn(CARD_TITLE_CLASS, "min-w-0 truncate")}>
+          {title}
+        </h2>
+        {description ? (
+          <p className="text-muted-foreground text-sm">{description}</p>
+        ) : null}
+      </div>
       {action}
     </div>
   )
+}
+
+/**
+ * The one centred content measure shared by the landing, the detail screens,
+ * and the in-game writing column — so a story reads at the same width wherever
+ * it appears, and the game area lands exactly where the home screen was.
+ */
+export function ContentColumn({
+  children,
+  className,
+}: {
+  children: ReactNode
+  className?: string
+}) {
+  return <div className={cn("mx-auto flex w-full max-w-5xl flex-col", className)}>{children}</div>
 }
 
 /**

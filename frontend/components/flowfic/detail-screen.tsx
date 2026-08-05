@@ -6,6 +6,8 @@ import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useTranslations } from "@/lib/i18n"
 
+import { ContentColumn } from "./dashboard-widgets"
+
 type Props = {
   /** Screen title shown next to the back arrow. */
   title: ReactNode
@@ -29,7 +31,7 @@ type Props = {
 export function DetailScreen({ title, onBack, backLabel, children }: Props) {
   const t = useTranslations()
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-5">
+    <ContentColumn className="gap-5">
       <div className="flex items-center gap-2">
         <Button
           type="button"
@@ -43,6 +45,6 @@ export function DetailScreen({ title, onBack, backLabel, children }: Props) {
         <h1 className="text-xl font-bold">{title}</h1>
       </div>
       {children}
-    </div>
+    </ContentColumn>
   )
 }

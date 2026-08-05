@@ -16,6 +16,8 @@ import { Slider } from "@/components/ui/slider"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 
+import { SectionHeader } from "./dashboard-widgets"
+
 import { cn } from "@/lib/utils"
 import { useTranslations } from "@/lib/i18n"
 import { formatSeconds } from "@/lib/flowfic/format"
@@ -51,16 +53,12 @@ export function SettingsPanel({ settings, onChange }: Props) {
   const requiredWordsOn = settings.requiredWordIntervalEnabled
 
   return (
-    <section
-      aria-labelledby="settings-title"
-      className="flex flex-col gap-4"
-    >
-      <div className="flex flex-col gap-1.5">
-        <h2 id="settings-title" className="text-xl font-semibold">
-          {t.settings.title}
-        </h2>
-        <p className="text-muted-foreground text-sm">{t.settings.description}</p>
-      </div>
+    <section aria-labelledby="settings-title" className="flex flex-col">
+      <SectionHeader
+        id="settings-title"
+        title={t.settings.title}
+        description={t.settings.description}
+      />
 
       <Separator />
 

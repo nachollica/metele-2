@@ -5,6 +5,7 @@ import { type GameSettings } from "@/lib/flowfic/types"
 import { type Story } from "@/lib/flowfic/stories-api"
 
 import { type Section } from "./dashboard-nav"
+import { ContentColumn } from "./dashboard-widgets"
 import { type GridMode } from "./preset-grid"
 import { InspirationCard } from "./inspiration-panel"
 import { SessionLauncher } from "./session-launcher"
@@ -15,9 +16,9 @@ import { StoriesSection } from "./stories-section"
 // panel that swaps between recent stories and the advanced settings, then the
 // full-width inspiration card.
 
-// Height of the swappable panel. Sized so the settings face fits without the
-// container resizing when the two faces trade places — the stories face simply
-// shows as many rows as fit and scrolls for the rest.
+// Height of the swappable panel. Sized so the settings face fits exactly —
+// nothing inside it scrolls, and the stories face lays its three rows out to
+// fill the same box (see StoriesSection's preview).
 const PANEL_HEIGHT = "h-[30rem]"
 
 type Props = {
@@ -58,7 +59,7 @@ export function LandingHome({
   const t = useTranslations()
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-5">
+    <ContentColumn className="gap-6">
       {/* The landing has no visible title by design; this names the screen for
           assistive tech so the page still has a top-level heading. */}
       <h1 className="sr-only">{t.app.title}</h1>
@@ -74,13 +75,19 @@ export function LandingHome({
       />
 
       {/* Swappable panel: recent stories by default, advanced settings behind
-          "More options". Fixed height so toggling never jumps the page. */}
+          "More options". Fixed height so toggling never jumps the page, and
+          deliberately NOT scrollable — each face is sized to fit it exactly.
+          The settings face is desktop-only (see SessionLauncher), so on a phone
+          this always shows the stories and `/new` needs no redirect. */}
       <div
-        className={`bg-card text-card-foreground ${PANEL_HEIGHT} overflow-y-auto rounded-2xl border p-5 shadow-sm`}
+        className={`bg-card text-card-foreground ${PANEL_HEIGHT} flex flex-col overflow-hidden rounded-2xl border p-5 shadow-sm`}
       >
         {settingsOpen ? (
-          <SettingsPanel settings={settings} onChange={onChangeSettings} />
-        ) : (
+          <div className="hidden min-h-0 flex-1 md:block">
+            <SettingsPanel settings={settings} onChange={onChangeSettings} />
+          </div>
+        ) : null}
+        <div className={settingsOpen ? "flex min-h-0 flex-1 flex-col md:hidden" : "flex min-h-0 flex-1 flex-col"}>
           <StoriesSection
             preview
             flush
@@ -91,10 +98,10 @@ export function LandingHome({
             onDeleteStory={onDeleteStory}
             onUpdateTitle={onUpdateStoryTitle}
           />
-        )}
+        </div>
       </div>
 
       <InspirationCard />
-    </div>
+    </ContentColumn>
   )
 }

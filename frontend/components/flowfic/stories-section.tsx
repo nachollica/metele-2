@@ -86,6 +86,9 @@ export function StoriesSection({
           PREVIEW_COUNT,
         )
       : []
+    // Flush drops the card chrome (the landing panel already supplies it) and,
+    // with it, the wrapper element — so the preview's own flex column is the
+    // direct child of that fixed-height panel and can fill it.
     const Wrapper = flush ? Fragment : Panel
     return (
       <Wrapper>
@@ -102,10 +105,14 @@ export function StoriesSection({
             ) : null
           }
         />
+        {/* Exactly PREVIEW_COUNT rows, each taking an equal share of the
+            panel's fixed height — nothing scrolls. With fewer stories the rows
+            keep their share and the remainder is simply left empty, rather
+            than stretching one card over the whole box. */}
         {stories === null ? (
-          <div className="flex flex-col gap-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-24 rounded-2xl" />
+          <div className="flex min-h-0 flex-1 flex-col gap-3">
+            {Array.from({ length: PREVIEW_COUNT }).map((_, i) => (
+              <Skeleton key={i} className="min-h-0 flex-1 rounded-2xl" />
             ))}
           </div>
         ) : recent.length === 0 ? (
@@ -117,15 +124,22 @@ export function StoriesSection({
                 : t.dashboard.emptyStories}
           </EmptyHint>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="flex min-h-0 flex-1 flex-col gap-3">
             {recent.map((s) => (
-              <StoryCard
-                key={s.id}
-                story={s}
-                onSelect={onViewStory}
-                onDelete={onDeleteStory}
-                onUpdateTitle={onUpdateTitle}
-              />
+              <div key={s.id} className="min-h-0 flex-1">
+                <StoryCard
+                  story={s}
+                  onSelect={onViewStory}
+                  onDelete={onDeleteStory}
+                  onUpdateTitle={onUpdateTitle}
+                  fill
+                />
+              </div>
+            ))}
+            {/* Reserve the unused rows so three stories and one story lay the
+                panel out identically. */}
+            {Array.from({ length: PREVIEW_COUNT - recent.length }).map((_, i) => (
+              <div key={`spacer-${i}`} aria-hidden className="min-h-0 flex-1" />
             ))}
           </div>
         )}
