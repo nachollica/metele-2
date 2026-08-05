@@ -83,7 +83,7 @@ describe("StoriesSection preview", () => {
   it("renders three skeleton rows while the first load is in flight", () => {
     authState.current = makeAuth()
     const { container } = renderPreview(null)
-    expect(container.querySelectorAll('[data-slot="skeleton"]')).toHaveLength(3)
+    expect(container.querySelectorAll("[data-slot=\"skeleton\"]")).toHaveLength(3)
   })
 
   it("prompts anonymous users to sign in instead of listing rows", () => {
