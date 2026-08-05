@@ -60,7 +60,11 @@ export function AppHeader({
   const t = useTranslations()
   return (
     <header className="bg-card/60 grid grid-cols-[1fr_auto_1fr] items-center gap-3 border-b px-4 py-2 sm:px-6">
-      <div className="flex min-w-0 items-center gap-2 md:gap-3">
+      {/* `min-w-max` pins the side cell to its content: a `1fr` track would
+          otherwise let its flex children compress, sliding the logo under the
+          title on a narrow bar. Squeezed space comes out of the title instead
+          (its own `min-w-0` below). */}
+      <div className="flex min-w-max items-center gap-2 md:gap-3">
         <ThemeToggle />
         {/* Brand — doubles as a home link (locked during play). Icon-only on
             mobile, full logo + wordmark from md up. */}
@@ -99,7 +103,12 @@ export function AppHeader({
             <ArrowLeft className="size-4" aria-hidden />
           </Button>
         ) : null}
-        {title !== null ? <h1 className="truncate text-lg font-bold">{title}</h1> : null}
+        {/* `min-w-0` so a long title gives way to the side clusters instead of
+            pushing them off the bar on a narrow screen — it truncates
+            visually, and assistive tech still reads the whole heading. */}
+        {title !== null ? (
+          <h1 className="min-w-0 truncate text-base font-bold sm:text-lg">{title}</h1>
+        ) : null}
       </div>
 
       <div className="flex shrink-0 items-center justify-end gap-2">
