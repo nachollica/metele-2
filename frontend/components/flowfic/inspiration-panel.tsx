@@ -1,22 +1,88 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react"
 import { Loader2, Wand2 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { useLocale, useTranslations } from "@/lib/i18n"
 import { quoteBlocks, quoteTitle, type Quote } from "@/lib/flowfic/quotes"
-import { useInspiration } from "@/lib/flowfic/inspiration"
+import { useInspiration, type InspirationState } from "@/lib/flowfic/inspiration"
 
 // How fast the wheel zooms. Multiplicative per wheel delta so it feels even
 // across the range.
 const ZOOM_SENSITIVITY = 0.0015
 
+/** One place to tune how inspiration transitions feel. */
+const FADE_MS = 400
+
 /**
- * Cross-fade <img>: starts transparent and fades in once the (cross-origin)
- * film-grab image has loaded, so a slow network reveals the picture softly into
- * its already-reserved box instead of popping. Resets on every `src` change
- * (e.g. a re-roll) so each new image fades in too.
+ * Cross-fade between successive inspirations.
+ *
+ * Every switch reads the same regardless of what is being swapped — image to
+ * quote, quote to quote, or the first reveal from the empty invitation. The
+ * outgoing content fades out, then the incoming content fades in; `contentKey`
+ * identifies the current pick, so a re-roll to a different item animates while
+ * an unrelated re-render does not.
+ *
+ * An image additionally waits for its own `load` before being considered ready,
+ * so a slow network fades the picture in when it actually arrives rather than
+ * fading in an empty box (see `FadeInImage`).
+ */
+function CrossFade({
+  contentKey,
+  children,
+  className,
+}: {
+  contentKey: string
+  children: ReactNode
+  className?: string
+}) {
+  const [shown, setShown] = useState(children)
+  const [shownKey, setShownKey] = useState(contentKey)
+  const [visible, setVisible] = useState(true)
+
+  useEffect(() => {
+    if (contentKey === shownKey) {
+      // Same pick, new render (e.g. a locale switch): update in place.
+      setShown(children)
+      return
+    }
+    setVisible(false)
+    const id = window.setTimeout(() => {
+      setShown(children)
+      setShownKey(contentKey)
+      setVisible(true)
+    }, FADE_MS)
+    return () => window.clearTimeout(id)
+    // `children` is a fresh element every render; the key is what identifies it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contentKey, shownKey])
+
+  return (
+    <div
+      className={cn(
+        "size-full transition-opacity",
+        visible ? "opacity-100" : "opacity-0",
+        className,
+      )}
+      style={{ transitionDuration: `${FADE_MS}ms` }}
+    >
+      {shown}
+    </div>
+  )
+}
+
+/**
+ * Inspiration <img> that stays transparent until it has actually loaded, so a
+ * slow cross-origin fetch reveals the picture softly into its already-reserved
+ * box instead of popping.
  *
  * Aspect guardrail: `object-cover` + `size-full` make the still fill its parent
  * frame by cropping the overflowing edge — never by stretching. So any source
@@ -34,8 +100,9 @@ function FadeInImage({ src, alt, className }: { src: string; alt: string; classN
       src={src}
       alt={alt}
       onLoad={() => setLoaded(true)}
+      style={{ transitionDuration: `${FADE_MS}ms` }}
       className={cn(
-        "size-full object-cover transition-opacity duration-500",
+        "size-full object-cover transition-opacity",
         loaded ? "opacity-100" : "opacity-0",
         className,
       )}
@@ -46,16 +113,32 @@ function FadeInImage({ src, alt, className }: { src: string; alt: string; classN
 /**
  * A quote rendered as the inspiration itself: large, centred, with the serif
  * quote mark that used to head the quote-of-the-day card. Fills whatever box it
- * is given (the home card's 4:3 frame, or the in-game pane), scrolling inside
- * rather than pushing the frame around for a long multi-block passage.
+ * is given (the home card's 4:3 frame, or the in-game pane).
+ *
+ * `scrollable` is off by default and stays off on the home card: an
+ * `overflow-y-auto` pane there swallows the wheel, because the app-wide
+ * `overscroll-behavior: contain` rule (see app/globals.css) stops a scroll
+ * container from chaining to the page even when it has nothing of its own to
+ * scroll — so the landing would freeze under the cursor. The card clamps a long
+ * passage instead. The in-game pane opts in: it is a full-height column and the
+ * page behind it does not scroll, so there is nothing to chain to.
  */
-export function InspirationQuote({ quote, className }: { quote: Quote; className?: string }) {
+export function InspirationQuote({
+  quote,
+  scrollable = false,
+  className,
+}: {
+  quote: Quote
+  scrollable?: boolean
+  className?: string
+}) {
   const locale = useLocale()
   const blocks = quoteBlocks(quote, locale)
   return (
     <figure
       className={cn(
-        "relative flex size-full flex-col items-center justify-center overflow-y-auto p-6 text-center sm:p-10",
+        "relative flex size-full flex-col items-center justify-center p-6 text-center sm:p-10",
+        scrollable ? "overflow-y-auto" : "overflow-hidden",
         className,
       )}
     >
@@ -104,26 +187,41 @@ export function InspirationCard({ className }: { className?: string }) {
         className,
       )}
     >
-      {state.status === "image" ? (
-        <FadeInImage src={state.image.img} alt="" />
-      ) : state.status === "quote" ? (
-        <InspirationQuote quote={state.quote} />
-      ) : state.status === "picking" ? (
-        <span role="status" className="flex size-full items-center justify-center">
-          <Loader2 className="text-primary size-8 animate-spin" aria-hidden />
-        </span>
-      ) : (
-        <span className="text-muted-foreground group-hover:text-foreground flex size-full flex-col items-center justify-center gap-3 transition-colors">
-          <Wand2 className="text-primary size-10" aria-hidden />
-          <span className="text-sm font-medium">
-            {state.status === "unavailable"
-              ? t.dashboard.inspirationUnavailable
-              : t.dashboard.inspirationPrompt}
+      <CrossFade contentKey={inspirationKey(state)}>
+        {state.status === "image" ? (
+          <FadeInImage src={state.image.img} alt="" />
+        ) : state.status === "quote" ? (
+          <InspirationQuote quote={state.quote} />
+        ) : state.status === "picking" ? (
+          <span role="status" className="flex size-full items-center justify-center">
+            <Loader2 className="text-primary size-8 animate-spin" aria-hidden />
           </span>
-        </span>
-      )}
+        ) : (
+          <span className="text-muted-foreground group-hover:text-foreground flex size-full flex-col items-center justify-center gap-3 transition-colors">
+            <Wand2 className="text-primary size-10" aria-hidden />
+            <span className="text-sm font-medium">
+              {state.status === "unavailable"
+                ? t.dashboard.inspirationUnavailable
+                : t.dashboard.inspirationPrompt}
+            </span>
+          </span>
+        )}
+      </CrossFade>
     </button>
   )
+}
+
+/** Stable identity for the current pick, so a re-roll cross-fades but an
+ *  incidental re-render does not. */
+function inspirationKey(state: InspirationState): string {
+  switch (state.status) {
+    case "image":
+      return `image:${state.image.loc}`
+    case "quote":
+      return `quote:${state.quote.id}`
+    default:
+      return state.status
+  }
 }
 
 /**
@@ -141,7 +239,9 @@ export function InspirationPane({ className }: { className?: string }) {
           className,
         )}
       >
-        <InspirationQuote quote={state.quote} />
+        {/* Scrollable here: the pane is a full-height column and the page
+            behind it does not scroll, so there is nothing to chain to. */}
+        <InspirationQuote quote={state.quote} scrollable />
       </div>
     )
   }
