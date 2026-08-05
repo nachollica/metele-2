@@ -99,8 +99,10 @@ export function SessionLauncher({
         // page column, `aspect-ratio` lost to the content's own height and the
         // hero stayed tall. This is the one number that sizes the whole hero —
         // the rows split it 2:2:1 and every cell takes its height from there,
-        // so the dial, the cards and the buttons all shrink together.
-        "md:h-[19rem] md:grid-cols-3 md:grid-rows-[2fr_2fr_1fr] md:gap-5",
+        // so the dial, the cards and the buttons all shrink together. It grew
+        // with the two column headings, which take their room out of the same
+        // budget; the dial and the cards keep the size they had without them.
+        "md:h-[21rem] md:grid-cols-3 md:grid-rows-[2fr_2fr_1fr] md:gap-5",
       )}
     >
       {/* Session dial. Square, so once its height comes from the row it ends up
@@ -108,8 +110,14 @@ export function SessionLauncher({
           without it the square's intrinsic width would feed back into the row
           and stretch the whole canvas past its aspect ratio. Capped on phones,
           where there is no canvas to take a height from. */}
-      <div className="order-1 col-span-2 flex min-h-0 items-center justify-center md:order-none md:col-span-1 md:col-start-1 md:row-span-2 md:row-start-1">
-        <TimerRing className="h-full max-h-full w-44 md:w-auto md:min-h-0 md:min-w-0">
+      <div className="order-1 col-span-2 flex min-h-0 flex-col items-center gap-2 md:order-none md:col-span-1 md:col-start-1 md:row-span-2 md:row-start-1">
+        <h2 className="text-muted-foreground shrink-0 text-center text-sm font-semibold">
+          {t.settings.selectDuration}
+        </h2>
+        {/* Phone: a fixed width, with the square deriving the height. Desktop:
+            the reverse — it takes the height left over by the heading and the
+            square derives the width, so it stays inside the cell. */}
+        <TimerRing className="w-44 md:min-h-0 md:w-auto md:min-w-0 md:flex-1">
           {/* The readout IS the picker: clicking the numbers opens the list.
               The trigger shows mm:ss while the options read "10 minutes", so
               the dial keeps its clock face and the menu stays legible. */}
@@ -141,8 +149,13 @@ export function SessionLauncher({
         </TimerRing>
       </div>
 
-      {/* Mode grid. Last on a phone, top-right on desktop. */}
+      {/* Mode grid. Last on a phone, top-right on desktop. The heading names
+          the grid whichever face it shows — flipping to the custom modes is
+          still picking a game mode. */}
       <div className="order-3 col-span-2 flex min-h-0 flex-col gap-2 md:order-none md:col-start-2 md:row-span-2 md:row-start-1">
+        <h2 className="text-muted-foreground shrink-0 text-center text-sm font-semibold">
+          {t.settings.presetsLabel}
+        </h2>
         <PresetGrid
           settings={settings}
           mode={gridMode}

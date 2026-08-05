@@ -55,6 +55,12 @@ type Props = {
 // canvas shrinks them with it.
 const CARD_SHAPE = "aspect-[4/2] min-h-20 md:aspect-auto md:h-full md:min-h-0"
 
+// Text inside a card is laid out in a narrower column than the card itself, so
+// a long description wraps well before the rounded edge instead of running into
+// it. Shared by every card face (system, challenge, custom) so they all break
+// their lines at the same measure.
+const CARD_TEXT = "flex w-3/4 flex-col items-center gap-1"
+
 /**
  * The 2x2 mode grid in the home screen's session launcher: three system modes
  * plus the highlighted challenge of the day, or — when flipped — the signed-in
@@ -217,7 +223,11 @@ export function PresetGrid({ settings, mode, onApply, onStartChallenge }: Props)
   return (
     <>
       <div
-        className="grid h-full grid-cols-2 gap-3 md:grid-rows-2 md:gap-4"
+        // Desktop: takes whatever height the launcher's cell has left under its
+        // heading (`flex-1`, not `h-full`, which would ignore the heading and
+        // overflow the cell). On a phone the cards are sized by their own
+        // aspect ratio, so the grid just takes its intrinsic height.
+        className="grid min-h-0 grid-cols-2 gap-3 md:flex-1 md:grid-rows-2 md:gap-4"
         role="group"
         aria-label={mode === "system" ? t.settings.presetsLabel : t.settings.customModesLabel}
       >
@@ -471,21 +481,23 @@ function PresetButton({
       aria-pressed={active}
       className={cn(
         CARD_SHAPE,
-        "flex flex-col items-center justify-center gap-1 overflow-hidden rounded-xl border p-3 text-center transition-colors",
+        "flex flex-col items-center justify-center overflow-hidden rounded-xl border p-3 text-center transition-colors",
         "hover:bg-accent/20 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
         active
           ? "border-highlight bg-highlight/20 ring-highlight/30 ring-1"
           : "border-border bg-card",
       )}
     >
-      <span className="text-foreground line-clamp-1 w-full text-center text-sm font-semibold">
-        {title}
-      </span>
-      {subtitle ? (
-        <span className="text-muted-foreground line-clamp-2 w-full text-center text-xs leading-snug">
-          {subtitle}
+      <span className={CARD_TEXT}>
+        <span className="text-foreground line-clamp-1 w-full text-center text-sm font-semibold">
+          {title}
         </span>
-      ) : null}
+        {subtitle ? (
+          <span className="text-muted-foreground line-clamp-2 w-full text-center text-xs leading-snug">
+            {subtitle}
+          </span>
+        ) : null}
+      </span>
     </button>
   )
 }
@@ -505,7 +517,7 @@ function ChallengeCard({ onStart }: { onStart: () => void }) {
       onClick={onStart}
       className={cn(
         CARD_SHAPE,
-        "bg-primary text-primary-foreground relative flex flex-col items-center justify-center gap-1 overflow-hidden rounded-xl p-3 text-center shadow-sm transition-colors",
+        "bg-primary text-primary-foreground relative flex flex-col items-center justify-center overflow-hidden rounded-xl p-3 text-center shadow-sm transition-colors",
         "hover:bg-primary/90 focus-visible:ring-ring focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none",
       )}
     >
@@ -513,12 +525,14 @@ function ChallengeCard({ onStart }: { onStart: () => void }) {
         className="pointer-events-none absolute -top-2 -right-2 size-16 opacity-15"
         aria-hidden
       />
-      <span className="relative flex items-center gap-1.5 text-sm font-semibold">
-        <Trophy className="size-4" aria-hidden />
-        {t.dashboard.challengeOfDay}
-      </span>
-      <span className="relative line-clamp-2 text-xs leading-snug opacity-90">
-        {t.dashboard.challengeOfDayHint}
+      <span className={cn(CARD_TEXT, "relative")}>
+        <span className="flex items-center gap-1.5 text-sm font-semibold">
+          <Trophy className="size-4 shrink-0" aria-hidden />
+          {t.dashboard.challengeOfDay}
+        </span>
+        <span className="line-clamp-2 text-xs leading-snug opacity-90">
+          {t.dashboard.challengeOfDayHint}
+        </span>
       </span>
     </button>
   )
@@ -587,15 +601,17 @@ function CustomPresetCard({
       aria-pressed={active}
       className={cn(
         CARD_SHAPE,
-        "group relative flex cursor-pointer flex-col items-center justify-center gap-1 overflow-hidden rounded-xl border p-3 text-center transition-colors",
+        "group relative flex cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border p-3 text-center transition-colors",
         "hover:bg-accent/20 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
         active
           ? "border-highlight bg-highlight/20 ring-highlight/30 ring-1"
           : "border-border bg-card",
       )}
     >
-      <span className="text-foreground line-clamp-2 w-full text-center text-sm font-semibold">
-        {preset.name}
+      <span className={CARD_TEXT}>
+        <span className="text-foreground line-clamp-2 w-full text-center text-sm font-semibold">
+          {preset.name}
+        </span>
       </span>
       {/* Action chips. Visible on hover/focus-within so the unhovered card
           stays clean. Keyboard users tab through them after the card. */}
@@ -640,7 +656,7 @@ function EmptySlot({ hint }: { hint: string | null }) {
         "border-border/60 text-muted-foreground flex items-center justify-center rounded-xl border border-dashed p-3 text-center text-xs",
       )}
     >
-      {hint}
+      <span className={CARD_TEXT}>{hint}</span>
     </div>
   )
 }
