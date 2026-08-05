@@ -246,14 +246,21 @@ export function Dashboard() {
             //            with the wand parked in the right margin. With no
             //            inspiration picked at all there is no wand either, so
             //            the game is simply centred.
-            <div className="relative flex h-full min-h-0">
+            <div className="flex h-full min-h-0">
+              {/* Left gutter, mirroring the wand's margin so the writing column
+                  lands dead centre rather than merely off to one side. */}
+              {!(hasInspiration && inspirationOpen) ? (
+                <div className="hidden flex-1 md:block" aria-hidden />
+              ) : null}
+
               <div
                 className={cn(
-                  "flex min-w-0 flex-1 flex-col gap-4 overflow-hidden p-4 sm:p-6",
-                  // Centred on the shared measure whenever the pane is down, so
-                  // the writing area sits in the same place it would with no
-                  // inspiration at all.
-                  !(hasInspiration && inspirationOpen) && "mx-auto w-full max-w-5xl",
+                  "flex min-w-0 flex-col gap-4 overflow-hidden p-4 sm:p-6",
+                  // Beside an open pane it takes whatever is left. Centred, it
+                  // claims the shared measure outright and the flex-1 gutters
+                  // split the remainder — it must NOT be flex-1 itself, or it
+                  // would just take a third of the row alongside them.
+                  hasInspiration && inspirationOpen ? "flex-1" : "w-full max-w-5xl",
                 )}
               >
                 {loading ? (
@@ -280,20 +287,26 @@ export function Dashboard() {
                 </aside>
               ) : null}
 
-              {/* Hidden: the wand floats in the right margin so bringing the
-                  pane back never shifts the (centred) writing column. */}
+              {/* Hidden: a large wand fills the right margin. Barely tinted at
+                  rest so it reads as a quiet affordance beside the story rather
+                  than competing with it, and it is the ICON that lights up on
+                  hover — a button plate out here would look like a stray
+                  control floating in the margin. */}
               {hasInspiration && !inspirationOpen ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setInspirationOpen(true)}
-                  aria-expanded={false}
-                  aria-label={t.game.inspirationShow}
-                  className="text-muted-foreground hover:text-primary absolute top-1/2 right-4 hidden -translate-y-1/2 transition-colors md:inline-flex"
-                >
-                  <Wand2 className="size-5" aria-hidden />
-                </Button>
+                <div className="hidden flex-1 items-center justify-center md:flex">
+                  <button
+                    type="button"
+                    onClick={() => setInspirationOpen(true)}
+                    aria-expanded={false}
+                    aria-label={t.game.inspirationShow}
+                    className="focus-visible:ring-ring group cursor-pointer rounded-2xl p-4 focus-visible:ring-2 focus-visible:outline-none"
+                  >
+                    <Wand2
+                      className="text-muted-foreground/25 group-hover:text-primary size-24 transition-colors"
+                      aria-hidden
+                    />
+                  </button>
+                </div>
               ) : null}
             </div>
           ) : (

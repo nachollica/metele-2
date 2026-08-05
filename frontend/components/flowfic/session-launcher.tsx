@@ -8,7 +8,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select"
 
 import { cn } from "@/lib/utils"
@@ -22,7 +21,7 @@ import {
 } from "@/lib/flowfic/types"
 
 import { PresetGrid, type GridMode } from "./preset-grid"
-import { TimerRing } from "./timer-ring"
+import { formatRingTime, TimerRing } from "./timer-ring"
 
 type Props = {
   settings: GameSettings
@@ -40,12 +39,14 @@ type Props = {
 /**
  * The home screen's hero: everything needed to launch a sprint.
  *
- * Desktop lays it out on a 12:5 canvas — a 3-column, 3-row grid where the
- * session dial occupies a square (4:4) cell spanning the first two rows of
- * column one, the 2x2 mode grid fills columns two and three (each cell 4:2),
- * and the bottom row is three 4:1 buttons: Start, More options, Custom modes.
- * Below `md` the aspect lock is dropped and everything stacks in one column,
- * since a 12:5 box at phone width would leave the dial unreadably small.
+ * Desktop lays it out on a fixed-ratio canvas as a 3-column, 3-row grid: the
+ * session dial in a square cell spanning the first two rows of column one, the
+ * 2x2 mode grid filling columns two and three, and a row of buttons underneath
+ * (Start, More options, Custom modes). Every inner cell takes its height from
+ * that canvas, so the whole hero is resized by changing one aspect ratio.
+ *
+ * Below `md` the ratio is dropped and the pieces reflow (see the grid classes),
+ * since a wide canvas at phone width would leave the dial unreadably small.
  */
 export function SessionLauncher({
   settings,
@@ -94,12 +95,24 @@ export function SessionLauncher({
       aria-label={t.settings.title}
       className={cn(
         "grid grid-cols-2 gap-4",
-        "md:aspect-[12/5] md:grid-cols-3 md:grid-rows-[2fr_2fr_1fr] md:gap-6",
+        // An explicit height rather than an aspect ratio: as a flex item in the
+        // page column, `aspect-ratio` lost to the content's own height and the
+        // hero stayed tall. This is the one number that sizes the whole hero —
+        // the rows split it 2:2:1 and every cell takes its height from there,
+        // so the dial, the cards and the buttons all shrink together.
+        "md:h-[19rem] md:grid-cols-3 md:grid-rows-[2fr_2fr_1fr] md:gap-5",
       )}
     >
-      {/* Session dial. Capped on phones so the hero doesn't eat the screen. */}
+      {/* Session dial. Square, so once its height comes from the row it ends up
+          narrower than its column and sits centred there. `min-w-0` matters:
+          without it the square's intrinsic width would feed back into the row
+          and stretch the whole canvas past its aspect ratio. Capped on phones,
+          where there is no canvas to take a height from. */}
       <div className="order-1 col-span-2 flex min-h-0 items-center justify-center md:order-none md:col-span-1 md:col-start-1 md:row-span-2 md:row-start-1">
-        <TimerRing seconds={minutes * 60} className="h-full max-h-full w-56 md:w-auto">
+        <TimerRing className="h-full max-h-full w-44 md:w-auto md:min-h-0 md:min-w-0">
+          {/* The readout IS the picker: clicking the numbers opens the list.
+              The trigger shows mm:ss while the options read "10 minutes", so
+              the dial keeps its clock face and the menu stays legible. */}
           <Select
             value={String(minutes)}
             onValueChange={(v) =>
@@ -107,11 +120,15 @@ export function SessionLauncher({
             }
           >
             <SelectTrigger
-              size="sm"
-              className="rounded-full"
               aria-label={t.settings.sessionLengthLabel}
+              className={cn(
+                "text-primary hover:text-primary/80 h-auto! w-auto cursor-pointer border-0 bg-transparent p-0 font-mono text-3xl font-extrabold tabular-nums shadow-none transition-colors sm:text-4xl",
+                "focus-visible:ring-0 dark:bg-transparent dark:hover:bg-transparent",
+                // The trigger's built-in chevron would crowd the clock face.
+                "[&>svg]:hidden",
+              )}
             >
-              <SelectValue />
+              {formatRingTime(minutes * 60)}
             </SelectTrigger>
             <SelectContent>
               {SESSION_MINUTES.map((m) => (
@@ -138,7 +155,7 @@ export function SessionLauncher({
         type="button"
         size="lg"
         onClick={onStart}
-        className="order-2 h-full min-h-11 gap-2 text-base font-bold md:order-none md:col-start-1 md:row-start-3"
+        className="order-2 h-full min-h-10 gap-2 font-bold md:order-none md:col-start-1 md:row-start-3"
       >
         <Play className="size-5" aria-hidden />
         {t.settings.start}
@@ -149,7 +166,7 @@ export function SessionLauncher({
         size="lg"
         onClick={onToggleSettings}
         aria-expanded={settingsOpen}
-        className="hidden h-full min-h-11 gap-2 md:col-start-2 md:row-start-3 md:inline-flex"
+        className="hidden h-full min-h-10 gap-2 md:col-start-2 md:row-start-3 md:inline-flex"
       >
         {settingsOpen ? (
           <ChevronUp className="size-4" aria-hidden />
@@ -164,7 +181,7 @@ export function SessionLauncher({
         size="lg"
         onClick={onToggleGridMode}
         aria-pressed={gridMode === "custom"}
-        className="order-2 h-full min-h-11 md:order-none md:col-start-3 md:row-start-3"
+        className="order-2 h-full min-h-10 md:order-none md:col-start-3 md:row-start-3"
       >
         {gridMode === "custom" ? t.settings.backToPresetsLabel : t.settings.customModesLabel}
       </Button>

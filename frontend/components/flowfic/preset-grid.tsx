@@ -48,11 +48,12 @@ type Props = {
   onStartChallenge: () => void
 }
 
-// Every cell keeps the 4:2 proportion the home layout is drawn to, so the grid
-// never reflows as a cell's content changes (mode card → "+" slot → dotted
-// placeholder → naming form). The grid stays 2x2 at every width, so the ratio
-// holds on a phone too rather than stretching a full-width card absurdly tall.
-const CARD_SHAPE = "aspect-[4/2] min-h-20"
+// Every cell is the same size whatever it holds, so the grid never reflows as
+// a cell's content changes (mode card → "+" slot → dotted placeholder → naming
+// form). On a phone that means a 4:2 box; from `md` the launcher's own 12:x
+// canvas owns the height, so the cards fill their row instead and shrinking the
+// canvas shrinks them with it.
+const CARD_SHAPE = "aspect-[4/2] min-h-20 md:aspect-auto md:h-full md:min-h-0"
 
 /**
  * The 2x2 mode grid in the home screen's session launcher: three system modes
@@ -216,7 +217,7 @@ export function PresetGrid({ settings, mode, onApply, onStartChallenge }: Props)
   return (
     <>
       <div
-        className="grid h-full grid-cols-2 gap-3 md:gap-4"
+        className="grid h-full grid-cols-2 gap-3 md:grid-rows-2 md:gap-4"
         role="group"
         aria-label={mode === "system" ? t.settings.presetsLabel : t.settings.customModesLabel}
       >

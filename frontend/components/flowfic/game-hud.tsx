@@ -68,6 +68,7 @@ export function GameHud({
         seconds={idleSecondsLeft}
         total={idleSecondsTotal}
         urgent={idleSecondsLeft <= 3}
+        dimmed={paused}
       />
     ) : null
   const globalBar =
@@ -78,12 +79,18 @@ export function GameHud({
         seconds={globalSecondsLeft}
         total={globalSecondsTotal}
         urgent={globalSecondsLeft <= 10}
+        dimmed={paused}
       />
     ) : null
 
   // Session controls + timers share the left half; the required-word panel
   // takes the right half when the mechanic is on, otherwise the timers spread
   // across the full width.
+  //
+  // Pause carries no banner of its own: a line of copy here would grow the
+  // card and shove everything below it. The state reads from the controls
+  // (Pause has become Play) plus the greyed timers and editor, and is
+  // announced through the toggle's own accessible name.
   const timers = (
     <div className="flex items-center gap-3">
       <SessionControls
@@ -95,16 +102,6 @@ export function GameHud({
         onFinish={onFinish}
       />
       <div className="flex min-w-0 flex-1 flex-col justify-center gap-2">
-        {/* While paused the bars hold frozen values, which on their own look
-            identical to a running game. Say so, and announce it: the greyed
-            editor is a visual-only cue. One compact line, so pausing barely
-            nudges the timers below it. */}
-        {paused ? (
-          <p role="status" className="text-muted-foreground truncate text-sm font-medium">
-            {t.game.paused}
-            <span className="sr-only"> — {t.game.pausedHint}</span>
-          </p>
-        ) : null}
         {idleBar}
         {globalBar}
       </div>
@@ -205,17 +202,20 @@ function TimerBar({
   seconds,
   total,
   urgent,
+  dimmed = false,
 }: {
   icon: React.ReactNode
   label: string
   seconds: number
   total: number
   urgent: boolean
+  /** Frozen (paused): grey the bar out, since its value is no longer moving. */
+  dimmed?: boolean
 }) {
   const t = useTranslations()
   const progress = clamp01(seconds / total)
   return (
-    <div className="flex flex-col gap-1">
+    <div className={cn("flex flex-col gap-1 transition-opacity", dimmed && "opacity-40")}>
       <div className="flex items-center justify-between text-xs">
         <span className="text-muted-foreground flex items-center gap-1.5">
           {icon}

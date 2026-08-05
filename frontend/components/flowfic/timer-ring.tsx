@@ -20,24 +20,28 @@ const R = (BOX - STROKE) / 2
 const C = BOX / 2
 
 type Props = {
-  /** Seconds to display as mm:ss in the middle of the ring. */
-  seconds: number
   /** 0–1 fraction of the ring to fill. Defaults to a full ring. */
   fraction?: number
-  /** Rendered under the readout, inside the ring (the length picker). */
+  /** Centred inside the ring — the readout, which doubles as the picker. */
   children?: ReactNode
   className?: string
 }
 
-export function TimerRing({ seconds, fraction = 1, children, className }: Props) {
-  const circumference = 2 * Math.PI * R
-  const dashOffset = circumference * (1 - Math.max(0, Math.min(1, fraction)))
+/** `seconds` as mm:ss. The readout lives with the caller (it is the session
+ *  picker's trigger), so the formatting is exported alongside the ring. */
+export function formatRingTime(seconds: number): string {
   const mm = Math.floor(seconds / 60)
     .toString()
     .padStart(2, "0")
   const ss = Math.floor(seconds % 60)
     .toString()
     .padStart(2, "0")
+  return `${mm}:${ss}`
+}
+
+export function TimerRing({ fraction = 1, children, className }: Props) {
+  const circumference = 2 * Math.PI * R
+  const dashOffset = circumference * (1 - Math.max(0, Math.min(1, fraction)))
 
   return (
     <div className={cn("relative aspect-square", className)}>
@@ -57,10 +61,7 @@ export function TimerRing({ seconds, fraction = 1, children, className }: Props)
         />
       </svg>
       {/* Inset so the content never collides with the stroke. */}
-      <div className="absolute inset-[14%] flex flex-col items-center justify-center gap-2">
-        <span className="text-primary font-mono text-4xl font-extrabold tabular-nums sm:text-5xl">
-          {mm}:{ss}
-        </span>
+      <div className="absolute inset-[14%] flex flex-col items-center justify-center">
         {children}
       </div>
     </div>

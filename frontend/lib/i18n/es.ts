@@ -122,8 +122,6 @@ export const es = {
     // visibles se acortan; el nombre accesible lleva la palabra completa.
     resume: "Continuar",
     resumeShort: "Seguir",
-    paused: "En pausa",
-    pausedHint: "Tus temporizadores están detenidos. Continúa para seguir escribiendo.",
     quit: "Salir de sesión",
     quitShort: "Salir",
     quitConfirmTitle: "¿Salir de esta sesión?",

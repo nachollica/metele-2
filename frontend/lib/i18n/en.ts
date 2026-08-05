@@ -117,8 +117,6 @@ export const en = {
     // to roughly the width of "Quit"; the accessible names carry the full word.
     resume: "Resume",
     resumeShort: "Play",
-    paused: "Paused",
-    pausedHint: "Your timers are on hold. Resume to keep writing.",
     quit: "Quit session",
     quitShort: "Quit",
     quitConfirmTitle: "Quit this session?",

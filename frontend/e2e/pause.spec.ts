@@ -27,18 +27,18 @@ test("pause freezes the timers; the idle timeout can't fire while held", async (
   await startArmedSprint(page)
 
   await page.getByRole("button", { name: "Pause" }).click()
-  await expect(page.getByText("Paused")).toBeVisible()
+  await expect(page.getByRole("button", { name: "Resume" })).toBeVisible()
 
   // Well past the 15s default idle deadline. A running timer would have ended
   // the session here; a frozen one must not.
   await page.clock.fastForward("01:00")
   await expect(page.getByRole("dialog")).toBeHidden()
-  await expect(page.getByText("Paused")).toBeVisible()
+  await expect(page.getByRole("button", { name: "Resume" })).toBeVisible()
 
   // Resuming restarts the clock from where it stopped: the idle timeout is
   // live again and fires after its full remaining span.
   await page.getByRole("button", { name: "Resume" }).click()
-  await expect(page.getByText("Paused")).toBeHidden()
+  await expect(page.getByRole("button", { name: "Pause" })).toBeVisible()
   await page.clock.fastForward("00:16")
   await expect(page.getByRole("dialog").getByText("Session ended")).toBeVisible()
   await expect(
@@ -91,7 +91,6 @@ test("quit asks first: cancelling leaves the game paused, confirming ends it", a
   await page.getByRole("button", { name: "Keep writing" }).click()
   await expect(page.getByRole("alertdialog")).toBeHidden()
   // Still paused, not silently resumed.
-  await expect(page.getByText("Paused")).toBeVisible()
   await expect(page.getByRole("button", { name: "Resume" })).toBeVisible()
 
   // And still frozen: the idle deadline can't fire.
