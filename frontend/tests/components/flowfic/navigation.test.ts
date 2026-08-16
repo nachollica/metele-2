@@ -8,12 +8,15 @@ describe("pathToScreen", () => {
     expect(pathToScreen("/new")).toEqual({ name: "configuring" })
     expect(pathToScreen("/profile")).toEqual({ name: "profile" })
     expect(pathToScreen("/stories")).toEqual({ name: "section", section: "stories" })
-    expect(pathToScreen("/journey")).toEqual({ name: "section", section: "journey" })
+    expect(pathToScreen("/progress")).toEqual({ name: "section", section: "progress" })
   })
 
   it("maps the retired section paths to not-found", () => {
     expect(pathToScreen("/challenges")).toEqual({ name: "notfound" })
     expect(pathToScreen("/stats")).toEqual({ name: "notfound" })
+    // "My Journey" was renamed to "My Progress", route and all — the old path
+    // is deliberately not redirected.
+    expect(pathToScreen("/journey")).toEqual({ name: "notfound" })
   })
 
   it("parses a numeric story id", () => {
@@ -38,7 +41,7 @@ describe("screenToPath", () => {
     expect(screenToPath({ name: "configuring" })).toBe("/new")
     expect(screenToPath({ name: "profile" })).toBe("/profile")
     expect(screenToPath({ name: "section", section: "stories" })).toBe("/stories")
-    expect(screenToPath({ name: "section", section: "journey" })).toBe("/journey")
+    expect(screenToPath({ name: "section", section: "progress" })).toBe("/progress")
     expect(screenToPath({ name: "story", id: 7 })).toBe("/stories/7")
   })
 
@@ -49,7 +52,7 @@ describe("screenToPath", () => {
 
 describe("round-trip", () => {
   it("path -> screen -> path is stable for addressable paths", () => {
-    for (const path of ["/", "/new", "/profile", "/stories", "/journey", "/stories/13"]) {
+    for (const path of ["/", "/new", "/profile", "/stories", "/progress", "/stories/13"]) {
       const screen = pathToScreen(path) as Screen
       expect(screenToPath(screen)).toBe(path)
     }

@@ -255,7 +255,7 @@ export const en = {
     openMenu: "Open menu",
     home: "Home",
     stories: "My stories",
-    journey: "My Journey",
+    progress: "My Progress",
     challenges: "Challenges",
     stats: "Statistics",
     achievements: "Achievements",

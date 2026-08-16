@@ -38,7 +38,7 @@ type Props = {
 }
 
 /**
- * "My Journey" — the merged progress section (formerly Statistics, Challenges,
+ * "My Progress" — the merged progress section (formerly Statistics, Challenges,
  * and Achievements).
  *
  * The landing preview folds three former cards into one, deduplicated: a Level +
@@ -51,7 +51,7 @@ type Props = {
  * The full screen is comprehensive: all challenges, then achievements, then the
  * complete statistics view (reusing the two section components as-is).
  */
-export function JourneySection({ onNewStory, preview = false, onShowAll }: Props) {
+export function ProgressSection({ onNewStory, preview = false, onShowAll }: Props) {
   const t = useTranslations()
   const locale = useLocale()
   const { status } = useAuth()
@@ -69,12 +69,12 @@ export function JourneySection({ onNewStory, preview = false, onShowAll }: Props
     return (
       <Panel>
         <SectionHeader
-          title={t.nav.journey}
+          title={t.nav.progress}
           action={
             onShowAll ? (
               <ShowAllButton
                 label={t.nav.showAll}
-                sectionName={t.nav.journey}
+                sectionName={t.nav.progress}
                 onClick={onShowAll}
                 disabled={isAnonymous}
               />

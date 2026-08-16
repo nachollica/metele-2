@@ -18,9 +18,9 @@ import { WeeklyChart } from "./weekly-chart"
 
 /**
  * The complete statistics view: lifetime totals, the weekly chart, and this
- * week's totals with deltas. Rendered inside the "My Journey" screen (see
- * `journey-section.tsx`); the landing surfaces a trimmed weekly summary from
- * within the combined journey card instead.
+ * week's totals with deltas. Rendered inside the "My Progress" screen (see
+ * `progress-section.tsx`); the landing surfaces a trimmed weekly summary from
+ * within the combined progress card instead.
  */
 export function StatsSection() {
   const t = useTranslations()

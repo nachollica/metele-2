@@ -260,7 +260,7 @@ export const es = {
     openMenu: "Abrir menú",
     home: "Inicio",
     stories: "Mis historias",
-    journey: "Mi viaje",
+    progress: "Mi progreso",
     challenges: "Desafíos",
     stats: "Estadísticas",
     achievements: "Logros",

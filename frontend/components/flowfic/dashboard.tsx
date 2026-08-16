@@ -36,7 +36,7 @@ import { ContentColumn } from "./dashboard-widgets"
 import { GamificationProvider } from "./gamification-context"
 import { GameHud } from "./game-hud"
 import { InspirationPane } from "./inspiration-panel"
-import { JourneySection } from "./journey-section"
+import { ProgressSection } from "./progress-section"
 import { LandingHome } from "./landing"
 import { type GridMode } from "./preset-grid"
 import { ProfilePanel } from "./profile-panel"
@@ -660,7 +660,7 @@ function SectionDetail({
           onUpdateTitle={onUpdateStoryTitle}
         />
       )
-    case "journey":
-      return <JourneySection onNewStory={onNewStory} />
+    case "progress":
+      return <ProgressSection onNewStory={onNewStory} />
   }
 }

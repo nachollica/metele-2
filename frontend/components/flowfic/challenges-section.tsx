@@ -10,8 +10,8 @@ import { useGamification } from "./gamification-context"
 
 /**
  * Challenges + achievements, grouped under their own sub-headings. Rendered
- * inside the "My Journey" screen (see `journey-section.tsx`); the landing shows
- * a single "challenge of the day" from within the combined journey card instead.
+ * inside the "My Progress" screen (see `progress-section.tsx`); the landing
+ * shows a single "challenge of the day" from within that section's preview.
  */
 export function ChallengesSection() {
   const t = useTranslations()
@@ -23,7 +23,7 @@ export function ChallengesSection() {
   const isAnonymous = status === "anonymous"
   const list = challenges ?? []
 
-  // Reached only when signed in (the journey links are disabled for anonymous
+  // Reached only when signed in (the progress links are disabled for anonymous
   // users), but the guard keeps it safe if that ever changes.
   if (isAnonymous) {
     return <EmptyHint>{t.dashboard.signInHint}</EmptyHint>

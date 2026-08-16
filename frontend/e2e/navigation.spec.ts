@@ -160,20 +160,20 @@ test("the account menu pushes the section URL; Back and Forward step through it"
   await seedDevSession(page)
   await page.goto("/")
 
-  // My Journey no longer has a landing card; the account menu is its entry
-  // point (the landing's own "Show all" now only covers Recent stories).
+  // My Progress is also reachable from the landing showcase; the account menu
+  // is the entry point asserted here.
   await page.getByRole("button", { name: /account menu/i }).click()
-  await page.getByRole("menuitem", { name: "My Journey" }).click()
-  await expect(page).toHaveURL("/journey")
-  await expect(page.getByRole("heading", { level: 1, name: "My Journey" })).toBeVisible()
+  await page.getByRole("menuitem", { name: "My Progress" }).click()
+  await expect(page).toHaveURL("/progress")
+  await expect(page.getByRole("heading", { level: 1, name: "My Progress" })).toBeVisible()
 
   await page.goBack()
   await expect(page).toHaveURL("/")
-  await expect(page.getByRole("heading", { level: 1, name: "My Journey" })).toBeHidden()
+  await expect(page.getByRole("heading", { level: 1, name: "My Progress" })).toBeHidden()
 
   await page.goForward()
-  await expect(page).toHaveURL("/journey")
-  await expect(page.getByRole("heading", { level: 1, name: "My Journey" })).toBeVisible()
+  await expect(page).toHaveURL("/progress")
+  await expect(page.getByRole("heading", { level: 1, name: "My Progress" })).toBeVisible()
 })
 
 test("the landing's 'Show all' opens the stories section", async ({ page }) => {
