@@ -88,6 +88,17 @@ describe("SessionLauncher", () => {
     expect(screen.getByRole("heading", { name: "Game modes" })).toBeInTheDocument()
   })
 
+  it("keeps the dial's readout looking like a dropdown", () => {
+    authState.current = makeAuth()
+    renderWithLocale(<Harness />)
+    const trigger = screen.getByRole("combobox", { name: /session length/i })
+    // The chevron is the only hint that the numbers open a menu. It was hidden
+    // once to keep the clock face clean, which left the picker undiscoverable —
+    // assert on the class, since jsdom loads no Tailwind to compute it away.
+    expect(trigger.querySelector("svg")).not.toBeNull()
+    expect(trigger.className).not.toContain("[&>svg]:hidden")
+  })
+
   it("re-dials the session length without un-highlighting the selected mode", async () => {
     authState.current = makeAuth()
     const onChange = vi.fn()
