@@ -193,12 +193,17 @@ export async function mockBackend(
     }
 
     if (path === "/stories" && method === "GET") {
+      // Honour limit/offset like the real endpoint, so the "Load more" path on
+      // My stories is exercisable rather than always arriving complete.
+      const params = new URL(request.url()).searchParams
+      const limit = Number(params.get("limit") ?? handle.stories.length)
+      const offset = Number(params.get("offset") ?? 0)
       await route.fulfill({
         json: {
-          items: handle.stories,
+          items: handle.stories.slice(offset, offset + limit),
           total: handle.stories.length,
-          limit: 50,
-          offset: 0,
+          limit,
+          offset,
         },
       })
       return

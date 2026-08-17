@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useAuth } from "@/lib/auth"
 import { useLocale, useTranslations } from "@/lib/i18n"
 import type { Story } from "@/lib/flowfic/stories-api"
+import { formatCount } from "@/lib/flowfic/gamification"
 import { filterAndSortStories, type SortOrder } from "@/lib/flowfic/story-search"
 
 import { EmptyHint, Panel, SectionHeader, ShowAllButton } from "./dashboard-widgets"
@@ -27,9 +28,9 @@ import { StoryCard } from "./story-card"
 // How many stories the landing preview shows before "Show all". The showcase
 // pane divides its fixed height into exactly this many rows, so the number is a
 // layout decision as much as a content one — raising it shrinks every row.
-// Five lands each row near a StoryCard's natural height in the 4:3 pane, so the
-// landing's cards read like the ones on the detail screen.
-const PREVIEW_COUNT = 5
+// Four lands each row near a StoryCard's natural height in the 3:2 pane; five
+// fitted the taller 4:3 box this replaced.
+const PREVIEW_COUNT = 4
 
 type Props = {
   stories: Story[] | null
@@ -43,6 +44,13 @@ type Props = {
   flush?: boolean
   /** Open the expanded My-stories screen (preview only). */
   onShowAll?: () => void
+  /** How many the account has in total — more than `stories.length` until every
+   *  page is loaded. Full screen only; heads the list. */
+  total?: number | null
+  /** Whether another page is waiting behind the loaded ones (full screen). */
+  hasMore?: boolean
+  loadingMore?: boolean
+  onLoadMore?: () => void
 }
 
 function fmtDay(d: Date, locale: string): string {
@@ -62,6 +70,10 @@ export function StoriesSection({
   preview = false,
   flush = false,
   onShowAll,
+  total = null,
+  hasMore = false,
+  loadingMore = false,
+  onLoadMore,
 }: Props) {
   const t = useTranslations()
   const locale = useLocale()
@@ -247,6 +259,18 @@ export function StoriesSection({
         </Button>
       </div>
 
+      {/* How many the account holds — the one place this count lives now that
+          the profile screen no longer carries it. While a filter is active it
+          reports the matches instead, since that is what the list is showing. */}
+      <p className="text-muted-foreground text-sm" role="status">
+        {hasFilters
+          ? t.sidebar.resultCount.replace("{count}", formatCount(results.length, locale))
+          : t.sidebar.storyCount.replace(
+              "{count}",
+              formatCount(total ?? stories.length, locale),
+            )}
+      </p>
+
       {/* Results */}
       {results.length > 0 ? (
         <div className="flex flex-col gap-3">
@@ -263,6 +287,17 @@ export function StoriesSection({
       ) : (
         <EmptyHint>{hasFilters ? t.sidebar.noResults : t.dashboard.emptyStories}</EmptyHint>
       )}
+
+      {/* The list loads a page at a time. Hidden while a filter is active,
+          because search runs over the loaded set only — offering "more" there
+          would suggest it were searching the whole library. */}
+      {hasMore && !hasFilters ? (
+        <div className="flex justify-center pt-2">
+          <Button type="button" variant="outline" onClick={onLoadMore} disabled={loadingMore}>
+            {loadingMore ? t.sidebar.loadingMore : t.sidebar.loadMore}
+          </Button>
+        </div>
+      ) : null}
     </div>
   )
 }

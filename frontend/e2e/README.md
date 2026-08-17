@@ -9,6 +9,7 @@ Browser tests for the journeys that the Vitest unit/component suite can't cover
 | `full-game` / `required-word` | A required word spawns from the stubbed pool and is cleared by typing it. |
 | `pause` | Pausing really freezes the timers, the editor stays readable but read-only, resume restores focus with the caret at the end, and quit's confirmation (skipped before the first keystroke). |
 | `authenticated-save` | The signed-in save path: the POST contract, a player-supplied title, and the fallback to a derived one. |
+| `stories` | My stories: the library count heading, and paging past the first 100 with "Load more". |
 | `navigation` | History-API routing: `/new`, deep links, refresh, Back/Forward, mid-game Back, and logout. |
 | `i18n` | Locale detection from `navigator.language`. |
 | `backend-unreachable` / `dev-login` | The auth control's backend-driven visibility, and the dev-user backdoor. |
