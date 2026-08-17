@@ -328,22 +328,21 @@ export function Dashboard() {
             <div className="flex h-full min-h-0">
               {paneShown ? null : <div className="hidden flex-1 md:block" aria-hidden />}
 
-              <div
-                className={cn(
-                  "flex min-w-0 flex-col gap-4 overflow-hidden p-4 sm:p-6",
-                  // Beside an open pane it takes whatever is left. Centred, it
-                  // claims the shared measure outright and the flex-1 gutters
-                  // split the remainder — it must NOT be flex-1 itself, or it
-                  // would just take a third of the row alongside them.
-                  paneShown ? "flex-1" : "w-full max-w-5xl",
-                )}
+              {/* The same `ContentColumn` the home screen uses, rather than a
+                  second spelling of its cap and padding — that is what makes a
+                  story read at one width wherever it appears. Beside an open
+                  pane it also takes whatever the pane leaves; centred, it must
+                  NOT be `flex-1`, or it would take a third of the row alongside
+                  the two gutters instead of claiming the measure outright. */}
+              <ContentColumn
+                className={cn("min-w-0 gap-4 overflow-hidden", paneShown && "flex-1")}
               >
                 {loading ? (
                   <LoadingSplash />
                 ) : (
                   <GameArea engine={engine} onQuit={requestQuit} onFinish={finishStory} />
                 )}
-              </div>
+              </ContentColumn>
 
               {/* The pane itself is the hide control: the pick is frozen for
                   the sprint, so a click can't mean "re-roll" the way it does on
