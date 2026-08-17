@@ -39,6 +39,10 @@ Chromium is the only configured browser. Install it once with
   (always anonymous, no external calls). Authenticated journeys use the dev-user
   backdoor, which is a pure-localStorage session — `seedDevSession` writes it
   before the page loads, so the app boots signed in with zero network.
+- The landing's showcase opens on the **inspiration** face, so the recent
+  stories (and their "Show all" link into `/stories`) are not on screen at load.
+  Anything that asserts on them calls `openRecentStories` from `fixtures.ts`
+  first, rather than each spec clicking the circle its own way.
 - No flaky waits on timers. Timer-driven tests use Playwright's virtual clock
   (`page.clock`) to advance time instantly — which is also what lets the pause
   spec prove a frozen timer by fast-forwarding a minute past a 15-second idle
