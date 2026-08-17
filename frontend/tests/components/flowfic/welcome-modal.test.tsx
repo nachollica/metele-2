@@ -13,7 +13,7 @@ describe("WelcomeModal", () => {
     expect(screen.getByRole("dialog", { name: /welcome to flowfic/i })).toBeInTheDocument()
     expect(screen.getByRole("heading", { level: 3, name: /welcome to flowfic/i })).toBeInTheDocument()
     expect(
-      screen.queryByRole("heading", { name: /pick your velocity/i }),
+      screen.queryByRole("heading", { name: /set up your sprint/i }),
     ).not.toBeInTheDocument()
   })
 
@@ -53,7 +53,7 @@ describe("WelcomeModal", () => {
     const user = userEvent.setup()
 
     await user.click(screen.getByRole("button", { name: /next/i }))
-    expect(screen.getByRole("heading", { name: /pick your velocity/i })).toBeInTheDocument()
+    expect(screen.getByRole("heading", { name: /set up your sprint/i })).toBeInTheDocument()
 
     await user.click(screen.getByRole("button", { name: /^back$/i }))
     expect(screen.getByRole("heading", { level: 3, name: /welcome to flowfic/i })).toBeInTheDocument()
@@ -73,7 +73,7 @@ describe("WelcomeModal", () => {
     const user = userEvent.setup()
 
     await user.click(screen.getByRole("button", { name: /go to step 5/i }))
-    expect(screen.getByRole("heading", { name: /review and refine/i })).toBeInTheDocument()
+    expect(screen.getByRole("heading", { name: /level up as you write/i })).toBeInTheDocument()
     expect(screen.queryByRole("button", { name: /next/i })).not.toBeInTheDocument()
 
     await user.click(screen.getByRole("button", { name: /got it/i }))

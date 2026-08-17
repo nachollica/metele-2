@@ -24,21 +24,21 @@ export const en = {
         title: "Welcome to Flowfic",
         body: "A writing game where your hands keep moving. Quick rules before you start.",
       },
-      pickVelocity: {
-        title: "Pick your velocity",
-        body: "Pick a preset or tune the timers on the next screen.",
+      prepare: {
+        title: "Set up your sprint",
+        body: "Dial a length from 5 to 45 minutes, pick a game mode, and grab a film still or a quote if you want a spark.",
       },
       createStory: {
         title: "Write non-stop",
-        body: "Keep typing in the main area. Stay idle too long and the session ends.",
+        body: "Keep typing in the editor. Stay idle too long and the sprint ends — you get your stats, and the story stays yours to edit and save.",
       },
       requiredWords: {
         title: "Required words",
-        body: "Words pop up while you write. Use them or let them fade. Enable the deadline rule to penalize unused words.",
+        body: "Words appear while you write. Work them in before they fade; in some modes an unused word ends the sprint.",
       },
-      shareSave: {
-        title: "Review and refine",
-        body: "When the session ends you see your stats, then return to the story to edit or copy it.",
+      levelUp: {
+        title: "Level up as you write",
+        body: "Every finished sprint earns XP, feeds your daily streak, and pushes your achievements and daily challenges forward.",
       },
     },
   },
