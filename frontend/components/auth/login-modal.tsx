@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 
 import { useTranslations, type Translations } from "@/lib/i18n"
+import { OVERLINE } from "@/lib/text-styles"
 import {
   AUTH_PROVIDERS,
   useAuth,
@@ -100,7 +101,7 @@ function DividerWithLabel({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-3" aria-hidden>
       <Separator className="flex-1" />
-      <span className="text-muted-foreground text-xs uppercase tracking-wider">
+      <span className={OVERLINE}>
         {children}
       </span>
       <Separator className="flex-1" />

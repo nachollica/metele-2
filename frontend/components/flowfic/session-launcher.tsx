@@ -12,6 +12,7 @@ import {
 
 import { cn } from "@/lib/utils"
 import { useTranslations } from "@/lib/i18n"
+import { FIELD_LABEL } from "@/lib/text-styles"
 import {
   PRESETS,
   SESSION_MINUTES,
@@ -111,7 +112,7 @@ export function SessionLauncher({
           and stretch the whole canvas past its aspect ratio. Capped on phones,
           where there is no canvas to take a height from. */}
       <div className="order-1 col-span-2 flex min-h-0 flex-col items-center gap-2 md:order-none md:col-span-1 md:col-start-1 md:row-span-2 md:row-start-1">
-        <h2 className="text-muted-foreground shrink-0 text-center text-sm font-semibold">
+        <h2 className={cn(FIELD_LABEL, "text-muted-foreground shrink-0 text-center")}>
           {t.settings.selectDuration}
         </h2>
         {/* Phone: a fixed width, with the square deriving the height. Desktop:
@@ -157,7 +158,7 @@ export function SessionLauncher({
           the grid whichever face it shows — flipping to the custom modes is
           still picking a game mode. */}
       <div className="order-3 col-span-2 flex min-h-0 flex-col gap-2 md:order-none md:col-start-2 md:row-span-2 md:row-start-1">
-        <h2 className="text-muted-foreground shrink-0 text-center text-sm font-semibold">
+        <h2 className={cn(FIELD_LABEL, "text-muted-foreground shrink-0 text-center")}>
           {t.settings.presetsLabel}
         </h2>
         <PresetGrid

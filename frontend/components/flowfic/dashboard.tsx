@@ -27,6 +27,7 @@ import { useGameEngine } from "@/lib/flowfic/use-game-engine"
 import { useStories } from "@/lib/flowfic/use-stories"
 import type { GameSettings } from "@/lib/flowfic/types"
 import type { Story } from "@/lib/flowfic/stories-api"
+import { FIELD_LABEL, HINT } from "@/lib/text-styles"
 
 import { type Section } from "./dashboard-nav"
 import { pathToScreen, screenToPath, type Screen } from "./navigation"
@@ -463,7 +464,7 @@ function LoadingSplash() {
   return (
     <div role="status" aria-live="polite" className="flex flex-1 flex-col items-center justify-center gap-4">
       <Loader2 className="text-primary size-10 animate-spin" aria-hidden />
-      <span className="text-muted-foreground text-sm">{t.settings.loadingWords}</span>
+      <span className={HINT}>{t.settings.loadingWords}</span>
     </div>
   )
 }
@@ -534,7 +535,7 @@ function GameArea({
           over it when the state changes. */}
       {engine.gameState === "ended" ? (
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="story-title" className="text-sm font-semibold">
+          <Label htmlFor="story-title" className={FIELD_LABEL}>
             {t.game.titleLabel}
           </Label>
           <Input

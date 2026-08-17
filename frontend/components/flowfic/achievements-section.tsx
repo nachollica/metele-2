@@ -3,6 +3,7 @@
 import { useAuth } from "@/lib/auth"
 import { useTranslations } from "@/lib/i18n"
 import { achievementText, achievementVisual } from "@/lib/flowfic/gamification"
+import { HINT } from "@/lib/text-styles"
 
 import { AchievementItem, EmptyHint, Panel } from "./dashboard-widgets"
 import { useGamification } from "./gamification-context"
@@ -29,7 +30,7 @@ export function AchievementsSection() {
 
   return (
     <div className="flex flex-col gap-5">
-      <p className="text-muted-foreground text-sm">
+      <p className={HINT}>
         {t.achievements.unlockedSummary
           .replace("{count}", String(unlockedCount))
           .replace("{total}", String(list.length))}

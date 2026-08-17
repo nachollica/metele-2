@@ -4,6 +4,8 @@ import dynamic from "next/dynamic"
 import { Loader2 } from "lucide-react"
 
 import { useTranslations } from "@/lib/i18n"
+import { cn } from "@/lib/utils"
+import { HINT } from "@/lib/text-styles"
 
 // Splash shown while the Dashboard chunk downloads. Because the whole game is
 // `dynamic(ssr:false)`, the static HTML ships as an empty shell — without this
@@ -26,7 +28,7 @@ function GameShellFallback() {
         aria-hidden
         className="size-24 object-contain"
       />
-      <div className="text-muted-foreground flex items-center gap-2 text-sm">
+      <div className={cn(HINT, "flex items-center gap-2")}>
         <Loader2 className="text-primary size-4 animate-spin" aria-hidden />
         <span>{t.app.loading}</span>
       </div>

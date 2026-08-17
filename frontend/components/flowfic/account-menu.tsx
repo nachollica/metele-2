@@ -18,6 +18,8 @@ import { LoginModal } from "@/components/auth/login-modal"
 import { useAuth } from "@/lib/auth"
 import { useBackendStatus } from "@/lib/backend"
 import { useTranslations } from "@/lib/i18n"
+import { cn } from "@/lib/utils"
+import { FIELD_LABEL } from "@/lib/text-styles"
 
 import { type Section } from "./dashboard-nav"
 import { LevelBadge } from "./dashboard-widgets"
@@ -117,7 +119,7 @@ export function AccountMenu({ onShowSection, onOpenProfile, disabled = false }: 
         <DropdownMenuLabel>
           <div className="flex items-center gap-2">
             <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-              <span className="truncate text-sm font-semibold">{user.name}</span>
+              <span className={cn(FIELD_LABEL, "truncate")}>{user.name}</span>
               {user.email ? (
                 <span className="text-muted-foreground truncate text-xs">{user.email}</span>
               ) : null}

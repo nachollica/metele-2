@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label"
 import { isValidEmail, useAuth } from "@/lib/auth"
 import { useTranslations } from "@/lib/i18n"
 import { updateProfile } from "@/lib/flowfic/profile-api"
+import { HINT } from "@/lib/text-styles"
 
 // Cap on the picture file size we'll accept, in bytes. Pictures end up as a
 // data: URL stored verbatim in the users table (`picture` column), so the
@@ -136,7 +137,7 @@ export function ProfilePanel() {
       aria-label={t.profile.title}
       className="bg-card text-card-foreground flex w-full flex-col gap-6 rounded-lg border p-6 shadow-sm"
     >
-      <p className="text-muted-foreground text-sm">{t.profile.description}</p>
+      <p className={HINT}>{t.profile.description}</p>
 
       <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
         <Avatar className="size-24">
@@ -232,7 +233,7 @@ export function ProfilePanel() {
           </span>
         ) : null}
         {status === "saved" ? (
-          <span className="text-muted-foreground text-sm" role="status">
+          <span className={HINT} role="status">
             {t.profile.saved}
           </span>
         ) : null}

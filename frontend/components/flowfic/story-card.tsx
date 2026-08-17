@@ -27,6 +27,7 @@ import { useLocale, useTranslations } from "@/lib/i18n"
 import { formatStoryDate } from "@/lib/flowfic/format"
 import { deriveTitle, formatCount, storyVisual } from "@/lib/flowfic/gamification"
 import type { Story } from "@/lib/flowfic/stories-api"
+import { FIELD_LABEL, HINT, ITEM_TITLE, MICRO } from "@/lib/text-styles"
 
 import { IconChip } from "./dashboard-widgets"
 
@@ -130,7 +131,7 @@ export function StoryCard({ story, onSelect, onDelete, onUpdateTitle, fill = fal
               maxLength={200}
               placeholder={title}
               aria-label={t.sidebar.renameStoryLabel}
-              className="h-8 text-sm font-semibold"
+              className={cn("h-8", FIELD_LABEL)}
               disabled={renameBusy}
             />
             <button
@@ -162,18 +163,19 @@ export function StoryCard({ story, onSelect, onDelete, onUpdateTitle, fill = fal
             )}
             aria-label={`${title} — ${meta}`}
           >
-            <div className="truncate pr-8 text-sm font-bold">{title}</div>
+            <div className={cn(ITEM_TITLE, "truncate pr-8")}>{title}</div>
             {/* Filling a fixed row leaves less vertical room than a naturally
                 sized card, so the preview drops to a single line there. */}
             <p
               className={cn(
-                "text-muted-foreground mt-1 text-sm leading-relaxed",
+                HINT,
+                "mt-1 leading-relaxed",
                 fill ? "line-clamp-1" : "line-clamp-2",
               )}
             >
               {story.text}
             </p>
-            <div className="text-muted-foreground mt-2 text-xs">{meta}</div>
+            <div className={cn(MICRO, "mt-2")}>{meta}</div>
           </button>
         )}
       </div>

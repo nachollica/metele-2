@@ -8,7 +8,7 @@ import { ChevronRight, Check, CircleCheckBig, Trophy, type LucideIcon } from "lu
 
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { OVERLINE, SECTION_TITLE } from "@/lib/text-styles"
+import { HINT, ITEM_TITLE, OVERLINE, SECTION_TITLE } from "@/lib/text-styles"
 import { TONE_BAR, TONE_CHIP, type Tone } from "@/lib/flowfic/gamification"
 
 // The muted → accent ghost styling for a soft action sitting in a section
@@ -127,7 +127,7 @@ export function SectionHeader({
           {title}
         </h2>
         {description ? (
-          <p className="text-muted-foreground text-sm">{description}</p>
+          <p className={HINT}>{description}</p>
         ) : null}
       </div>
       {action}
@@ -191,7 +191,7 @@ export function EmptyHint({
   className?: string
 }) {
   return (
-    <p className={cn("text-muted-foreground py-12 text-center text-sm", className)}>{children}</p>
+    <p className={cn(HINT, "py-12 text-center", className)}>{children}</p>
   )
 }
 
@@ -349,8 +349,8 @@ export function AchievementItem({
     <div className="flex items-center gap-3">
       <IconChip icon={icon} tone={tone} className="size-11" iconClassName="size-6" />
       <div className="min-w-0 flex-1">
-        <div className="truncate text-base font-semibold">{name}</div>
-        <div className="text-muted-foreground truncate text-sm">{description}</div>
+        <div className={cn(ITEM_TITLE, "truncate")}>{name}</div>
+        <div className={cn(HINT, "truncate")}>{description}</div>
         {showProgress && !unlocked ? (
           <ProgressMeter value={progress} tone={tone} label={name} className="mt-2" />
         ) : null}
@@ -399,7 +399,7 @@ export function ChallengeItem({
         <IconChip icon={icon} tone={tone} className="size-10" iconClassName="size-5" />
         <div className="text-base font-bold">{name}</div>
       </div>
-      <p className="text-muted-foreground mb-3 text-sm leading-relaxed">{description}</p>
+      <p className={cn(HINT, "mb-3 leading-relaxed")}>{description}</p>
       <ProgressMeter value={progress} tone={tone} label={name} />
       <div className="text-muted-foreground mt-1.5 mb-3 text-xs tabular-nums">{progressLabel}</div>
       <div className="mt-auto">

@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { useTranslations } from "@/lib/i18n"
 import { useAuth, MAX_CUSTOM_PRESETS, type CustomPreset } from "@/lib/auth"
+import { FIELD_LABEL } from "@/lib/text-styles"
 import {
   createCustomPreset,
   deleteCustomPreset,
@@ -489,7 +490,7 @@ function PresetButton({
       )}
     >
       <span className={CARD_TEXT}>
-        <span className="text-foreground line-clamp-1 w-full text-center text-sm font-semibold">
+        <span className={cn(FIELD_LABEL, "text-foreground line-clamp-1 w-full text-center")}>
           {title}
         </span>
         {subtitle ? (
@@ -526,7 +527,7 @@ function ChallengeCard({ onStart }: { onStart: () => void }) {
         aria-hidden
       />
       <span className={cn(CARD_TEXT, "relative")}>
-        <span className="flex items-center gap-1.5 text-sm font-semibold">
+        <span className={cn(FIELD_LABEL, "flex items-center gap-1.5")}>
           <Trophy className="size-4 shrink-0" aria-hidden />
           {t.dashboard.challengeOfDay}
         </span>
@@ -603,7 +604,7 @@ function CustomPresetCard({
         )}
       >
         <span className={CARD_TEXT}>
-          <span className="text-foreground line-clamp-2 w-full text-center text-sm font-semibold">
+          <span className={cn(FIELD_LABEL, "text-foreground line-clamp-2 w-full text-center")}>
             {preset.name}
           </span>
         </span>
