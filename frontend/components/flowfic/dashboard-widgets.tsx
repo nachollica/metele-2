@@ -62,18 +62,50 @@ export function IconChip({
 
 // ---- Progress meter -------------------------------------------------------
 
+/**
+ * Fills for the app's one progress bar: the palette tones an achievement or a
+ * challenge is coloured by, plus the two semantic ones a countdown needs. The
+ * `Tone` union stays as it is — it describes the gamification palette, and a
+ * timer running out is not a colour from that palette, it is `--destructive`.
+ */
+const METER_FILL = {
+  ...TONE_BAR,
+  primary: "bg-primary",
+  destructive: "bg-destructive",
+} as const
+
+export type MeterTone = keyof typeof METER_FILL
+
+/**
+ * The app's only progress bar. The game HUD's timer bars used to be a second
+ * definition of this, identical in DOM and ARIA and differing only in the three
+ * things now expressed as props — so a change to the height or the radius had to
+ * be made twice, and once wasn't.
+ */
 export function ProgressMeter({
   value,
   tone = "green",
   className,
   label,
+  valueText,
+  speed = "settled",
 }: {
   /** 0–1 fraction. */
   value: number
-  tone?: Tone
+  tone?: MeterTone
   className?: string
   /** Accessible name for the bar. */
   label?: string
+  /**
+   * What the bar's value should be *said* as, when a percentage is the wrong
+   * unit — a countdown announced as "42 percent" is useless. `aria-valuetext`
+   * takes precedence over the numeric value in every screen reader, so the
+   * percentage stays as the machine-readable fallback.
+   */
+  valueText?: string
+  /** `live` for a value that moves every tick (a countdown): a short, linear
+   *  tween, since an eased half-second one never settles. */
+  speed?: "settled" | "live"
 }) {
   const pct = Math.round(Math.max(0, Math.min(1, value)) * 100)
   return (
@@ -84,9 +116,14 @@ export function ProgressMeter({
       aria-valuenow={pct}
       aria-valuemin={0}
       aria-valuemax={100}
+      aria-valuetext={valueText}
     >
       <div
-        className={cn("h-full rounded-full transition-[width] duration-500", TONE_BAR[tone])}
+        className={cn(
+          "h-full rounded-full transition-[width]",
+          speed === "live" ? "duration-200 ease-linear" : "duration-500",
+          METER_FILL[tone],
+        )}
         style={{ width: `${pct}%` }}
       />
     </div>

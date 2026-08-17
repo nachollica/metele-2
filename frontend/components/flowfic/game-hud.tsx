@@ -8,7 +8,7 @@ import { cn, clamp01 } from "@/lib/utils"
 import { useTranslations } from "@/lib/i18n"
 import { formatSeconds } from "@/lib/flowfic/format"
 import { RequiredWordPanel } from "./required-word-panel"
-import { panelVariants } from "./dashboard-widgets"
+import { panelVariants, ProgressMeter } from "./dashboard-widgets"
 
 type Props = {
   /** Seconds remaining before idle timeout fires, or null when it's disabled. */
@@ -262,27 +262,16 @@ function TimerBar({
           {formatSeconds(seconds, t.units)}
         </span>
       </div>
-      {/* `aria-valuetext` because the raw value is a second count against a
-          second count, which a screen reader renders as a bare percentage
-          ("42 percent") — useless for a clock. This is the same string the
-          sighted player reads off the row above. */}
-      <div
-        className="bg-muted h-1.5 w-full overflow-hidden rounded-full"
-        role="progressbar"
-        aria-label={label}
-        aria-valuenow={Math.max(0, Math.round(seconds))}
-        aria-valuemin={0}
-        aria-valuemax={Math.max(1, Math.round(total))}
-        aria-valuetext={formatSeconds(seconds, t.units)}
-      >
-        <div
-          className={cn(
-            "h-full rounded-full transition-[width] duration-200 ease-linear",
-            urgent ? "bg-destructive" : "bg-primary",
-          )}
-          style={{ width: `${progress * 100}%` }}
-        />
-      </div>
+      {/* `valueText` because a countdown measured against its own start reads
+          as a bare percentage ("42 percent") — useless for a clock. It is the
+          same string the sighted player sees in the row above. */}
+      <ProgressMeter
+        value={progress}
+        tone={urgent ? "destructive" : "primary"}
+        label={label}
+        valueText={formatSeconds(seconds, t.units)}
+        speed="live"
+      />
     </div>
   )
 }
