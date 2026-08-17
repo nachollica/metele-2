@@ -62,10 +62,15 @@ e2e-ui:
 e2e-integration:
     pnpm test:e2e:integration
 
+# `cc` autofixes and skips e2e, so it stays fast enough to run between edits.
+# `ci` is the gate: it mutates nothing and adds Playwright, because the two
+# things this app breaks on — the URL-driven screen routing and the shared
+# content measure — are only observable in a real browser. `test` enforces a
+# coverage floor (see vitest.config.ts), so an untested new file fails here.
 [group("development")]
-[doc("Run all frontend code checks.")]
+[doc("Run the fast frontend checks (autofix, types, unit tests). No e2e.")]
 cc: fix tc test
 
 [group("development")]
-[doc("Run all frontend checks without mutating files (CI entry point).")]
-ci: lint tc test
+[doc("Run every frontend check without mutating files, e2e included. The gate.")]
+ci: lint tc test e2e

@@ -23,8 +23,7 @@ export default defineConfig({
     clearMocks: true,
     // Coverage over the app code we own: everything under app/, components/,
     // and lib/. `components/ui/` (shadcn primitives) is excluded, and the e2e
-    // suite falls outside these globs. Report-only: no thresholds, the run
-    // never fails on coverage.
+    // suite falls outside these globs.
     coverage: {
       provider: "v8",
       reporter: ["text"],
@@ -34,6 +33,18 @@ export default defineConfig({
         "lib/**/*.{ts,tsx}",
       ],
       exclude: ["components/ui/**"],
+      // A ratchet, not a target. Each number sits just under what the suite
+      // actually reaches today, so coverage can only go up: adding an untested
+      // file fails the run, and raising these after a batch of new tests is the
+      // deliberate act that locks the gain in. They are NOT a statement that
+      // ~48% is enough — it is the floor we have, and the point is that it
+      // cannot quietly erode. Before this the report was printed and ignored.
+      thresholds: {
+        statements: 47,
+        branches: 48,
+        functions: 49,
+        lines: 49,
+      },
     },
   },
 })
