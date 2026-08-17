@@ -9,7 +9,6 @@ import type { Translations } from "./en"
 export const es = {
   app: {
     title: "Flowfic",
-    tagline: "Un juego de escritura. No pares las manos.",
     loading: "Cargando FLOWFIC…",
   },
 
@@ -80,10 +79,7 @@ export const es = {
     soundBell: "Campana",
     soundSpeak: "Decir la palabra",
     loadingWords: "Cargando palabras…",
-    secondsSuffix: "s",
-    minutesSuffix: "m",
     start: "Empezar a escribir",
-    startShort: "Escribir",
     customModesLabel: "Modos personalizados",
     backToPresetsLabel: "Modos predeterminados",
     createPresetLabel: "Guardar configuración actual",
@@ -92,7 +88,6 @@ export const es = {
     customNameSave: "Guardar",
     customNameCancel: "Cancelar",
     customLimitReached: "Puedes tener como máximo {max} modos personalizados.",
-    customEmptySlot: "Hueco vacío",
     customSaveFailed: "No se pudo guardar el modo personalizado.",
     signInForCustomModes: "Inicia sesión para guardar modos personalizados.",
   },
@@ -121,12 +116,10 @@ export const es = {
     characters: "caracteres",
     placeholder: "Empieza tu historia. No dejes de escribir…",
     pause: "Pausar",
-    // Los controles van en un bloque cuadrado pequeño, así que las etiquetas
-    // visibles se acortan; el nombre accesible lleva la palabra completa.
+    // Los controles de sesión son cuadros con solo icono, así que esto son
+    // nombres accesibles y no etiquetas visibles: caben completos.
     resume: "Continuar",
-    resumeShort: "Seguir",
     quit: "Salir de sesión",
-    quitShort: "Salir",
     quitConfirmTitle: "¿Salir de esta sesión?",
     quitConfirmDescription:
       "Tu sesión termina aquí y verás tus estadísticas. La historia seguirá siendo editable después.",
@@ -190,13 +183,9 @@ export const es = {
 
   sidebar: {
     title: "Historias recientes",
-    subtitle: "Tus últimas sesiones de escritura",
     empty: "Aún no hay historias — termina una sesión para verla aquí.",
     signUpPrompt: "Inicia sesión para ver tus historias guardadas aquí.",
     error: "No se pudieron cargar las historias.",
-    toggle: "Abrir historias recientes",
-    toggleShort: "Historias",
-    durationLabel: "Duración de la sesión",
     rowMenuLabel: "Opciones de la historia",
     deleteStory: "Eliminar",
     deleteStoryConfirmTitle: "¿Eliminar esta historia?",
@@ -225,7 +214,6 @@ export const es = {
   },
 
   prefs: {
-    sectionLabel: "Preferencias",
     // El botón de la cabecera es solo icono, así que su nombre accesible debe
     // decir qué hace el clic en vez de nombrar el control.
     modeSwitchToDark: "Cambiar al modo oscuro",
@@ -234,8 +222,6 @@ export const es = {
   },
 
   auth: {
-    signedOut: "Iniciar sesión",
-    signedIn: "Cuenta",
     logIn: "Iniciar sesión",
     logOut: "Cerrar sesión",
     title: "Inicia sesión en Flowfic",
@@ -245,11 +231,8 @@ export const es = {
     google: "Google",
     finishingSignIn: "Terminando el inicio de sesión…",
     signInFailed: "Falló el inicio de sesión.",
-    signInFailedRetry: "Reintentar",
     backToGame: "Volver al juego",
-    welcomeBack: "Bienvenido de vuelta, {name}",
     accountMenuLabel: "Menú de cuenta",
-    profileEmail: "Correo",
     devUserLogin: "Inicio de sesión dev",
     devUsernameLabel: "Usuario de desarrollo",
     devUsernamePlaceholder: "usuario",
@@ -262,7 +245,6 @@ export const es = {
 
   nav: {
     label: "Navegación principal",
-    openMenu: "Abrir menú",
     home: "Inicio",
     stories: "Mis historias",
     progress: "Mi progreso",
@@ -289,11 +271,9 @@ export const es = {
   },
 
   dashboard: {
-    subtitle: "¿List@ para entrar en flujo?",
     back: "Volver",
     level: "Nivel",
     signInHint: "Inicia sesión para guardar historias y seguir tu progreso.",
-    streakTitle: "Tu racha actual",
     daysInARow: "días seguidos",
     weeklySummary: "Resumen semanal",
     sessions: "sesiones",
@@ -302,20 +282,13 @@ export const es = {
     untitledStory: "Historia sin título",
     today: "Hoy",
     emptyStories: "Aún no hay historias — terminá una sesión para verla aquí.",
-    progressTitle: "Tu progreso",
     // Título del gráfico de palabras por día. Nombrado por lo que será: los
     // botones de semana/mes lo cambiarán junto al resumen que tiene al lado.
     timeline: "Cronología",
-    thisWeek: "Esta semana",
     chartCaption: "Palabras escritas por día en los últimos 7 días.",
-    wordsWritten: "Palabras escritas",
-    writingTime: "Tiempo de escritura",
-    sessionsCompleted: "Sesiones completadas",
     minutes: "minutos",
-    quoteOfDay: "Cita del día",
     challengeOfDay: "Desafío del día",
     challengeOfDayHint: "Entra directo",
-    writeNow: "Escribir ahora",
     recentStories: "Historias recientes",
     inspirationAlt: "Imagen de inspiración",
     inspirationPrompt: "Haz clic aquí para inspirarte",

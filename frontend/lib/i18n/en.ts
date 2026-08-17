@@ -5,7 +5,6 @@
 export const en = {
   app: {
     title: "Flowfic",
-    tagline: "A writing game. Keep your hands moving.",
     loading: "Loading FLOWFIC…",
   },
 
@@ -75,10 +74,7 @@ export const en = {
     soundBell: "Bell",
     soundSpeak: "Speak the word",
     loadingWords: "Loading words…",
-    secondsSuffix: "s",
-    minutesSuffix: "m",
     start: "Start writing",
-    startShort: "Write",
     customModesLabel: "Custom modes",
     backToPresetsLabel: "Default modes",
     createPresetLabel: "Save current settings",
@@ -87,7 +83,6 @@ export const en = {
     customNameSave: "Save",
     customNameCancel: "Cancel",
     customLimitReached: "You can have at most {max} custom modes.",
-    customEmptySlot: "Empty slot",
     customSaveFailed: "Couldn't save your custom mode.",
     signInForCustomModes: "Sign in to save custom modes.",
   },
@@ -116,12 +111,10 @@ export const en = {
     characters: "characters",
     placeholder: "Begin your story. Don't stop typing…",
     pause: "Pause",
-    // The controls sit in a small square block, so the visible labels are kept
-    // to roughly the width of "Quit"; the accessible names carry the full word.
+    // The session controls are icon-only squares, so these are accessible
+    // names rather than visible labels and can carry the full phrase.
     resume: "Resume",
-    resumeShort: "Play",
     quit: "Quit session",
-    quitShort: "Quit",
     quitConfirmTitle: "Quit this session?",
     quitConfirmDescription:
       "Your sprint ends here and you'll see your stats. The story stays editable afterwards.",
@@ -185,13 +178,9 @@ export const en = {
 
   sidebar: {
     title: "Recent stories",
-    subtitle: "Your latest writing sessions",
     empty: "No stories yet — finish a session to see it here.",
     signUpPrompt: "Sign in to see your saved stories here.",
     error: "Couldn't load stories.",
-    toggle: "Open recent stories",
-    toggleShort: "Stories",
-    durationLabel: "Session length",
     rowMenuLabel: "Story options",
     deleteStory: "Delete",
     deleteStoryConfirmTitle: "Delete this story?",
@@ -220,7 +209,6 @@ export const en = {
   },
 
   prefs: {
-    sectionLabel: "Preferences",
     // The header toggle is icon-only, so its accessible name has to say what a
     // click does rather than name the control.
     modeSwitchToDark: "Switch to dark mode",
@@ -229,8 +217,6 @@ export const en = {
   },
 
   auth: {
-    signedOut: "Sign in",
-    signedIn: "Account",
     logIn: "Log in",
     logOut: "Log out",
     title: "Sign in to Flowfic",
@@ -240,11 +226,8 @@ export const en = {
     google: "Google",
     finishingSignIn: "Finishing sign-in…",
     signInFailed: "Sign-in failed.",
-    signInFailedRetry: "Try again",
     backToGame: "Back to the game",
-    welcomeBack: "Welcome back, {name}",
     accountMenuLabel: "Account menu",
-    profileEmail: "Email",
     devUserLogin: "Dev user login",
     devUsernameLabel: "Dev username",
     devUsernamePlaceholder: "username",
@@ -257,7 +240,6 @@ export const en = {
 
   nav: {
     label: "Main navigation",
-    openMenu: "Open menu",
     home: "Home",
     stories: "My stories",
     progress: "My Progress",
@@ -285,11 +267,9 @@ export const en = {
 
   // Home dashboard + shared gamification copy.
   dashboard: {
-    subtitle: "Ready to enter the flow?",
     back: "Back",
     level: "Level",
     signInHint: "Sign in to save stories and track your progress.",
-    streakTitle: "Your current streak",
     daysInARow: "days in a row",
     weeklySummary: "Weekly summary",
     sessions: "sessions",
@@ -298,20 +278,13 @@ export const en = {
     untitledStory: "Untitled story",
     today: "Today",
     emptyStories: "No stories yet — finish a sprint to see it here.",
-    progressTitle: "Your progress",
     // Heading of the words-per-day chart. Named for what it will become: the
     // week/month range buttons will drive it and the summary beside it together.
     timeline: "Timeline",
-    thisWeek: "This week",
     chartCaption: "Words written per day over the last 7 days.",
-    wordsWritten: "Words written",
-    writingTime: "Writing time",
-    sessionsCompleted: "Sessions completed",
     minutes: "minutes",
-    quoteOfDay: "Quote of the day",
     challengeOfDay: "Challenge of the day",
     challengeOfDayHint: "Jump straight in",
-    writeNow: "Write now",
     recentStories: "Recent stories",
     inspirationAlt: "Inspiration image",
     inspirationPrompt: "Click here to get some inspiration",
