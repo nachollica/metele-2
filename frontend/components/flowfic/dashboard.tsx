@@ -57,6 +57,10 @@ export function Dashboard() {
   const {
     stories,
     error: storiesError,
+    total: storiesTotal,
+    hasMore: storiesHasMore,
+    loadingMore: storiesLoadingMore,
+    loadMore: loadMoreStories,
     remove: removeStory,
     update: updateStoryTitle,
   } = useStories(engine.storiesRefreshKey)
@@ -357,6 +361,10 @@ export function Dashboard() {
                 onChangeShowcaseFace={setShowcaseFace}
                 stories={stories}
                 storiesError={storiesError}
+                storiesTotal={storiesTotal}
+                storiesHasMore={storiesHasMore}
+                storiesLoadingMore={storiesLoadingMore}
+                onLoadMoreStories={() => void loadMoreStories()}
                 onShowSection={showSection}
                 onViewStory={onViewStory}
                 onDeleteStory={removeStory}
@@ -529,6 +537,10 @@ function ScreenContent({
   onChangeShowcaseFace,
   stories,
   storiesError,
+  storiesTotal,
+  storiesHasMore,
+  storiesLoadingMore,
+  onLoadMoreStories,
   onShowSection,
   onViewStory,
   onDeleteStory,
@@ -552,6 +564,10 @@ function ScreenContent({
   onChangeShowcaseFace: (face: ShowcaseFace) => void
   stories: Story[] | null
   storiesError: boolean
+  storiesTotal: number | null
+  storiesHasMore: boolean
+  storiesLoadingMore: boolean
+  onLoadMoreStories: () => void
   onShowSection: (section: Section) => void
   onViewStory: (story: Story) => void
   onDeleteStory: (id: number) => Promise<boolean>
@@ -592,6 +608,10 @@ function ScreenContent({
             section={screen.section}
             stories={stories}
             storiesError={storiesError}
+            storiesTotal={storiesTotal}
+            storiesHasMore={storiesHasMore}
+            storiesLoadingMore={storiesLoadingMore}
+            onLoadMoreStories={onLoadMoreStories}
             onViewStory={onViewStory}
             onDeleteStory={onDeleteStory}
             onUpdateStoryTitle={onUpdateStoryTitle}
@@ -654,6 +674,10 @@ function SectionDetail({
   section,
   stories,
   storiesError,
+  storiesTotal,
+  storiesHasMore,
+  storiesLoadingMore,
+  onLoadMoreStories,
   onViewStory,
   onDeleteStory,
   onUpdateStoryTitle,
@@ -661,6 +685,10 @@ function SectionDetail({
   section: Section
   stories: Story[] | null
   storiesError: boolean
+  storiesTotal: number | null
+  storiesHasMore: boolean
+  storiesLoadingMore: boolean
+  onLoadMoreStories: () => void
   onViewStory: (story: Story) => void
   onDeleteStory: (id: number) => Promise<boolean>
   onUpdateStoryTitle: (id: number, title: string | null) => Promise<boolean>
@@ -671,6 +699,10 @@ function SectionDetail({
         <StoriesSection
           stories={stories}
           error={storiesError}
+          total={storiesTotal}
+          hasMore={storiesHasMore}
+          loadingMore={storiesLoadingMore}
+          onLoadMore={onLoadMoreStories}
           onViewStory={onViewStory}
           onDeleteStory={onDeleteStory}
           onUpdateTitle={onUpdateStoryTitle}

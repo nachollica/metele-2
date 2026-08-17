@@ -45,8 +45,11 @@ bar names whichever one is up (`screen-header.ts`).
   the 3 system modes plus the challenge of the day, and Start writing / More
   options / Custom modes — then the advanced settings when "More options" is on
   (`/new`), then the showcase (`landing-showcase.tsx`): three circular selectors
-  over one fixed-shape pane holding My Progress, the current inspiration, or
-  recent stories.
+  over one fixed-shape pane (3:2 on desktop) holding My Progress, the current
+  inspiration, or recent stories.
+- **Detail screens**: My stories (the full list, searchable, paged with "Load
+  more"), My Progress (the landing's parts plus the achievements and challenges
+  subsections), and Profile — each reached from the landing or the account menu.
 - **Sprint**: the writing column with the HUD's timers, required word, and the
   pause/quit controls. An inspiration picked beforehand sits beside it, frozen
   for the session and collapsible.

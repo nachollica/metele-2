@@ -149,7 +149,6 @@ export const en = {
     removePicture: "Remove picture",
     pictureTooLarge: "Pick an image smaller than 256 KB.",
     pictureReadFailed: "Couldn't read that file.",
-    storyCountLabel: "Stories written",
     save: "Save changes",
     saving: "Saving…",
     saved: "Saved.",
@@ -201,6 +200,12 @@ export const en = {
     deleteStoryConfirm: "Delete",
     deleteStoryCancel: "Cancel",
     deleteStoryFailed: "Couldn't delete that story.",
+    // Heads the My-stories list. The library's size lives here rather than on
+    // the profile screen, next to the stories themselves.
+    storyCount: "{count} stories",
+    resultCount: "{count} matching",
+    loadMore: "Load more",
+    loadingMore: "Loading…",
     renameStory: "Rename",
     renameStoryLabel: "Story title",
     renameSave: "Save title",

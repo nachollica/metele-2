@@ -1,11 +1,12 @@
 "use client"
 
-import { Fragment } from "react"
+import { Fragment, type ReactNode } from "react"
 
 import { useAuth } from "@/lib/auth"
 import { useTranslations } from "@/lib/i18n"
 import { emptyOverview, zeroWeek } from "@/lib/flowfic/gamification"
 
+import { AchievementsSection } from "./achievements-section"
 import { ChallengesSection } from "./challenges-section"
 import { EmptyHint, Panel, SectionHeader, ShowAllButton } from "./dashboard-widgets"
 import { useGamification } from "./gamification-context"
@@ -32,14 +33,13 @@ type Props = {
  * Both faces are built from the same parts (see `progress-widgets.tsx`), each
  * taking a `compact` flag rather than being written twice:
  *
- *   preview — packed into the showcase's fixed 4:3 pane as two rows of two:
+ *   preview — packed into the showcase's fixed 3:2 pane as two rows of two:
  *     level + streak beside the achievement highlights on top, the timeline
- *     beside the weekly summary below. The rows split the pane 4:3 between
- *     them, so it always fills exactly and never scrolls. Each row stacks on a
- *     phone.
+ *     beside the weekly summary below. The rows split the pane evenly, so it
+ *     always fills exactly and never scrolls. Each row stacks on a phone.
  *
- *   full screen — the same four parts unconstrained, then all the challenges
- *     and achievements.
+ *   full screen — the same four parts unconstrained, then the achievements and
+ *     challenges subsections in full.
  *
  * The "challenge of the day" is deliberately not here: the launcher's mode grid
  * already gives it a card, and repeating it cost the pane a third of its height.
@@ -80,16 +80,13 @@ export function ProgressSection({ preview = false, flush = false, onShowAll }: P
           <EmptyHint className="py-6">{t.dashboard.signInHint}</EmptyHint>
         ) : (
           <div className="flex min-h-0 flex-1 flex-col gap-3">
-            {/* Two rows of two. The top one gets the larger share: its cards
-                hold discrete badges that look adrift in too much space, while
-                the bottom row's chart is happy shorter — and an over-tall
-                timeline was exactly what left the weekly badges floating in a
-                half-empty box. Each row's column count is explicit, because a
-                stacked `auto` row let the chart (a `flex-1` plot in a `min-h-0`
-                column) resolve to zero and collapse its card to the heading. */}
-            {/* 2/5 and 3/5 rather than halves: the level pair is two figures
-                and the achievements are three cards, so an even split left one
-                cramped and the other airy. */}
+            {/* Two rows of two, splitting the pane evenly. Each row's column
+                count is explicit, because a stacked `auto` row let the chart (a
+                `flex-1` plot in a `min-h-0` column) resolve to zero and collapse
+                its card to the heading. Within the top row, 2/5 and 3/5 rather
+                than halves: the level pair is two figures and the achievements
+                are three cards, so an even split left one cramped and the other
+                airy. */}
             <div className="grid min-h-0 flex-1 grid-rows-2 gap-3 sm:grid-cols-5 sm:grid-rows-1">
               <ProgressHighlights overview={withChart} className="sm:col-span-2" />
               <AchievementHighlights achievements={list} className="sm:col-span-3" />
@@ -104,11 +101,11 @@ export function ProgressSection({ preview = false, flush = false, onShowAll }: P
     )
   }
 
-  // Full screen: the same parts at their natural height — which is the whole of
-  // the old statistics view, so there is no separate stats block any more — then
-  // all challenges and achievements. Reached only when signed in (Show all / the
-  // menu links are gated), but ChallengesSection keeps its own anonymous guard
-  // if that ever changes.
+  // Full screen: the landing's four parts at the top, unconstrained — the same
+  // components, so the two screens can never drift — then the two full
+  // subsections underneath. Reached only when signed in (Show all / the menu
+  // links are gated), but the subsections keep their own anonymous guards if
+  // that ever changes.
   return (
     <div className="flex flex-col gap-8">
       <section className="flex flex-col gap-4" aria-label={t.nav.stats}>
@@ -121,7 +118,25 @@ export function ProgressSection({ preview = false, flush = false, onShowAll }: P
           <WeeklySummaryCard overview={withChart} />
         </div>
       </section>
-      <ChallengesSection />
+
+      <DetailSubsection title={t.nav.achievements}>
+        <AchievementsSection />
+      </DetailSubsection>
+
+      <DetailSubsection title={t.challenges.dailyGroup}>
+        <ChallengesSection />
+      </DetailSubsection>
     </div>
+  )
+}
+
+/** A titled block on a detail screen. One definition so every subsection across
+ *  the detail pages wears the same heading weight and spacing. */
+function DetailSubsection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="flex flex-col gap-4">
+      <h2 className="text-base font-semibold">{title}</h2>
+      {children}
+    </section>
   )
 }

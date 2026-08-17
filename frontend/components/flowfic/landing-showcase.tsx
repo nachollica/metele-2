@@ -46,13 +46,13 @@ const CIRCLE_SIZE = "w-full sm:max-w-[9.9rem] md:max-w-[12.875rem]"
 const SHOWCASE_SPACING =
   "flex flex-col gap-5 pt-6 md:gap-8 md:pt-[calc(((100%_-_2.5rem)/3_-_12.875rem)/2_-_1.5rem)]"
 
-// The pane. Desktop takes the 4:3 the inspiration card always had; a phone
-// swaps it for a fixed height, because 4:3 at 375px wide is 281px — too short
-// for five story rows, and it would squash the progress face flat. 45rem is
-// what the progress face needs at that width: all four of its boxes stack there
-// and the two rows split the pane evenly, so each box gets a quarter of it —
-// and at anything less the level pair outgrows its share.
-const PANE_SHAPE = "h-[45rem] sm:aspect-[4/3] sm:h-auto"
+// The pane. 3:2 on desktop — 683px at the shared measure, where 4:3 gave 768px
+// and left visible slack inside every face. A phone swaps the ratio for a fixed
+// height, because 3:2 at 375px wide is 229px, far too short for a list or for
+// the progress face's four stacked boxes. 45rem is what that face needs there:
+// its two rows split the pane evenly, so each box gets a quarter of it, and at
+// anything less the level pair outgrows its share.
+const PANE_SHAPE = "h-[45rem] sm:aspect-[3/2] sm:h-auto"
 
 type Props = {
   face: ShowcaseFace

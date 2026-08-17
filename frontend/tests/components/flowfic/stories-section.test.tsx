@@ -63,27 +63,27 @@ function renderPreview(stories: Story[] | null) {
 }
 
 describe("StoriesSection preview", () => {
-  it("shows at most five stories, newest first", () => {
+  it("shows at most four stories, newest first", () => {
     authState.current = makeAuth()
     renderPreview([story(1), story(2), story(3), story(4), story(5), story(6)])
-    // Six available, five rendered — the showcase pane is divided into exactly
-    // five rows, so a sixth would shrink them all.
-    expect(screen.getAllByRole("button", { name: /^Story \d/ })).toHaveLength(5)
+    // Six available, four rendered — the showcase pane is divided into exactly
+    // four rows, so a fifth would shrink them all.
+    expect(screen.getAllByRole("button", { name: /^Story \d/ })).toHaveLength(4)
   })
 
-  it("keeps five equal rows when the user has fewer stories", () => {
+  it("keeps four equal rows when the user has fewer stories", () => {
     authState.current = makeAuth()
     const { container } = renderPreview([story(1)])
     expect(screen.getAllByRole("button", { name: /^Story \d/ })).toHaveLength(1)
-    // The four unused rows are reserved, so one story lays the pane out the
-    // same way five do rather than stretching over the whole box.
+    // The three unused rows are reserved, so one story lays the pane out the
+    // same way four do rather than stretching over the whole box.
     expect(container.querySelectorAll("[aria-hidden]")).not.toHaveLength(0)
   })
 
-  it("renders five skeleton rows while the first load is in flight", () => {
+  it("renders four skeleton rows while the first load is in flight", () => {
     authState.current = makeAuth()
     const { container } = renderPreview(null)
-    expect(container.querySelectorAll("[data-slot=\"skeleton\"]")).toHaveLength(5)
+    expect(container.querySelectorAll("[data-slot=\"skeleton\"]")).toHaveLength(4)
   })
 
   it("prompts anonymous users to sign in instead of listing rows", () => {
