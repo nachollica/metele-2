@@ -4,7 +4,7 @@ import { type GameSettings } from "@/lib/flowfic/types"
 import { type Story } from "@/lib/flowfic/stories-api"
 
 import { type Section } from "./dashboard-nav"
-import { ContentColumn, Panel } from "./dashboard-widgets"
+import { Panel } from "./dashboard-widgets"
 import { LandingShowcase, type ShowcaseFace } from "./landing-showcase"
 import { type GridMode } from "./preset-grid"
 import { SessionLauncher } from "./session-launcher"
@@ -60,9 +60,10 @@ export function LandingHome({
   onChangeShowcaseFace,
 }: Props) {
   return (
-    <ContentColumn className="gap-6">
+    <>
       {/* No heading here: the app header carries this screen's `h1`
-          ("Create a story"), like every other screen. */}
+          ("Create a story"), like every other screen. The content column and
+          its gap come from the shell, like every other screen too. */}
       <SessionLauncher
         settings={settings}
         onChange={onChangeSettings}
@@ -94,6 +95,6 @@ export function LandingHome({
         onDeleteStory={onDeleteStory}
         onUpdateStoryTitle={onUpdateStoryTitle}
       />
-    </ContentColumn>
+    </>
   )
 }

@@ -386,9 +386,15 @@ export function Dashboard() {
               )}
             </div>
           ) : (
-            <div className="h-full min-h-0 overflow-y-auto p-4 sm:p-6">
-              <ScreenContent
-                screen={screen}
+            /* The app's only scroll container, and the one place that decides
+               what a screen IS: scroll pane + content column + gap. Each
+               `ScreenContent` case used to spell that wrapper itself, which is
+               how five of the six ended up with a `gap-5` that never applied
+               (one child each) and the sixth with a different gap entirely. */
+            <div className="h-full min-h-0 overflow-y-auto">
+              <ContentColumn className="gap-6">
+                <ScreenContent
+                  screen={screen}
                 story={currentStory}
                 storyMissing={storyMissing}
                 settings={engine.settings}
@@ -412,9 +418,10 @@ export function Dashboard() {
                 onViewStory={onViewStory}
                 onDeleteStory={removeStory}
                 onUpdateStoryTitle={updateStoryTitle}
-                onBackHome={goHome}
-                onBackToStories={() => showSection("stories")}
-              />
+                  onBackHome={goHome}
+                  onBackToStories={() => showSection("stories")}
+                />
+              </ContentColumn>
             </div>
           )}
         </main>
@@ -646,46 +653,39 @@ function ScreenContent({
       )
     case "section":
       return (
-        <ContentColumn className="gap-5">
-          <SectionDetail
-            section={screen.section}
-            stories={stories}
-            storiesError={storiesError}
-            storiesTotal={storiesTotal}
-            storiesHasMore={storiesHasMore}
-            storiesLoadingMore={storiesLoadingMore}
-            onLoadMoreStories={onLoadMoreStories}
-            onViewStory={onViewStory}
-            onDeleteStory={onDeleteStory}
-            onUpdateStoryTitle={onUpdateStoryTitle}
-          />
-        </ContentColumn>
+        <SectionDetail
+          section={screen.section}
+          stories={stories}
+          storiesError={storiesError}
+          storiesTotal={storiesTotal}
+          storiesHasMore={storiesHasMore}
+          storiesLoadingMore={storiesLoadingMore}
+          onLoadMoreStories={onLoadMoreStories}
+          onViewStory={onViewStory}
+          onDeleteStory={onDeleteStory}
+          onUpdateStoryTitle={onUpdateStoryTitle}
+        />
       )
     case "profile":
-      return (
-        <ContentColumn className="gap-5">
-          <ProfilePanel />
-        </ContentColumn>
-      )
+      return <ProfilePanel />
     case "story":
       // The title and the back arrow are in the header; here it is just the
       // spinner, the not-found body, or the read-only story.
       if (story === null && !storyMissing) {
         return (
-          <ContentColumn className="gap-5">
-            <div role="status" aria-live="polite" className="flex justify-center py-16">
-              <Loader2 className="text-primary size-8 animate-spin" aria-hidden />
-            </div>
-          </ContentColumn>
+          <div role="status" aria-live="polite" className="flex justify-center py-16">
+            <Loader2 className="text-primary size-8 animate-spin" aria-hidden />
+          </div>
         )
       }
       if (story === null) return <NotFoundBody onBack={onBackToStories} label={t.nav.backToStories} />
       return (
-        <ContentColumn className="gap-5">
-          <div className="h-[65vh]">
-            <WritingArea value={story.text} onChange={() => {}} matches={[]} readOnly />
-          </div>
-        </ContentColumn>
+        // Sized against the scroll pane, not the viewport: this is the same
+        // story the game area shows, and it should read at a comparable height
+        // whichever screen it is on.
+        <div className="h-[65vh] min-h-96">
+          <WritingArea value={story.text} onChange={() => {}} matches={[]} readOnly />
+        </div>
       )
     case "notfound":
       return <NotFoundBody onBack={onBackHome} label={t.notFound.backHome} />
@@ -699,14 +699,12 @@ function ScreenContent({
 function NotFoundBody({ onBack, label }: { onBack: () => void; label: string }) {
   const t = useTranslations()
   return (
-    <ContentColumn className="gap-5">
-      <div className="flex flex-col items-start gap-4 py-8">
-        <p className="text-muted-foreground">{t.notFound.body}</p>
-        <Button type="button" variant="outline" onClick={onBack}>
-          {label}
-        </Button>
-      </div>
-    </ContentColumn>
+    <div className="flex flex-col items-start gap-4 py-8">
+      <p className="text-muted-foreground">{t.notFound.body}</p>
+      <Button type="button" variant="outline" onClick={onBack}>
+        {label}
+      </Button>
+    </div>
   )
 }
 

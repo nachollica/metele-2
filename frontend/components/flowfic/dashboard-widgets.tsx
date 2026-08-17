@@ -138,7 +138,14 @@ export function SectionHeader({
 /**
  * The one centred content measure shared by the landing, the detail screens,
  * and the in-game writing column — so a story reads at the same width wherever
- * it appears, and the game area lands exactly where the home screen was.
+ * it appears.
+ *
+ * The padding is INSIDE the cap, and that is the load-bearing half. When the
+ * scroll container held it instead, a centred screen rendered 1024px of content
+ * and the in-game column — which has always padded inside its own cap — rendered
+ * 976px, so the same story read at two widths depending on which screen it was
+ * on. One element owning both numbers is what makes them agree; do not move the
+ * padding back out to a caller.
  */
 export function ContentColumn({
   children,
@@ -147,7 +154,11 @@ export function ContentColumn({
   children: ReactNode
   className?: string
 }) {
-  return <div className={cn("mx-auto flex w-full max-w-5xl flex-col", className)}>{children}</div>
+  return (
+    <div className={cn("mx-auto flex w-full max-w-5xl flex-col p-4 sm:p-6", className)}>
+      {children}
+    </div>
+  )
 }
 
 /**
