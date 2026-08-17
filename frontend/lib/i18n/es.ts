@@ -28,21 +28,21 @@ export const es = {
         title: "Bienvenido a Flowfic",
         body: "Un juego de escritura donde tus manos no paran. Reglas rápidas antes de empezar.",
       },
-      pickVelocity: {
-        title: "Elige tu velocidad",
-        body: "Elige un preset o ajusta los temporizadores en la próxima pantalla.",
+      prepare: {
+        title: "Prepara tu sesión",
+        body: "Configura tu juego y elige tu velocidad. También puedes buscar algo de inspiración antes de empezar.",
       },
       createStory: {
         title: "Escribe sin parar",
-        body: "Sigue escribiendo en el área principal. Si te quedas inactivo demasiado, se acaba.",
+        body: "Sigue escribiendo en el editor. Si te quedas inactivo demasiado, la sesión termina. Después puedes editar tu historia.",
       },
       requiredWords: {
         title: "Palabras requeridas",
-        body: "Aparecen palabras mientras escribes. Úsalas o déjalas desaparecer. Activa el plazo para penalizar las no usadas.",
+        body: "Aparecen palabras mientras escribes. Úsalas antes de que desaparezcan. En algunos modos, una palabra sin usar termina la sesión.",
       },
-      shareSave: {
-        title: "Revisa y pule",
-        body: "Al terminar verás tus estadísticas; después vuelves a la historia para editarla o copiarla.",
+      levelUp: {
+        title: "Sube de nivel escribiendo",
+        body: "Cada sesión terminada suma XP, alimenta tu racha diaria y avanza tus logros y desafíos diarios. Con una cuenta puedes seguir tu progreso.",
       },
     },
   },
@@ -241,7 +241,7 @@ export const es = {
     logOut: "Cerrar sesión",
     title: "Inicia sesión en Flowfic",
     description:
-      "Puedes jugar sin cuenta. Inicia sesión para guardar tus historias y acceder a tablas de líderes (próximamente).",
+      "Puedes jugar sin cuenta. Inicia sesión para guardar tus historias y seguir tu progreso.",
     continueWith: "Continuar con {provider}",
     google: "Google",
     finishingSignIn: "Terminando el inicio de sesión…",
