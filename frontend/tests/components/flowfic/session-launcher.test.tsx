@@ -92,11 +92,12 @@ describe("SessionLauncher", () => {
     authState.current = makeAuth()
     renderWithLocale(<Harness />)
     const trigger = screen.getByRole("combobox", { name: /session length/i })
-    // The chevron is the only hint that the numbers open a menu. It was hidden
-    // once to keep the clock face clean, which left the picker undiscoverable —
-    // assert on the class, since jsdom loads no Tailwind to compute it away.
+    // The chevron is the only hint that the numbers open a menu; it was once
+    // hidden to keep the clock face clean, which left the picker
+    // undiscoverable. Whether it is actually *visible* is asserted in
+    // `e2e/anonymous-game.spec.ts`, where real CSS applies — jsdom loads no
+    // Tailwind, so here we can only say it was rendered.
     expect(trigger.querySelector("svg")).not.toBeNull()
-    expect(trigger.className).not.toContain("[&>svg]:hidden")
   })
 
   it("re-dials the session length without un-highlighting the selected mode", async () => {
