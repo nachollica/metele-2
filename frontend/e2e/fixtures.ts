@@ -13,6 +13,11 @@ const WELCOME_DISMISSED_KEY = "flowfic.welcome.dismissed"
 const DEV_TOKEN_KEY = "flowfic.dev.token"
 const DEV_USER_KEY = "flowfic.dev.user"
 
+// What the required-word panel shows between words: a decorative waiting mark,
+// deliberately not a sentence. Named here so the specs assert on "the panel is
+// waiting" rather than on a string that turned out to be four specs wide.
+export const AWAITING_WORD = "•••"
+
 export const DEV_TOKEN = "e2e-dev-token"
 
 // Matches the `AuthUser` shape returned by GET /auth/me.

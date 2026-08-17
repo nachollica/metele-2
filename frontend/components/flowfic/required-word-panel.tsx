@@ -57,8 +57,16 @@ export function RequiredWordPanel({ word, useWordIn, useWordTotal }: Props) {
             {word}
           </span>
         ) : (
-          <span className="text-muted-foreground text-base italic">
-            {t.game.noRequiredWord}
+          // A waiting mark, not a sentence: between words the player is already
+          // writing, so "Keep writing…" restated the one thing the whole screen
+          // is telling them. Ellipsis rather than an empty slot, which reads as
+          // the panel having failed to load. Decorative — the live region below
+          // is what announces a word arriving.
+          <span
+            aria-hidden
+            className="text-muted-foreground/60 text-2xl leading-none tracking-widest sm:text-3xl"
+          >
+            •••
           </span>
         )}
 

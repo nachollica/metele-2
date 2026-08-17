@@ -107,7 +107,6 @@ export const en = {
 
   game: {
     requiredWordHeader: "Required word",
-    noRequiredWord: "Keep writing…",
     useWordIn: "Use it in",
     idleEndsIn: "Idle timeout in",
     sessionEndsIn: "Session ends in",

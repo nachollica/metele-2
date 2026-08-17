@@ -6,11 +6,15 @@ import { RequiredWordPanel } from "@/components/flowfic/required-word-panel"
 import { renderWithLocale } from "@/tests/utils"
 
 describe("RequiredWordPanel", () => {
-  it("renders the placeholder when no word is active", () => {
+  it("waits with a mark rather than an instruction when no word is active", () => {
     renderWithLocale(
       <RequiredWordPanel word={null} useWordIn={null} useWordTotal={null} />,
     )
-    expect(screen.getByText(/keep writing/i)).toBeInTheDocument()
+    // Decorative: the panel's own live region is what announces a word
+    // arriving, so the waiting state must not add a second thing to read out.
+    const marker = screen.getByText("•••")
+    expect(marker).toBeInTheDocument()
+    expect(marker).toHaveAttribute("aria-hidden", "true")
   })
 
   it("renders the word and the remaining time when active", () => {

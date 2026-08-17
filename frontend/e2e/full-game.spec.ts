@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test"
 
-import { mockBackend, seedDevSession } from "./fixtures"
+import { AWAITING_WORD, mockBackend, seedDevSession } from "./fixtures"
 
 // End-to-end game journey with deterministic timing:
 //   load → configure → start → write → a required word appears → type it
@@ -39,7 +39,7 @@ test("full session: required word satisfied (+1) and stats shown on finish", asy
   await textarea.pressSequentially("Once upon a time ")
 
   const wordPanel = page.getByRole("complementary", { name: "Required word" })
-  await expect(wordPanel.getByText("Keep writing", { exact: false })).toBeVisible()
+  await expect(wordPanel.getByText(AWAITING_WORD)).toBeVisible()
 
   // Advance the virtual clock until the stubbed word appears, typing each step
   // so the idle timer never fires while we wait.
@@ -53,7 +53,7 @@ test("full session: required word satisfied (+1) and stats shown on finish", asy
   // Typing the required word (followed by a delimiter) satisfies it.
   await textarea.pressSequentially("banana ")
   await expect(wordPanel.getByText("banana")).toBeHidden()
-  await expect(wordPanel.getByText("Keep writing", { exact: false })).toBeVisible()
+  await expect(wordPanel.getByText(AWAITING_WORD)).toBeVisible()
 
   // Finish the session; the results modal reports the stats.
   await page.getByRole("button", { name: "Quit session" }).click()

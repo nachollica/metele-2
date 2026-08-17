@@ -112,7 +112,6 @@ export const es = {
 
   game: {
     requiredWordHeader: "Palabra requerida",
-    noRequiredWord: "Sigue escribiendo…",
     useWordIn: "Úsala en",
     idleEndsIn: "Inactividad en",
     sessionEndsIn: "Sesión termina en",
