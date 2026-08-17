@@ -54,6 +54,17 @@
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
+  /* ── Plot panel ───────────────────────────────────────────────────
+   * The words chart sits on its own panel, at the extreme opposite end of
+   * the neutral scale from its surroundings, so it reads as a plot rather
+   * than as more of the card around it — pure white here (light mode's
+   * `--card` is already 100% white; this matches it exactly), near-black
+   * in `.dark` below. Ink and grid are per-theme for the same reason
+   * `--card`'s own foreground is: a value tuned for a white surface goes
+   * illegible on a black one and vice versa.                            */
+  --plot: oklch(1 0 0);
+  --plot-ink: oklch(0.42 0 0);
+  --plot-grid: oklch(0.85 0 0);
   --radius: 0.625rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
@@ -111,6 +122,11 @@
   --sidebar-border: oklch(0.269 0 0);
   --sidebar-ring: oklch(0.439 0 0);
   --highlight: var(--brand-coral);
+  /* The dark end of the same extreme-neutral idea (see the `:root` comment
+     above `--plot`). Ink/grid keep the light-mode values' role reversed. */
+  --plot: oklch(0.16 0 0);
+  --plot-ink: oklch(0.78 0 0);
+  --plot-grid: oklch(0.33 0 0);
 }
 
 @theme inline {
@@ -150,6 +166,7 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --color-plot: var(--plot);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);

@@ -52,40 +52,55 @@ export function WeeklyChart({ data, wordsLabel, caption, fill = false }: Props) 
 
   return (
     <figure className={cn("m-0", fill && "flex min-h-0 flex-1 flex-col")}>
-      <div className={cn("w-full", fill ? "min-h-0 flex-1" : "h-40")} aria-hidden="true">
+      {/* Its own near-black panel, in BOTH themes, so the plot reads as a plot
+          instead of dissolving into the card it shares with the week's figures.
+          Everything drawn inside therefore uses the fixed `--plot-*` ink rather
+          than the theme's `--border` / `--muted-foreground`, which flip while
+          this surface does not. The brand green — not `--primary` — because the
+          line is a drawn accent and the deeper button green goes muddy here. */}
+      <div
+        className={cn(
+          "bg-plot w-full overflow-hidden rounded-lg px-1 py-2",
+          fill ? "min-h-0 flex-1" : "h-40",
+        )}
+        aria-hidden="true"
+      >
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={rows} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
             <defs>
               <linearGradient id="weeklyWordsFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.22} />
-                <stop offset="100%" stopColor="var(--primary)" stopOpacity={0} />
+                <stop offset="0%" stopColor="var(--brand-green)" stopOpacity={0.3} />
+                <stop offset="100%" stopColor="var(--brand-green)" stopOpacity={0} />
               </linearGradient>
             </defs>
             <CartesianGrid
               vertical={false}
-              stroke="var(--border)"
+              stroke="var(--plot-grid)"
               strokeDasharray="0"
             />
             <XAxis
               dataKey="label"
               tickLine={false}
               axisLine={false}
-              tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+              tick={{ fill: "var(--plot-ink)", fontSize: 11 }}
               dy={4}
             />
-            <YAxis hide domain={[0, (max: number) => Math.max(10, max)]} />
+            {/* Headroom over the best day, so its peak is a peak rather than a
+                line clipped flat against the top edge. Invisible while the panel
+                was transparent; obvious once it got a border. */}
+            <YAxis hide domain={[0, (max: number) => Math.max(10, Math.ceil(max * 1.15))]} />
             <Tooltip
-              cursor={{ stroke: "var(--border)", strokeWidth: 1 }}
+              cursor={{ stroke: "var(--plot-grid)", strokeWidth: 1 }}
               content={<ChartTooltip wordsLabel={wordsLabel} />}
             />
             <Area
               type="monotone"
               dataKey="words"
-              stroke="var(--primary)"
+              stroke="var(--brand-green)"
               strokeWidth={2}
               fill="url(#weeklyWordsFill)"
               dot={false}
-              activeDot={{ r: 4, fill: "var(--primary)", stroke: "var(--card)", strokeWidth: 2 }}
+              activeDot={{ r: 4, fill: "var(--brand-green)", stroke: "var(--plot)", strokeWidth: 2 }}
               isAnimationActive={false}
             />
           </AreaChart>
