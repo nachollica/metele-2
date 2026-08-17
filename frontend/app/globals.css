@@ -10,11 +10,16 @@
    * brand hues; the semantic tokens below alias them so components never
    * hardcode a color. Kept as internal aliases (not exposed as Tailwind
    * utilities) — reach for the semantic token that matches the intent.
-   *   green  #23a161  paper / "Flow" wordmark → primary actions
+   *   green  #23a161  paper / "Flow" wordmark → focus rings, drawn accents
    *   coral  #f9744c  ribbon / "fic" wordmark → hover & selected accents
    *   yellow #fdc43d  pencil                  → warm highlight
    *   ink    #384843  pencil tip              → deep neutral                */
   --brand-green: oklch(0.628 0.143 155);
+  /* Same hue, darkened until white text on it clears WCAG AA (4.85:1 — the
+     logo green only reaches 3.17:1, which fails for the 14px button label).
+     Filled primary surfaces use this; the logo green stays the identity
+     colour for rings, the dial, and anything drawn rather than labelled. */
+  --brand-green-deep: oklch(0.52 0.143 155);
   --brand-coral: oklch(0.71 0.172 37);
   --brand-yellow: oklch(0.85 0.156 84);
   --brand-ink: oklch(0.386 0.022 174);
@@ -25,7 +30,7 @@
   --card-foreground: oklch(0.205 0.02 50);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.205 0.02 50);
-  --primary: var(--brand-green);
+  --primary: var(--brand-green-deep);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.96 0.01 80);
   --secondary-foreground: oklch(0.205 0.02 50);
@@ -37,14 +42,13 @@
   --accent: oklch(0.89 0.08 37);
   --accent-foreground: oklch(0.34 0.09 37);
   --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
   --border: oklch(0.9 0.01 80);
   --input: oklch(0.92 0.01 80);
-  /* Focus rings echo the primary brand green. */
+  /* Focus rings wear the logo green, not `--primary`: a ring carries no text,
+     so it keeps the identity colour that filled buttons had to give up. */
   --ring: var(--brand-green);
   /* Selected/active emphasis: full-strength coral for borders & rings. */
   --highlight: var(--brand-coral);
-  --highlight-foreground: oklch(0.985 0 0);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -71,7 +75,7 @@
      panels instead of blending into the page behind their scrim. */
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: var(--brand-green);
+  --primary: var(--brand-green-deep);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
@@ -83,8 +87,13 @@
      `bg-accent` fills still work with the near-white foreground below. */
   --accent: oklch(0.36 0.11 37);
   --accent-foreground: oklch(0.95 0.02 37);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
+  /* Bright on a near-black page, unlike the light theme's mid red. `--destructive`
+     is read as TEXT far more often than as a fill (every `role="alert"` body, the
+     urgent countdown), and the dark plate this used to hold scored 1.97:1 against
+     `--background` — a real AA failure. At this value the text clears 5.18:1, and
+     the destructive button still gets its plate by compositing `bg-destructive/60`
+     over the page (white on it: 5.40:1). */
+  --destructive: oklch(0.637 0.237 25.331);
   --border: oklch(0.269 0 0);
   --input: oklch(0.269 0 0);
   --ring: var(--brand-green);
@@ -102,7 +111,6 @@
   --sidebar-border: oklch(0.269 0 0);
   --sidebar-ring: oklch(0.439 0 0);
   --highlight: var(--brand-coral);
-  --highlight-foreground: oklch(0.985 0 0);
 }
 
 @theme inline {
@@ -134,7 +142,6 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -156,7 +163,6 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-highlight: var(--highlight);
-  --color-highlight-foreground: var(--highlight-foreground);
 }
 
 @layer base {
