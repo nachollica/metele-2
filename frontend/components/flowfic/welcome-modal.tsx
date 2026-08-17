@@ -4,10 +4,10 @@ import { useEffect, useState } from "react"
 import {
   ChevronLeft,
   ChevronRight,
+  Gauge,
   NotebookPen,
-  SlidersHorizontal,
+  Sparkles,
   Trophy,
-  Type,
   type LucideIcon,
 } from "lucide-react"
 
@@ -36,14 +36,14 @@ export function WelcomeModal({ open, onContinue }: Props) {
   const [step, setStep] = useState(0)
 
   // The intro step shows the brand logo instead of a lucide glyph, so its
-  // `icon` is omitted; every other step keeps its icon. Deliberately NOT
-  // `WandSparkles` on the required-words step: the wand means inspiration
+  // `icon` is omitted; every other step keeps its icon. Required words wear
+  // `Sparkles`, deliberately not `WandSparkles`: the wand means inspiration
   // app-wide, and the setup step now mentions it.
   const items: { icon?: LucideIcon; title: string; body: string }[] = [
     { ...t.welcome.items.intro },
-    { icon: SlidersHorizontal, ...t.welcome.items.prepare },
+    { icon: Gauge, ...t.welcome.items.prepare },
     { icon: NotebookPen, ...t.welcome.items.createStory },
-    { icon: Type, ...t.welcome.items.requiredWords },
+    { icon: Sparkles, ...t.welcome.items.requiredWords },
     { icon: Trophy, ...t.welcome.items.levelUp },
   ]
 

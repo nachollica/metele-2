@@ -30,19 +30,19 @@ export const es = {
       },
       prepare: {
         title: "Prepara tu sesión",
-        body: "Elige una duración de 5 a 45 minutos, un modo de juego y, si quieres una chispa, un fotograma o una cita.",
+        body: "Configura tu juego y elige tu velocidad. También puedes buscar algo de inspiración antes de empezar.",
       },
       createStory: {
         title: "Escribe sin parar",
-        body: "Sigue escribiendo en el editor. Si te quedas inactivo demasiado, la sesión termina: verás tus estadísticas y la historia queda para editarla y guardarla.",
+        body: "Sigue escribiendo en el editor. Si te quedas inactivo demasiado, la sesión termina. Después puedes editar tu historia.",
       },
       requiredWords: {
         title: "Palabras requeridas",
-        body: "Aparecen palabras mientras escribes. Úsalas antes de que desaparezcan; en algunos modos una palabra sin usar termina la sesión.",
+        body: "Aparecen palabras mientras escribes. Úsalas antes de que desaparezcan. En algunos modos, una palabra sin usar termina la sesión.",
       },
       levelUp: {
         title: "Sube de nivel escribiendo",
-        body: "Cada sesión terminada suma XP, alimenta tu racha diaria y avanza tus logros y desafíos diarios.",
+        body: "Cada sesión terminada suma XP, alimenta tu racha diaria y avanza tus logros y desafíos diarios. Con una cuenta puedes seguir tu progreso.",
       },
     },
   },

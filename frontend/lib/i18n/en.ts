@@ -26,19 +26,19 @@ export const en = {
       },
       prepare: {
         title: "Set up your sprint",
-        body: "Dial a length from 5 to 45 minutes, pick a game mode, and grab a film still or a quote if you want a spark.",
+        body: "Configure your game and pick your speed. You can also get some inspiration before you start.",
       },
       createStory: {
         title: "Write non-stop",
-        body: "Keep typing in the editor. Stay idle too long and the sprint ends — you get your stats, and the story stays yours to edit and save.",
+        body: "Keep typing in the editor. Stay idle too long and the sprint ends. You can edit your story afterwards.",
       },
       requiredWords: {
         title: "Required words",
-        body: "Words appear while you write. Work them in before they fade; in some modes an unused word ends the sprint.",
+        body: "Words appear while you write. Work them in before they fade. In some modes an unused word ends the sprint.",
       },
       levelUp: {
         title: "Level up as you write",
-        body: "Every finished sprint earns XP, feeds your daily streak, and pushes your achievements and daily challenges forward.",
+        body: "Every finished sprint earns XP, feeds your daily streak, and moves your achievements and daily challenges forward. Sign in to track your progress.",
       },
     },
   },
