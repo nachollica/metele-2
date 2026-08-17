@@ -17,8 +17,9 @@ import { TONE_BAR, TONE_CHIP, type Tone } from "@/lib/flowfic/gamification"
 // Colour is layered on per card, so this token carries only the shape.
 export const CARD_TITLE_CLASS = "text-xl font-semibold"
 
-// The muted → accent ghost styling shared by the "Show all" links and the
-// inspiration credit link, so every soft header action reads the same.
+// The muted → accent ghost styling for a soft action sitting in a section
+// header. Used by the "Show all" links; kept as a token so a second header
+// action lands on the same treatment rather than inventing one.
 export const HEADER_ACTION_CLASS = "text-muted-foreground hover:text-accent-foreground"
 
 // ---- Icon chip ------------------------------------------------------------

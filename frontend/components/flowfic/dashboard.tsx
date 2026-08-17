@@ -646,9 +646,6 @@ function ScreenContent({
       )
     case "notfound":
       return <NotFoundBody onBack={onBackHome} label={t.notFound.backHome} />
-    // `configuring` is rendered by the split layout, not here.
-    default:
-      return null
   }
 }
 

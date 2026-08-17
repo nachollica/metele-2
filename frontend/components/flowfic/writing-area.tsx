@@ -14,7 +14,6 @@ type Props = {
   // word-completion check). Currently unused by this component because the
   // visual highlight is disabled; if it comes back, this prop feeds it.
   matches: MatchedRange[]
-  disabled?: boolean
   readOnly?: boolean
   /** Paused mid-sprint: the story stays fully legible, just greyed out and
    *  read-only so it is obvious nothing can be typed until it resumes. */
@@ -41,7 +40,6 @@ export function WritingArea({
   value,
   onChange,
   matches: _matches,
-  disabled,
   readOnly,
   paused = false,
 }: Props) {
@@ -58,7 +56,6 @@ export function WritingArea({
         ref={ref}
         value={value}
         onChange={onChange}
-        disabled={disabled}
         readOnly={readOnly || paused}
         spellCheck={false}
         autoFocus={!readOnly}

@@ -26,13 +26,7 @@ const MAX_PICTURE_BYTES = 256 * 1024
 
 type Status = "idle" | "saving" | "saved" | "error"
 
-type Props = {
-  /** Bumped after a successful PATCH so callers can refresh upstream caches
-   *  (e.g. nothing right now — but reserved for a future avatar refresh). */
-  onProfileUpdated?: () => void
-}
-
-export function ProfilePanel({ onProfileUpdated }: Props) {
+export function ProfilePanel() {
   const t = useTranslations()
   const { user, getAccessToken, applyLocalUser } = useAuth()
   const nameId = useId()
@@ -114,7 +108,6 @@ export function ProfilePanel({ onProfileUpdated }: Props) {
     }
     applyLocalUser(updated)
     setStatus("saved")
-    onProfileUpdated?.()
   }
 
   if (!user) {

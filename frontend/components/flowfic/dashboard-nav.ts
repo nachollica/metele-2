@@ -3,8 +3,6 @@
 // nav-item list any more — just the union of detail screens. Kept framework
 // -light (no JSX) so the shell, tests, and game wiring can all import it.
 
-import { BookOpen, ChartLine, type LucideIcon } from "lucide-react"
-
 import type { Translations } from "@/lib/i18n"
 
 // Expanded subsections. Just two for signed-in users: "stories" (their saved
@@ -14,9 +12,11 @@ import type { Translations } from "@/lib/i18n"
 // session settings live on the configuring screen — none are here.
 export type Section = "stories" | "progress"
 
-// Icon + localized title for each expanded subsection, used by the detail
-// screen header, the landing's showcase, and the account-menu links.
-export const SECTION_META: Record<Section, { icon: LucideIcon; title: (t: Translations) => string }> = {
-  stories: { icon: BookOpen, title: (t) => t.nav.stories },
-  progress: { icon: ChartLine, title: (t) => t.nav.progress },
+// Localized title for each expanded subsection. Read by `screen-header.ts`,
+// which names the detail screen in the top bar — the one place a section's
+// title is rendered. The showcase circles and the account-menu links carry
+// their own copy and icons, since neither is titled after the section.
+export const SECTION_META: Record<Section, { title: (t: Translations) => string }> = {
+  stories: { title: (t) => t.nav.stories },
+  progress: { title: (t) => t.nav.progress },
 }

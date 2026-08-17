@@ -113,7 +113,7 @@ function FadeInImage({ src, alt, className }: { src: string; alt: string; classN
 /**
  * A quote rendered as the inspiration itself: large, centred, with the serif
  * quote mark that used to head the quote-of-the-day card. Fills whatever box it
- * is given (the home card's 4:3 frame, or the in-game pane).
+ * is given (the home showcase's 3:2 pane, or the in-game one).
  *
  * `scrollable` is off by default and stays off on the home card: an
  * `overflow-y-auto` pane there swallows the wheel, because the app-wide
@@ -162,7 +162,7 @@ export function InspirationQuote({
 
 /**
  * The current inspiration, rendered inert to fill whatever box it is given (the
- * home showcase's 4:3 pane). Deliberately NOT a button: the picker is the
+ * home showcase's 3:2 pane). Deliberately NOT a button: the picker is the
  * circular selector above it, so a click in here must mean nothing — which is
  * also what leaves a quote's text selectable.
  *
@@ -237,7 +237,7 @@ export function InspirationPane({ className }: { className?: string }) {
 /**
  * Inspiration image for the split game pane, zoomable and pannable.
  *
- * Unlike the home card (a fixed 4:3 cover-crop), this pane shows the still at
+ * Unlike the home showcase (a fixed 3:2 cover-crop), this pane shows the still at
  * its ORIGINAL proportions: `object-contain` fits the whole frame inside the
  * viewport, so at rest it fits the width and is centered vertically (min zoom =
  * fully visible, reaching the left/right edges) whatever the source ratio. The
