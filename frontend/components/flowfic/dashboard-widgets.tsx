@@ -151,19 +151,29 @@ export function ContentColumn({
 }
 
 /**
- * Small "overline" label for a block nested inside a larger card — the merged
- * progress card uses it to keep the "Challenge of the day" / "Weekly summary"
- * labels visible now that they are no longer card titles of their own. Smaller
- * and lighter than `SectionHeader` so it reads as a sub-label, not a heading.
+ * Small "overline" title for a card nested inside a larger section — the
+ * progress section uses it for "Weekly summary" and "Achievements". Smaller and
+ * lighter than `SectionHeader` so it reads as a sub-label.
+ *
+ * An `h3` despite the size: it titles a real block, and the sections it sits in
+ * are `h2`. Without it the progress screen jumped straight from the `h1` to the
+ * `h4` on an achievement badge. Pass `id` and point the owning `<section>` at it
+ * with `aria-labelledby`, so the name is not written twice.
  */
 export function CardSubtitle({
   children,
   className,
+  id,
 }: {
   children: ReactNode
   className?: string
+  id?: string
 }) {
-  return <div className={cn(OVERLINE, "mb-2", className)}>{children}</div>
+  return (
+    <h3 id={id} className={cn(OVERLINE, "mb-2", className)}>
+      {children}
+    </h3>
+  )
 }
 
 // ---- Empty / sign-in hint -------------------------------------------------

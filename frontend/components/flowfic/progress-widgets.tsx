@@ -6,6 +6,7 @@
 // lets them breathe. Nothing here fetches — the caller passes the already-loaded
 // overview/achievements down.
 
+import { useId } from "react"
 import { Clock, Flame, Sparkles, Trophy } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -99,9 +100,10 @@ export function TimelineCard({
   compact?: boolean
 }) {
   const t = useTranslations()
+  const titleId = useId()
   return (
-    <section className={cn(BOX, "min-h-0")} aria-label={t.dashboard.timeline}>
-      <CardSubtitle>{t.dashboard.timeline}</CardSubtitle>
+    <section className={cn(BOX, "min-h-0")} aria-labelledby={titleId}>
+      <CardSubtitle id={titleId}>{t.dashboard.timeline}</CardSubtitle>
       <WeeklyChart
         data={overview.chart}
         wordsLabel={t.dashboard.words}
@@ -130,10 +132,11 @@ export function WeeklySummaryCard({
   const t = useTranslations()
   const locale = useLocale()
   const { weekly } = overview
+  const titleId = useId()
 
   return (
-    <section className={cn(BOX, "min-h-0")} aria-label={t.dashboard.weeklySummary}>
-      <CardSubtitle>{t.dashboard.weeklySummary}</CardSubtitle>
+    <section className={cn(BOX, "min-h-0")} aria-labelledby={titleId}>
+      <CardSubtitle id={titleId}>{t.dashboard.weeklySummary}</CardSubtitle>
       {/* Centred in whatever height the timeline settles on, so the two boxes
           read as a pair rather than one floating above the other. */}
       <div className="grid min-h-0 flex-1 grid-cols-3 content-center gap-2">
@@ -209,6 +212,7 @@ export function AchievementHighlights({
   className?: string
 }) {
   const t = useTranslations()
+  const titleId = useId()
   if (achievements.length === 0) return null
 
   const shown = highlightAchievements(achievements)
@@ -221,10 +225,12 @@ export function AchievementHighlights({
         "min-h-0 border-amber-500/25 bg-amber-500/5 dark:bg-amber-500/10",
         className,
       )}
-      aria-label={t.nav.achievements}
+      aria-labelledby={titleId}
     >
       <div className="mb-2 flex items-baseline justify-between gap-3">
-        <CardSubtitle className="mb-0">{t.nav.achievements}</CardSubtitle>
+        <CardSubtitle id={titleId} className="mb-0">
+          {t.nav.achievements}
+        </CardSubtitle>
         <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
           {t.achievements.unlockedSummary
             .replace("{count}", String(unlockedCount))
@@ -260,7 +266,9 @@ export function AchievementHighlights({
                   iconClassName="size-5"
                   label={a.unlocked ? text.name : `${text.name} — ${a.current}/${a.target}`}
                 />
-                <h3 className="line-clamp-2 text-xs leading-tight font-semibold">{text.name}</h3>
+                {/* `h4`: the card it titles sits under the section's own `h3`
+                    overline, which sits under the screen's `h2`. */}
+                <h4 className="line-clamp-2 text-xs leading-tight font-semibold">{text.name}</h4>
                 {/* What it takes to earn it — the same sentence the full
                     achievements grid shows, so a new achievement needs no extra
                     copy here to appear. Dropped on a phone, where three cards

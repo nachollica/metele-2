@@ -3,6 +3,7 @@
 import { Fragment, type ReactNode } from "react"
 
 import { useAuth } from "@/lib/auth"
+import { SECTION_TITLE } from "@/lib/text-styles"
 import { useTranslations } from "@/lib/i18n"
 import { emptyOverview, zeroWeek } from "@/lib/flowfic/gamification"
 
@@ -108,7 +109,11 @@ export function ProgressSection({ preview = false, flush = false, onShowAll }: P
   // that ever changes.
   return (
     <div className="flex flex-col gap-8">
-      <section className="flex flex-col gap-4" aria-label={t.nav.stats}>
+      {/* A real heading, not an `aria-label`: the cards below carry `h3`
+          overlines, so without an `h2` here the screen jumped from its `h1`
+          straight past a level. `DetailSubsection` names its own the same way,
+          which is what keeps all three siblings on one rung. */}
+      <DetailSubsection title={t.nav.stats}>
         <div className="grid gap-4 lg:grid-cols-5">
           <ProgressHighlights overview={withChart} className="lg:col-span-2" />
           <AchievementHighlights achievements={list} className="lg:col-span-3" />
@@ -117,7 +122,7 @@ export function ProgressSection({ preview = false, flush = false, onShowAll }: P
           <TimelineCard overview={withChart} />
           <WeeklySummaryCard overview={withChart} />
         </div>
-      </section>
+      </DetailSubsection>
 
       <DetailSubsection title={t.nav.achievements}>
         <AchievementsSection />
@@ -131,11 +136,13 @@ export function ProgressSection({ preview = false, flush = false, onShowAll }: P
 }
 
 /** A titled block on a detail screen. One definition so every subsection across
- *  the detail pages wears the same heading weight and spacing. */
+ *  the detail pages wears the same heading weight and spacing — and the same
+ *  `h2`, which is the rung between the screen's `h1` in the top bar and the `h3`
+ *  overlines on the cards inside. */
 function DetailSubsection({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="flex flex-col gap-4">
-      <h2 className="text-base font-semibold">{title}</h2>
+      <h2 className={SECTION_TITLE}>{title}</h2>
       {children}
     </section>
   )

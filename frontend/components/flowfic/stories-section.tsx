@@ -22,6 +22,8 @@ import type { Story } from "@/lib/flowfic/stories-api"
 import { formatCount } from "@/lib/flowfic/gamification"
 import { filterAndSortStories, type SortOrder } from "@/lib/flowfic/story-search"
 
+import { SECTION_TITLE } from "@/lib/text-styles"
+
 import { EmptyHint, Panel, SectionHeader, ShowAllButton } from "./dashboard-widgets"
 import { StoryCard } from "./story-card"
 
@@ -261,15 +263,18 @@ export function StoriesSection({
 
       {/* How many the account holds — the one place this count lives now that
           the profile screen no longer carries it. While a filter is active it
-          reports the matches instead, since that is what the list is showing. */}
-      <p className="text-muted-foreground text-sm" role="status">
+          reports the matches instead, since that is what the list is showing.
+          A heading rather than the live region it used to be: it is what titles
+          the list below it, and as a `role="status"` it re-announced on every
+          single search keystroke. */}
+      <h2 className={SECTION_TITLE}>
         {hasFilters
           ? t.sidebar.resultCount.replace("{count}", formatCount(results.length, locale))
           : t.sidebar.storyCount.replace(
               "{count}",
               formatCount(total ?? stories.length, locale),
             )}
-      </p>
+      </h2>
 
       {/* Results */}
       {results.length > 0 ? (
