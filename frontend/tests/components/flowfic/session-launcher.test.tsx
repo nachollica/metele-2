@@ -189,6 +189,31 @@ describe("SessionLauncher", () => {
     expect(screen.getByRole("button", { name: /classic/i })).toBeInTheDocument()
   })
 
+  it("exposes a custom mode card and its edit/delete actions as sibling buttons", async () => {
+    // The card used to be a `role="button"` div wrapping the two chips, which
+    // hid them from screen readers that refuse to descend into a button.
+    authState.current = makeAuth({
+      user: {
+        ...baseUser,
+        customPresets: [
+          { id: "c1", name: "Night sprint", settings: DEFAULT_SETTINGS },
+        ],
+      },
+    })
+    renderWithLocale(<Harness />)
+
+    await userEvent.click(screen.getByRole("button", { name: "Custom modes" }))
+
+    const card = screen.getByRole("button", { name: /night sprint/i })
+    const edit = screen.getByRole("button", { name: /rename/i })
+    const remove = screen.getByRole("button", { name: /delete/i })
+
+    expect(card).toHaveAttribute("aria-pressed")
+    // None of the three may contain another: that is the bug being fixed.
+    expect(card).not.toContainElement(edit)
+    expect(card).not.toContainElement(remove)
+  })
+
   it("prompts anonymous users to sign in for custom modes", async () => {
     authState.current = makeAuth({ status: "anonymous", user: null })
     renderWithLocale(<Harness />)

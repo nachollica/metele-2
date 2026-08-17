@@ -581,47 +581,39 @@ function CustomPresetCard({
     )
   }
 
-  function handleKey(e: KeyboardEvent<HTMLDivElement>) {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault()
-      onApply()
-    }
-  }
-
-  // Outer is a div (not a button) so the inner pencil/trash can be real
-  // buttons — nesting <button> inside <button> is invalid HTML. Outer
-  // surfaces role/tabindex so the apply-on-click behavior stays keyboard
-  // and screen-reader accessible.
+  // The card and its pencil/trash are SIBLINGS, not nested. An earlier shape
+  // made the card a `role="button"` div so the two chips could be real buttons
+  // inside it — but a role is exactly as nested as the tag would have been, and
+  // several screen readers refuse to expose controls inside a button, so the
+  // rename and delete actions simply vanished for them. Overlaying the chips on
+  // a positioned wrapper keeps all three as real buttons, which also hands back
+  // Enter/Space handling, `disabled`, and the pressed state for free.
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={onApply}
-      onKeyDown={handleKey}
-      aria-pressed={active}
-      className={cn(
-        CARD_SHAPE,
-        "group relative flex cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border p-3 text-center transition-colors",
-        "hover:bg-accent/20 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
-        active
-          ? "border-highlight bg-highlight/20 ring-highlight/30 ring-1"
-          : "border-border bg-card",
-      )}
-    >
-      <span className={CARD_TEXT}>
-        <span className="text-foreground line-clamp-2 w-full text-center text-sm font-semibold">
-          {preset.name}
+    <div className={cn(CARD_SHAPE, "group relative")}>
+      <button
+        type="button"
+        onClick={onApply}
+        aria-pressed={active}
+        className={cn(
+          "flex size-full cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border p-3 text-center transition-colors",
+          "hover:bg-accent/20 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
+          active
+            ? "border-highlight bg-highlight/20 ring-highlight/30 ring-1"
+            : "border-border bg-card",
+        )}
+      >
+        <span className={CARD_TEXT}>
+          <span className="text-foreground line-clamp-2 w-full text-center text-sm font-semibold">
+            {preset.name}
+          </span>
         </span>
-      </span>
+      </button>
       {/* Action chips. Visible on hover/focus-within so the unhovered card
           stays clean. Keyboard users tab through them after the card. */}
       <div className="absolute top-1.5 right-1.5 flex gap-0.5 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
         <button
           type="button"
-          onClick={(e) => {
-            e.stopPropagation()
-            onStartEdit()
-          }}
+          onClick={onStartEdit}
           aria-label={t.profile.customPresetEdit}
           disabled={busy}
           className="hover:bg-accent text-muted-foreground inline-flex size-6 items-center justify-center rounded-md"
@@ -630,10 +622,7 @@ function CustomPresetCard({
         </button>
         <button
           type="button"
-          onClick={(e) => {
-            e.stopPropagation()
-            onDelete()
-          }}
+          onClick={onDelete}
           aria-label={t.profile.customPresetDelete}
           disabled={busy}
           className="hover:bg-destructive/10 text-destructive inline-flex size-6 items-center justify-center rounded-md"
