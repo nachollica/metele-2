@@ -31,6 +31,7 @@ import type { Story } from "@/lib/flowfic/stories-api"
 import { type Section } from "./dashboard-nav"
 import { pathToScreen, screenToPath, type Screen } from "./navigation"
 import { screenHeader } from "./screen-header"
+import { ScreenAnnouncer } from "./screen-announcer"
 import { AppHeader } from "./app-header"
 import { ContentColumn } from "./dashboard-widgets"
 import { GamificationProvider } from "./gamification-context"
@@ -254,15 +255,33 @@ export function Dashboard() {
   // Title + back arrow for the header. Mid-sprint the bar stays empty.
   const header = screenHeader(screen, t, { storyMissing })
   const headerBack = header.backTo === "stories" ? () => showSection("stories") : goHome
+  const screenTitle = splitLayout ? null : header.title
+
+  // Park focus on the content region after a screen change. Without this, the
+  // control that navigated is often gone — "Show all" unmounts with the section
+  // it opened — and focus falls back to <body>, so the next Tab restarts from
+  // the top of the page. Skipped on first paint (nothing was navigated to) and
+  // during a sprint, where the editor autofocuses itself.
+  const mainRef = useRef<HTMLElement | null>(null)
+  const focusedScreenRef = useRef<string | null>(null)
+  useEffect(() => {
+    const key = screen.name === "section" ? `section:${screen.section}` : screen.name
+    const isFirst = focusedScreenRef.current === null
+    const changed = focusedScreenRef.current !== key
+    focusedScreenRef.current = key
+    if (isFirst || !changed || splitLayout) return
+    mainRef.current?.focus()
+  }, [screen, splitLayout])
 
   return (
     <GamificationProvider refreshKey={engine.storiesRefreshKey}>
       <div className="bg-background text-foreground flex h-dvh flex-col">
+        <ScreenAnnouncer title={screenTitle} />
         <AppHeader
           authStatus={authStatus}
           devUserEnabled={devUserEnabled}
           disabled={controlsDisabled}
-          title={splitLayout ? null : header.title}
+          title={screenTitle}
           onBack={header.backTo !== null ? headerBack : undefined}
           backLabel={header.backLabel}
           onGoHome={goHome}
@@ -270,7 +289,10 @@ export function Dashboard() {
           onOpenProfile={openProfile}
         />
 
-        <main className="min-h-0 flex-1">
+        {/* `tabIndex={-1}` so navigation can move focus here; it is never in the
+            Tab order itself, and `outline-none` keeps the focus ring off a
+            region the pointer user never asked to focus. */}
+        <main ref={mainRef} tabIndex={-1} className="min-h-0 flex-1 outline-none">
           {splitLayout ? (
             // Two shapes, depending on whether the inspiration pane is up:
             //   shown  — writing column beside a 5/12 pane, as the split has
