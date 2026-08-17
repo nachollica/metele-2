@@ -144,6 +144,9 @@ export function AccountMenu({ onShowSection, onOpenProfile, disabled = false }: 
             {t.profile.menuItem}
           </DropdownMenuItem>
         ) : null}
+        {/* Logout is the one destructive entry here, so it is fenced off from
+            the navigation above it rather than sitting flush with it. */}
+        <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => void logout()}>
           <LogOut className="size-4" aria-hidden />
           {t.auth.logOut}

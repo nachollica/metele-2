@@ -51,14 +51,9 @@ describe("ProfilePanel", () => {
     vi.restoreAllMocks()
   })
 
-  it("seeds the form with the current user's name + email and shows the story count", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ count: 12 }),
-      }),
-    )
+  it("seeds the form with the current user's name and email", () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal("fetch", fetchMock)
 
     renderWithLocale(<ProfilePanel />)
 
@@ -68,9 +63,9 @@ describe("ProfilePanel", () => {
     expect((screen.getByLabelText(/email/i) as HTMLInputElement).value).toBe(
       "x@example.com",
     )
-    await waitFor(() =>
-      expect(screen.getByText("12")).toBeInTheDocument(),
-    )
+    // This screen is about who you are, not how much you have written: the
+    // story count moved to My stories, and nothing is fetched on mount.
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it("PATCHes the profile and pushes the new user into the auth context on save", async () => {
@@ -83,11 +78,9 @@ describe("ProfilePanel", () => {
       name: "Renamed",
       avatarUrl: null,
     }
+    // The PATCH is the only request this screen makes.
     const fetchMock = vi
       .fn()
-      // First call: GET /stories/count.
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ count: 0 }) })
-      // Second call: PATCH /profile/me.
       .mockResolvedValueOnce({ ok: true, json: async () => updated })
     vi.stubGlobal("fetch", fetchMock)
 
@@ -103,15 +96,13 @@ describe("ProfilePanel", () => {
       expect(applyLocalUser).toHaveBeenCalledWith(updated)
     })
 
-    const patchCall = fetchMock.mock.calls[1]
+    const patchCall = fetchMock.mock.calls[0]
     expect(patchCall?.[0]).toBe("http://localhost:8000/api/profile/me")
     expect((patchCall?.[1] as RequestInit).method).toBe("PATCH")
   })
 
   it("blocks save and shows an error when the email is malformed", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ count: 0 }) })
+    const fetchMock = vi.fn()
     vi.stubGlobal("fetch", fetchMock)
 
     renderWithLocale(<ProfilePanel />)
@@ -125,7 +116,7 @@ describe("ProfilePanel", () => {
       screen.getByRole("button", { name: /save changes/i }),
     ).toBeDisabled()
     expect(await screen.findByRole("alert")).toHaveTextContent(/valid email/i)
-    // Only the initial story-count GET ran; no PATCH attempted.
-    expect(fetchMock).toHaveBeenCalledTimes(1)
+    // No PATCH attempted — and nothing else, since the screen fetches on save only.
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 })

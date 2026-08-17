@@ -7,7 +7,7 @@ import {
   useState,
   type ChangeEvent,
 } from "react"
-import { BookOpen, Loader2, Upload, User as UserIcon } from "lucide-react"
+import { Loader2, Upload, User as UserIcon } from "lucide-react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label"
 
 import { isValidEmail, useAuth } from "@/lib/auth"
 import { useTranslations } from "@/lib/i18n"
-import { fetchStoryCount, updateProfile } from "@/lib/flowfic/profile-api"
+import { updateProfile } from "@/lib/flowfic/profile-api"
 
 // Cap on the picture file size we'll accept, in bytes. Pictures end up as a
 // data: URL stored verbatim in the users table (`picture` column), so the
@@ -45,7 +45,6 @@ export function ProfilePanel({ onProfileUpdated }: Props) {
   const [name, setName] = useState(user?.name ?? "")
   const [email, setEmail] = useState(user?.email ?? "")
   const [picture, setPicture] = useState<string | null>(user?.avatarUrl ?? null)
-  const [storyCount, setStoryCount] = useState<number | null>(null)
   const [pictureError, setPictureError] = useState<string | null>(null)
   const [status, setStatus] = useState<Status>("idle")
 
@@ -57,20 +56,6 @@ export function ProfilePanel({ onProfileUpdated }: Props) {
     setEmail(user?.email ?? "")
     setPicture(user?.avatarUrl ?? null)
   }, [user])
-
-  // Pull the story count once the user is known.
-  useEffect(() => {
-    let cancelled = false
-    void (async () => {
-      const token = await getAccessToken()
-      if (token === null || cancelled) return
-      const c = await fetchStoryCount(token)
-      if (!cancelled) setStoryCount(c)
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [getAccessToken])
 
   function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -243,13 +228,9 @@ export function ProfilePanel({ onProfileUpdated }: Props) {
         </div>
       </div>
 
-      <div className="bg-muted/40 flex items-center gap-3 rounded-md border p-3 text-sm">
-        <BookOpen className="text-muted-foreground size-4" aria-hidden />
-        <span className="font-medium">{t.profile.storyCountLabel}</span>
-        <span className="text-muted-foreground ml-auto tabular-nums">
-          {storyCount === null ? "…" : storyCount}
-        </span>
-      </div>
+      {/* No story count here: it belongs to My stories, which is where the
+          library itself lives. This screen is about who you are, not how much
+          you have written. */}
 
       <div className="flex items-center justify-end gap-3">
         {status === "error" ? (
