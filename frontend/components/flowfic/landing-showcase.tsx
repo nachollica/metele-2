@@ -53,7 +53,7 @@ const SHOWCASE_SPACING =
 // the progress face's four stacked boxes. 45rem is what that face needs there:
 // its two rows split the pane evenly, so each box gets a quarter of it, and at
 // anything less the level pair outgrows its share.
-const PANE_SHAPE = "h-[45rem] sm:aspect-[3/2] sm:h-auto"
+export const PANE_SHAPE = "h-[45rem] sm:aspect-[3/2] sm:h-auto"
 
 type Props = {
   face: ShowcaseFace

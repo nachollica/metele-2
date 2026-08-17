@@ -4,12 +4,14 @@ import { Fragment, type ReactNode } from "react"
 
 import { useAuth } from "@/lib/auth"
 import { SECTION_TITLE } from "@/lib/text-styles"
+import { cn } from "@/lib/utils"
 import { useTranslations } from "@/lib/i18n"
 import { emptyOverview, zeroWeek } from "@/lib/flowfic/gamification"
 
 import { AchievementsSection } from "./achievements-section"
 import { ChallengesSection } from "./challenges-section"
 import { EmptyHint, Panel, SectionHeader, ShowAllButton } from "./dashboard-widgets"
+import { PANE_SHAPE } from "./landing-showcase"
 import { useGamification } from "./gamification-context"
 import {
   AchievementHighlights,
@@ -57,6 +59,28 @@ export function ProgressSection({ preview = false, flush = false, onShowAll }: P
   const withChart = ov.chart.length > 0 ? ov : { ...ov, chart: zeroWeek() }
   const list = achievements ?? []
 
+  // The block itself: two equal rows, identical on both screens. A GRID of two
+  // rows rather than a flex column — as a flex column the top row was `flex-1`
+  // and the weekly card was not, so the top row ate every spare pixel and the
+  // halves came out uneven. `grid-rows-2` makes 50/50 a property of the
+  // container instead of something each child has to opt into.
+  const block = isAnonymous ? (
+    <EmptyHint className="py-6">{t.dashboard.signInHint}</EmptyHint>
+  ) : (
+    <div className="grid min-h-0 flex-1 grid-rows-2 gap-3">
+      {/* The row's column count is explicit, because a stacked `auto` row let
+          the chart (a `flex-1` plot in a `min-h-0` column) resolve to zero and
+          collapse its card to the heading. 2/5 and 3/5 rather than halves: the
+          level pair is two figures and the achievements are three cards, so an
+          even split left one cramped and the other airy. */}
+      <div className="grid min-h-0 grid-rows-2 gap-3 sm:grid-cols-5 sm:grid-rows-1">
+        <ProgressHighlights overview={withChart} className="sm:col-span-2" />
+        <AchievementHighlights achievements={list} className="sm:col-span-3" />
+      </div>
+      <WeeklySummaryCard overview={withChart} compact className="min-h-0" />
+    </div>
+  )
+
   if (preview) {
     // Flush drops the card chrome (the showcase pane already supplies it) and,
     // with it, the wrapper element — so this column is the direct child of that
@@ -77,50 +101,32 @@ export function ProgressSection({ preview = false, flush = false, onShowAll }: P
             ) : null
           }
         />
-        {isAnonymous ? (
-          <EmptyHint className="py-6">{t.dashboard.signInHint}</EmptyHint>
-        ) : (
-          <div className="flex min-h-0 flex-1 flex-col gap-3">
-            {/* Two rows splitting the pane evenly. The row's column count is
-                explicit, because a stacked `auto` row let the chart (a `flex-1`
-                plot in a `min-h-0` column) resolve to zero and collapse its card
-                to the heading. 2/5 and 3/5 rather than halves: the level pair is
-                two figures and the achievements are three cards, so an even
-                split left one cramped and the other airy. */}
-            <div className="grid min-h-0 flex-1 grid-rows-2 gap-3 sm:grid-cols-5 sm:grid-rows-1">
-              <ProgressHighlights overview={withChart} className="sm:col-span-2" />
-              <AchievementHighlights achievements={list} className="sm:col-span-3" />
-            </div>
-            <WeeklySummaryCard overview={withChart} compact />
-          </div>
-        )}
+        {block}
       </Wrapper>
     )
   }
 
-  // Full screen: the landing's four parts at the top, unconstrained — the same
-  // components, so the two screens can never drift — then the two full
-  // subsections underneath. Reached only when signed in (Show all / the menu
-  // links are gated), but the subsections keep their own anonymous guards if
-  // that ever changes.
+  // Full screen: the same block in the same shape, then the two subsections in
+  // full. Reached only when signed in (Show all / the menu links are gated), but
+  // the subsections keep their own anonymous guards if that ever changes.
   return (
     <div className="flex flex-col gap-8">
-      {/* A real heading, not an `aria-label`: the cards below carry `h3`
-          overlines, so without an `h2` here the screen jumped from its `h1`
-          straight past a level. `DetailSubsection` names its own the same way,
-          which is what keeps all three siblings on one rung. */}
-      <DetailSubsection title={t.nav.stats}>
-        {/* `lg` here where the landing preview unstacks at `sm` — the same
-            components, deliberately different. The preview has to match a pane
-            that becomes 3:2 at `sm`, so it unstacks when the pane does. This
-            screen is unconstrained, so the pair stays stacked longer and each
-            half keeps a readable width on a tablet. */}
-        <div className="grid gap-4 lg:grid-cols-5">
-          <ProgressHighlights overview={withChart} className="lg:col-span-2" />
-          <AchievementHighlights achievements={list} className="lg:col-span-3" />
-        </div>
-        <WeeklySummaryCard overview={withChart} />
-      </DetailSubsection>
+      {/* Deliberately NOT a `DetailSubsection` like the two below it, and this
+          is the one place on a detail screen that wears a fixed shape.
+          `PANE_SHAPE` + `Panel`'s `p-5` + a `SectionHeader` reproduce the
+          showcase pane exactly, and both screens put this inside the same
+          `ContentColumn` — so the box is the same WIDTH on both, and an
+          identical shape therefore makes it the same HEIGHT on both, at every
+          viewport, with no transcribed pixel constants. That is what keeps the
+          sub-cards the same size here as on the landing.
+
+          The cost, stated plainly: this screen no longer spends its extra room
+          on these three cards. It cannot — the landing's pane is what fixes the
+          proportions, and matching them means adopting its ceiling. */}
+      <Panel className={cn(PANE_SHAPE, "flex flex-col")}>
+        <SectionHeader title={t.nav.stats} />
+        {block}
+      </Panel>
 
       <DetailSubsection title={t.nav.achievements}>
         <AchievementsSection />
