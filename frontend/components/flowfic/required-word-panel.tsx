@@ -4,6 +4,7 @@ import { Sparkles } from "lucide-react"
 
 import { cn, clamp01 } from "@/lib/utils"
 import { useTranslations } from "@/lib/i18n"
+import { panelVariants } from "./dashboard-widgets"
 
 type Props = {
   /** Current required word, or null when none is active. */
@@ -33,7 +34,10 @@ export function RequiredWordPanel({ word, useWordIn, useWordTotal }: Props) {
       aria-label={t.game.requiredWordHeader}
       aria-live="polite"
       className={cn(
-        "bg-card text-card-foreground flex min-h-16 items-center gap-3 rounded-md border px-4 py-2.5 shadow-sm transition-colors",
+        panelVariants({ padding: "none" }),
+        // Its own compact padding, not a Panel step: this is a bar inside the
+        // game HUD, where a card's inset would push the editor down the page.
+        "flex min-h-16 items-center gap-3 px-4 py-2.5 transition-colors",
         word ? "border-primary/40" : "border-border",
       )}
     >

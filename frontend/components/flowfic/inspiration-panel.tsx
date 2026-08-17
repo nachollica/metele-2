@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils"
 import { useLocale, useTranslations } from "@/lib/i18n"
 import { quoteBlocks, quoteTitle, type Quote } from "@/lib/flowfic/quotes"
 import { useInspiration, type InspirationState } from "@/lib/flowfic/inspiration"
+import { panelVariants } from "./dashboard-widgets"
 
 // How fast the wheel zooms. Multiplicative per wheel delta so it feels even
 // across the range.
@@ -221,7 +222,8 @@ export function InspirationPane({ className }: { className?: string }) {
     return (
       <div
         className={cn(
-          "bg-card text-card-foreground h-full w-full overflow-hidden rounded-2xl border shadow-sm",
+          panelVariants({ padding: "none" }),
+          "h-full w-full overflow-hidden",
           className,
         )}
       >

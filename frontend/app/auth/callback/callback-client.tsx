@@ -6,6 +6,8 @@ import { Loader2, AlertTriangle } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { useTranslations } from "@/lib/i18n"
+import { panelVariants } from "@/components/flowfic/dashboard-widgets"
+import { cn } from "@/lib/utils"
 
 // Auth0Provider's `onRedirectCallback` runs as soon as the SDK finishes the
 // code+state exchange and pushes the user back to the configured returnTo
@@ -25,7 +27,12 @@ export function CallbackClient() {
 
   return (
     <main className="bg-background text-foreground flex min-h-dvh items-center justify-center p-6">
-      <div className="bg-card flex max-w-sm flex-col items-center gap-4 rounded-lg border p-6 text-center shadow-sm">
+      <div
+        className={cn(
+          panelVariants({ padding: "lg" }),
+          "flex max-w-sm flex-col items-center gap-4 text-center",
+        )}
+      >
         {error === null ? (
           <>
             <Loader2 className="text-primary size-8 animate-spin" aria-hidden />

@@ -12,6 +12,7 @@ import { type Section } from "./dashboard-nav"
 import { InspirationDisplay } from "./inspiration-panel"
 import { ProgressSection } from "./progress-section"
 import { StoriesSection } from "./stories-section"
+import { panelVariants } from "./dashboard-widgets"
 
 /** Which face the pane below the selectors is showing. */
 export type ShowcaseFace = "progress" | "inspiration" | "stories"
@@ -161,7 +162,8 @@ export function LandingShowcase({
         role="group"
         aria-label={t.dashboard.showcasePaneLabel.replace("{name}", faceName)}
         className={cn(
-          "bg-card text-card-foreground w-full overflow-hidden rounded-2xl border shadow-sm",
+          panelVariants({ padding: "none" }),
+          "w-full overflow-hidden",
           PANE_SHAPE,
         )}
       >

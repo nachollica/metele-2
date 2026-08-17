@@ -4,6 +4,7 @@
 // All copy is passed in already-localized so these stay dumb and testable.
 
 import { type ReactNode } from "react"
+import { cva, type VariantProps } from "class-variance-authority"
 import {
   ArrowDown,
   ArrowUp,
@@ -94,16 +95,41 @@ export function ProgressMeter({
 
 // ---- Section card + header ------------------------------------------------
 
+/**
+ * The app's card surface, as one recipe.
+ *
+ * The split between what is fixed and what is a variant is deliberate:
+ * **decoration is shared, layout is parameterised.** Radius, border, shadow and
+ * background are the same everywhere — nine surfaces used to spell them across
+ * three radii for one visual idea, and nothing was gained by the difference.
+ * Padding is not, because it moves what is around it: the game HUD at `p-4` and
+ * the profile card at `p-6` are different densities on purpose, and the panes
+ * that hold a full-bleed image take none at all.
+ *
+ * Exported as `panelVariants` too, for the surfaces that are not a `<div>` — a
+ * `<section>` with an `aria-label`, mostly. Same recipe, caller's tag.
+ */
+export const panelVariants = cva("bg-card text-card-foreground rounded-2xl border shadow-sm", {
+  variants: {
+    padding: {
+      /** Full-bleed: the content reaches the border (an image, a chart pane). */
+      none: "",
+      sm: "p-4",
+      md: "p-5",
+      lg: "p-6",
+    },
+  },
+  defaultVariants: { padding: "md" },
+})
+
 export function Panel({
   children,
   className,
+  padding,
   ...rest
-}: React.HTMLAttributes<HTMLDivElement>) {
+}: React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof panelVariants>) {
   return (
-    <div
-      className={cn("bg-card text-card-foreground rounded-2xl border p-5 shadow-sm", className)}
-      {...rest}
-    >
+    <div className={cn(panelVariants({ padding }), className)} {...rest}>
       {children}
     </div>
   )

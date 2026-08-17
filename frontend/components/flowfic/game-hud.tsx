@@ -8,6 +8,7 @@ import { cn, clamp01 } from "@/lib/utils"
 import { useTranslations } from "@/lib/i18n"
 import { formatSeconds } from "@/lib/flowfic/format"
 import { RequiredWordPanel } from "./required-word-panel"
+import { panelVariants } from "./dashboard-widgets"
 
 type Props = {
   /** Seconds remaining before idle timeout fires, or null when it's disabled. */
@@ -115,7 +116,7 @@ export function GameHud({
   return (
     <section
       aria-label={t.app.title}
-      className="bg-card text-card-foreground rounded-lg border p-4 shadow-sm"
+      className={panelVariants({ padding: "sm" })}
     >
       <PauseAnnouncer paused={paused} />
       {requiredWordsEnabled ? (

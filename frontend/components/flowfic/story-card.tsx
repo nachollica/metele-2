@@ -29,7 +29,7 @@ import { deriveTitle, formatCount, storyVisual } from "@/lib/flowfic/gamificatio
 import type { Story } from "@/lib/flowfic/stories-api"
 import { FIELD_LABEL, HINT, ITEM_TITLE, MICRO } from "@/lib/text-styles"
 
-import { IconChip } from "./dashboard-widgets"
+import { IconChip, panelVariants } from "./dashboard-widgets"
 
 function readNumber(obj: Record<string, unknown>, key: string): number {
   const v = obj[key]
@@ -114,7 +114,8 @@ export function StoryCard({ story, onSelect, onDelete, onUpdateTitle, fill = fal
   return (
     <div
       className={cn(
-        "group bg-card relative flex gap-4 overflow-hidden rounded-2xl border p-4 shadow-sm transition hover:shadow-md",
+        panelVariants({ padding: "sm" }),
+        "group relative flex gap-4 overflow-hidden transition hover:shadow-md",
         fill && "h-full",
       )}
     >

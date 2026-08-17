@@ -18,6 +18,8 @@ import { isValidEmail, useAuth } from "@/lib/auth"
 import { useTranslations } from "@/lib/i18n"
 import { updateProfile } from "@/lib/flowfic/profile-api"
 import { HINT } from "@/lib/text-styles"
+import { panelVariants } from "./dashboard-widgets"
+import { cn } from "@/lib/utils"
 
 // Cap on the picture file size we'll accept, in bytes. Pictures end up as a
 // data: URL stored verbatim in the users table (`picture` column), so the
@@ -135,7 +137,7 @@ export function ProfilePanel() {
     // stays aligned with the other inner pages.
     <section
       aria-label={t.profile.title}
-      className="bg-card text-card-foreground flex w-full flex-col gap-6 rounded-lg border p-6 shadow-sm"
+      className={cn(panelVariants({ padding: "lg" }), "flex w-full flex-col gap-6")}
     >
       <p className={HINT}>{t.profile.description}</p>
 

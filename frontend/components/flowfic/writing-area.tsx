@@ -5,6 +5,7 @@ import { type ChangeEvent, type Ref } from "react"
 import { cn } from "@/lib/utils"
 import { useTranslations } from "@/lib/i18n"
 import type { MatchedRange } from "@/lib/flowfic/types"
+import { panelVariants } from "./dashboard-widgets"
 
 type Props = {
   ref?: Ref<HTMLTextAreaElement>
@@ -48,7 +49,8 @@ export function WritingArea({
   return (
     <div
       className={cn(
-        "bg-card focus-within:ring-ring/40 relative h-full w-full overflow-hidden rounded-lg border shadow-sm transition-shadow focus-within:ring-4",
+        panelVariants({ padding: "none" }),
+        "focus-within:ring-ring/40 relative h-full w-full overflow-hidden transition-shadow focus-within:ring-4",
         paused && "bg-muted",
       )}
     >
