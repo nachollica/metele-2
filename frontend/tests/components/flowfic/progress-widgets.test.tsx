@@ -1,7 +1,11 @@
 import { screen } from "@testing-library/react"
 import { describe, expect, it } from "vitest"
 
-import { AchievementsStrip, ProgressHighlights } from "@/components/flowfic/progress-widgets"
+import {
+  AchievementHighlights,
+  highlightAchievements,
+  ProgressHighlights,
+} from "@/components/flowfic/progress-widgets"
 import { emptyOverview, type Achievement, type Overview } from "@/lib/flowfic/gamification"
 
 import { renderWithLocale } from "@/tests/utils"
@@ -14,10 +18,41 @@ function overview(over: Partial<Overview> = {}): Overview {
   return { ...emptyOverview(), ...over }
 }
 
-describe("AchievementsStrip", () => {
-  it("names every badge, marking the locked ones with their progress", () => {
+describe("highlightAchievements", () => {
+  // There is no unlock time in the payload, so "recent" means latest-earned in
+  // the backend's fixed easiest-to-hardest order — the closest honest reading.
+  it("puts the latest unlocked first, newest of those leading", () => {
+    const picked = highlightAchievements([
+      achievement("first_session", { unlocked: true, progress: 1 }),
+      achievement("streak_7", { unlocked: true, progress: 1 }),
+      achievement("wordsmith", { unlocked: true, progress: 1 }),
+      achievement("marathon", { progress: 0.4 }),
+    ])
+    expect(picked.map((a) => a.id)).toEqual(["wordsmith", "streak_7", "first_session"])
+  })
+
+  it("fills a shortfall with the locked ones closest to unlocking", () => {
+    const picked = highlightAchievements([
+      achievement("first_session", { unlocked: true, progress: 1 }),
+      achievement("wordsmith", { progress: 0.25 }),
+      achievement("marathon", { progress: 0.8 }),
+      achievement("night_owl", { progress: 0.1 }),
+    ])
+    expect(picked.map((a) => a.id)).toEqual(["first_session", "marathon", "wordsmith"])
+  })
+
+  it("never returns more than the three the card has room for", () => {
+    const picked = highlightAchievements(
+      ["a", "b", "c", "d", "e"].map((id) => achievement(id, { unlocked: true, progress: 1 })),
+    )
+    expect(picked).toHaveLength(3)
+  })
+})
+
+describe("AchievementHighlights", () => {
+  it("names each badge, marking the locked ones with their progress", () => {
     renderWithLocale(
-      <AchievementsStrip
+      <AchievementHighlights
         achievements={[
           achievement("first_session", { unlocked: true, current: 1, target: 1, progress: 1 }),
           achievement("wordsmith", { current: 2500, target: 10000, progress: 0.25 }),
@@ -25,38 +60,14 @@ describe("AchievementsStrip", () => {
       />,
     )
     // An unlocked badge is named plainly; a locked one carries how far along it
-    // is, so the row is readable without colour.
+    // is, so the card is readable without colour.
     expect(screen.getByRole("img", { name: "First step" })).toBeInTheDocument()
     expect(screen.getByRole("img", { name: "Wordsmith — 2500/10000" })).toBeInTheDocument()
     expect(screen.getByText("1 of 2 unlocked")).toBeInTheDocument()
   })
 
-  it("calls out the locked achievement closest to unlocking", () => {
-    renderWithLocale(
-      <AchievementsStrip
-        achievements={[
-          achievement("first_session", { unlocked: true, progress: 1 }),
-          achievement("wordsmith", { progress: 0.25 }),
-          // Furthest along of the locked ones, though listed last.
-          achievement("marathon", { current: 4, target: 5, progress: 0.8 }),
-        ]}
-      />,
-    )
-    expect(screen.getByText("Next up: Marathoner")).toBeInTheDocument()
-    expect(screen.getByText("4/5")).toBeInTheDocument()
-  })
-
-  it("drops the next-up line once everything is unlocked", () => {
-    renderWithLocale(
-      <AchievementsStrip
-        achievements={[achievement("first_session", { unlocked: true, progress: 1 })]}
-      />,
-    )
-    expect(screen.queryByText(/Next up/)).toBeNull()
-  })
-
   it("renders nothing at all before the achievements load", () => {
-    const { container } = renderWithLocale(<AchievementsStrip achievements={[]} />)
+    const { container } = renderWithLocale(<AchievementHighlights achievements={[]} />)
     expect(container).toBeEmptyDOMElement()
   })
 })

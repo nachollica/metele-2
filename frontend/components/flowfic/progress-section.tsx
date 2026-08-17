@@ -10,7 +10,7 @@ import { ChallengesSection } from "./challenges-section"
 import { EmptyHint, Panel, SectionHeader, ShowAllButton } from "./dashboard-widgets"
 import { useGamification } from "./gamification-context"
 import {
-  AchievementsStrip,
+  AchievementHighlights,
   ProgressHighlights,
   TimelineCard,
   WeeklySummaryCard,
@@ -32,15 +32,14 @@ type Props = {
  * Both faces are built from the same parts (see `progress-widgets.tsx`), each
  * taking a `compact` flag rather than being written twice:
  *
- *   preview — packed into the showcase's fixed 4:3 pane. The highlights and the
- *     achievements strip take their natural height at the ends; the timeline and
- *     the weekly summary share the row between them and split whatever is left,
- *     so the column always fills the pane exactly and never scrolls. On a phone
- *     the pair stacks and the achievements strip drops — the height is better
- *     spent on the timeline, and the strip is a tap away on the detail screen.
+ *   preview — packed into the showcase's fixed 4:3 pane as two rows of two:
+ *     level + streak beside the achievement highlights on top, the timeline
+ *     beside the weekly summary below. The rows split the pane 4:3 between
+ *     them, so it always fills exactly and never scrolls. Each row stacks on a
+ *     phone.
  *
- *   full screen — the same parts unconstrained, then all the challenges and the
- *     complete statistics view.
+ *   full screen — the same four parts unconstrained, then all the challenges
+ *     and achievements.
  *
  * The "challenge of the day" is deliberately not here: the launcher's mode grid
  * already gives it a card, and repeating it cost the pane a third of its height.
@@ -81,18 +80,24 @@ export function ProgressSection({ preview = false, flush = false, onShowAll }: P
           <EmptyHint className="py-6">{t.dashboard.signInHint}</EmptyHint>
         ) : (
           <div className="flex min-h-0 flex-1 flex-col gap-3">
-            <ProgressHighlights overview={withChart} compact />
-            {/* The elastic middle: these two split whatever the ends leave —
-                side by side from `sm`, stacked below it. The row count is
-                explicit on purpose: left to `auto`, the stacked timeline sized
-                to its content, and its plot is `flex-1` inside a `min-h-0`
-                column, so it resolved to zero and the card collapsed to its
-                heading. Two equal rows give the chart a height to fill. */}
+            {/* Two rows of two. The top one gets the larger share: its cards
+                hold discrete badges that look adrift in too much space, while
+                the bottom row's chart is happy shorter — and an over-tall
+                timeline was exactly what left the weekly badges floating in a
+                half-empty box. Each row's column count is explicit, because a
+                stacked `auto` row let the chart (a `flex-1` plot in a `min-h-0`
+                column) resolve to zero and collapse its card to the heading. */}
+            {/* 2/5 and 3/5 rather than halves: the level pair is two figures
+                and the achievements are three cards, so an even split left one
+                cramped and the other airy. */}
+            <div className="grid min-h-0 flex-1 grid-rows-2 gap-3 sm:grid-cols-5 sm:grid-rows-1">
+              <ProgressHighlights overview={withChart} className="sm:col-span-2" />
+              <AchievementHighlights achievements={list} className="sm:col-span-3" />
+            </div>
             <div className="grid min-h-0 flex-1 grid-rows-2 gap-3 sm:grid-cols-2 sm:grid-rows-1">
               <TimelineCard overview={withChart} compact />
               <WeeklySummaryCard overview={withChart} compact />
             </div>
-            <AchievementsStrip achievements={list} className="hidden sm:flex" />
           </div>
         )}
       </Wrapper>
@@ -107,12 +112,14 @@ export function ProgressSection({ preview = false, flush = false, onShowAll }: P
   return (
     <div className="flex flex-col gap-8">
       <section className="flex flex-col gap-4" aria-label={t.nav.stats}>
-        <ProgressHighlights overview={withChart} />
+        <div className="grid gap-4 lg:grid-cols-5">
+          <ProgressHighlights overview={withChart} className="lg:col-span-2" />
+          <AchievementHighlights achievements={list} className="lg:col-span-3" />
+        </div>
         <div className="grid gap-4 lg:grid-cols-2">
           <TimelineCard overview={withChart} />
           <WeeklySummaryCard overview={withChart} />
         </div>
-        <AchievementsStrip achievements={list} />
       </section>
       <ChallengesSection />
     </div>

@@ -267,6 +267,24 @@ export function ShowAllButton({
 
 // ---- Stat tile ------------------------------------------------------------
 
+/** Tile sizes, smallest first. The scale is what ranks the figures on a screen
+ *  that shows several at once: "lg" is for the headline pair a section is built
+ *  around, "sm" for a row packed into a short box. */
+const STAT_TILE_SIZE = {
+  sm: { chip: "size-9", icon: "size-4", value: "text-xl", label: "text-xs" },
+  md: { chip: "size-11", icon: "size-5", value: "text-2xl", label: "text-sm" },
+  // "lg" eases off on a phone: at full size the pair plus its progress bar
+  // outgrew the box they share there. It stays the largest step at every width.
+  lg: {
+    chip: "size-12 sm:size-14",
+    icon: "size-6 sm:size-7",
+    value: "text-3xl sm:text-4xl",
+    label: "text-sm",
+  },
+} as const
+
+export type StatTileSize = keyof typeof STAT_TILE_SIZE
+
 export function StatTile({
   icon: Icon,
   tone = "green",
@@ -274,7 +292,7 @@ export function StatTile({
   label,
   delta,
   deltaPositive,
-  compact = false,
+  size = "md",
 }: {
   icon?: LucideIcon
   tone?: Tone
@@ -282,24 +300,16 @@ export function StatTile({
   label: string
   delta?: string | null
   deltaPositive?: boolean
-  /** Trim the chip and the figure so a row of these fits a short box — the
-   *  landing packs them into a pane that must not scroll. */
-  compact?: boolean
+  size?: StatTileSize
 }) {
+  const s = STAT_TILE_SIZE[size]
   return (
     <div className="flex flex-col items-center gap-1 text-center">
       {Icon ? (
-        <IconChip
-          icon={Icon}
-          tone={tone}
-          className={cn("mb-1", compact ? "size-9" : "size-11")}
-          iconClassName={compact ? "size-4" : "size-5"}
-        />
+        <IconChip icon={Icon} tone={tone} className={cn("mb-1", s.chip)} iconClassName={s.icon} />
       ) : null}
       <div className="flex items-baseline gap-1">
-        <span className={cn("font-extrabold tabular-nums", compact ? "text-xl" : "text-2xl")}>
-          {value}
-        </span>
+        <span className={cn("font-extrabold tabular-nums", s.value)}>{value}</span>
         {delta ? (
           <span
             className={cn(
@@ -311,7 +321,7 @@ export function StatTile({
           </span>
         ) : null}
       </div>
-      <span className={cn("text-muted-foreground", compact ? "text-xs" : "text-sm")}>{label}</span>
+      <span className={cn("text-muted-foreground", s.label)}>{label}</span>
     </div>
   )
 }
