@@ -127,6 +127,14 @@ The wand icon means "inspiration" everywhere in the app.
 
 The heading outline on a detail screen runs `h1` (top bar) → `h2` (`DetailSubsection`, or the stories count) → `h3` (`CardSubtitle`, which is a heading despite the overline styling) → `h4` (a badge inside a card). A card names itself by pointing its `<section aria-labelledby>` at its `CardSubtitle`'s `id` rather than repeating the string in an `aria-label`.
 
+### Shared primitives
+
+`components/flowfic/dashboard-widgets.tsx` holds the recipes the app reuses; reach for one before spelling a surface out. `panelVariants` / `Panel` (the card surface), `selectableCardVariants` (a card the player picks — a mode, a custom slot, a showcase circle), `ProgressMeter` (the *only* progress bar, including the game HUD's timers), `Spinner`, `ContentColumn`, `SectionHeader`, `CardSubtitle`, `StatTile`, `IconChip`. `components/ui/` keeps the Radix primitives; `Button`'s `icon-xs` size exists for chips that sit on another control, and `AlertDialogAction` takes a `variant` so a destructive confirmation does not hand-style its own red.
+
+One rule decides what a variant is: **decoration is shared, layout is parameterised.** `Panel` fixes radius, border, shadow and background but keeps padding a variant, because padding moves what is around it — the game HUD at `p-4` and the profile card at `p-6` are different densities on purpose, and the panes holding a full-bleed image take none. Converging a radius or a tint to remove a duplicate is fine and expected; converging a padding or a size that other elements are positioned against is not.
+
+The gamification palette has three forms in `lib/flowfic/gamification.ts` — `TONE_CHIP` (a filled badge), `TONE_BAR` (a meter fill), `TONE_TEXT` (a coloured word or figure). `ProgressMeter` additionally accepts `primary` and `destructive`, because a countdown running out is a semantic state rather than a palette colour.
+
 ### SPA routing, serving, and layout invariants
 
 These are load-bearing and have each regressed before. Do not undo them without reading why.
