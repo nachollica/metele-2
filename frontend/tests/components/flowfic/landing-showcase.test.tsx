@@ -85,7 +85,6 @@ function Harness({
       face={face}
       onChangeFace={setFace}
       onShowSection={onShowSection}
-      onNewStory={vi.fn()}
       stories={stories}
       storiesError={false}
       onViewStory={vi.fn()}

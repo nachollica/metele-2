@@ -1,37 +1,22 @@
 "use client"
 
 import { Fragment } from "react"
-import { Clock, Flame, Sparkles, Trophy } from "lucide-react"
 
 import { useAuth } from "@/lib/auth"
-import { useLocale, useTranslations } from "@/lib/i18n"
-import {
-  challengeText,
-  challengeVisual,
-  dailyIndex,
-  emptyOverview,
-  formatCount,
-  formatHoursMinutes,
-  zeroWeek,
-} from "@/lib/flowfic/gamification"
+import { useTranslations } from "@/lib/i18n"
+import { emptyOverview, zeroWeek } from "@/lib/flowfic/gamification"
 
 import { ChallengesSection } from "./challenges-section"
-import {
-  CardSubtitle,
-  EmptyHint,
-  FeaturedChallenge,
-  Panel,
-  SectionHeader,
-  ShowAllButton,
-  StatTile,
-} from "./dashboard-widgets"
+import { EmptyHint, Panel, SectionHeader, ShowAllButton } from "./dashboard-widgets"
 import { useGamification } from "./gamification-context"
-import { StatsSection } from "./stats-section"
-import { WeeklyChart } from "./weekly-chart"
+import {
+  AchievementsStrip,
+  ProgressHighlights,
+  TimelineCard,
+  WeeklySummaryCard,
+} from "./progress-widgets"
 
 type Props = {
-  /** Begin the new-story flow (from the challenge card's call to action). */
-  onNewStory: () => void
   /** Render the combined landing card instead of the full detail screen. */
   preview?: boolean
   /** Drop the preview's own card chrome — the showcase pane already supplies it. */
@@ -44,36 +29,35 @@ type Props = {
  * "My Progress" — the merged progress section (formerly Statistics, Challenges,
  * and Achievements).
  *
- * The landing preview folds three former cards into one, deduplicated: a Level +
- * Streak headline strip, the colourful "Challenge of the day" (kept vivid so it
- * still draws the eye), and a "Weekly summary" block that pairs the weekly chart
- * with this week's totals — the weekly numbers live in one place instead of
- * being split across a summary card and a stats card. Lifetime totals are left
- * to the full screen.
+ * Both faces are built from the same parts (see `progress-widgets.tsx`), each
+ * taking a `compact` flag rather than being written twice:
  *
- * The full screen is comprehensive: all challenges, then achievements, then the
- * complete statistics view (reusing the two section components as-is).
+ *   preview — packed into the showcase's fixed 4:3 pane. The highlights and the
+ *     achievements strip take their natural height at the ends; the timeline and
+ *     the weekly summary share the row between them and split whatever is left,
+ *     so the column always fills the pane exactly and never scrolls. On a phone
+ *     the pair stacks and the achievements strip drops — the height is better
+ *     spent on the timeline, and the strip is a tap away on the detail screen.
+ *
+ *   full screen — the same parts unconstrained, then all the challenges and the
+ *     complete statistics view.
+ *
+ * The "challenge of the day" is deliberately not here: the launcher's mode grid
+ * already gives it a card, and repeating it cost the pane a third of its height.
  */
-export function ProgressSection({
-  onNewStory,
-  preview = false,
-  flush = false,
-  onShowAll,
-}: Props) {
+export function ProgressSection({ preview = false, flush = false, onShowAll }: Props) {
   const t = useTranslations()
-  const locale = useLocale()
   const { status } = useAuth()
-  const { overview, challenges } = useGamification()
+  const { overview, achievements } = useGamification()
 
   const isAnonymous = status === "anonymous"
+  // Anonymous users and the first authenticated tick have nothing yet; the
+  // zeroed overview keeps every number rendering cleanly instead of blank.
+  const ov = overview ?? emptyOverview()
+  const withChart = ov.chart.length > 0 ? ov : { ...ov, chart: zeroWeek() }
+  const list = achievements ?? []
 
   if (preview) {
-    const ov = overview ?? emptyOverview()
-    const chart = ov.chart.length > 0 ? ov.chart : zeroWeek()
-    const list = challenges ?? []
-    // "Challenge of the day": rotate through the live set so it changes daily.
-    const featured = list.length > 0 ? list[dailyIndex(list.length)] : null
-
     // Flush drops the card chrome (the showcase pane already supplies it) and,
     // with it, the wrapper element — so this column is the direct child of that
     // fixed-shape pane and can fill it.
@@ -96,86 +80,41 @@ export function ProgressSection({
         {isAnonymous ? (
           <EmptyHint className="py-6">{t.dashboard.signInHint}</EmptyHint>
         ) : (
-          <div className="flex flex-col gap-5">
-            {/* Headline strip: level + current streak. */}
-            <div className="grid grid-cols-2 gap-4">
-              <Panel className="bg-muted/40 p-4 shadow-none">
-                <StatTile icon={Trophy} tone="amber" value={String(ov.level.level)} label={t.dashboard.level} />
-              </Panel>
-              <Panel className="bg-muted/40 p-4 shadow-none">
-                <StatTile icon={Flame} tone="orange" value={String(ov.streak)} label={t.dashboard.daysInARow} />
-              </Panel>
+          <div className="flex min-h-0 flex-1 flex-col gap-3">
+            <ProgressHighlights overview={withChart} compact />
+            {/* The elastic middle: these two split whatever the ends leave —
+                side by side from `sm`, stacked below it. The row count is
+                explicit on purpose: left to `auto`, the stacked timeline sized
+                to its content, and its plot is `flex-1` inside a `min-h-0`
+                column, so it resolved to zero and the card collapsed to its
+                heading. Two equal rows give the chart a height to fill. */}
+            <div className="grid min-h-0 flex-1 grid-rows-2 gap-3 sm:grid-cols-2 sm:grid-rows-1">
+              <TimelineCard overview={withChart} compact />
+              <WeeklySummaryCard overview={withChart} compact />
             </div>
-
-            {/* Challenge of the day (left) + weekly summary (right). Stacks on
-                mobile. */}
-            <div className="grid gap-5 lg:grid-cols-2">
-              {featured ? (
-                <div>
-                  <CardSubtitle>{t.dashboard.challengeOfDay}</CardSubtitle>
-                  {(() => {
-                    const v = challengeVisual(featured.id)
-                    const text = challengeText(t, featured.id)
-                    return (
-                      <FeaturedChallenge
-                        icon={v.icon}
-                        name={text.name}
-                        description={text.description}
-                        progress={featured.progress}
-                        completed={featured.completed}
-                        progressLabel={`${featured.current}/${featured.target}`}
-                        completedLabel={t.challenges.completed}
-                        ctaLabel={t.dashboard.writeNow}
-                        onCta={onNewStory}
-                      />
-                    )
-                  })()}
-                </div>
-              ) : null}
-
-              <div>
-                <CardSubtitle>{t.dashboard.weeklySummary}</CardSubtitle>
-                <div className="flex flex-col gap-4">
-                  <WeeklyChart data={chart} wordsLabel={t.dashboard.words} caption={t.dashboard.chartCaption} />
-                  <div className="grid grid-cols-3 gap-2">
-                    <StatTile
-                      icon={Sparkles}
-                      tone="green"
-                      value={formatCount(ov.weekly.sessions, locale)}
-                      label={t.dashboard.sessions}
-                    />
-                    <StatTile
-                      icon={Flame}
-                      tone="amber"
-                      value={formatCount(ov.weekly.words, locale)}
-                      label={t.dashboard.words}
-                    />
-                    <StatTile
-                      icon={Clock}
-                      tone="violet"
-                      value={formatHoursMinutes(ov.weekly.durationMs)}
-                      label={t.dashboard.totalTime}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
+            <AchievementsStrip achievements={list} className="hidden sm:flex" />
           </div>
         )}
       </Wrapper>
     )
   }
 
-  // Full screen: all challenges + achievements, then the complete statistics
-  // view. Reached only when signed in (Show all / the menu links are gated), but
-  // the reused sections keep their own anonymous guards if that ever changes.
+  // Full screen: the same parts at their natural height — which is the whole of
+  // the old statistics view, so there is no separate stats block any more — then
+  // all challenges and achievements. Reached only when signed in (Show all / the
+  // menu links are gated), but ChallengesSection keeps its own anonymous guard
+  // if that ever changes.
   return (
     <div className="flex flex-col gap-8">
-      <ChallengesSection />
-      <section className="flex flex-col gap-4">
-        <h2 className="text-base font-semibold">{t.nav.stats}</h2>
-        <StatsSection />
+      <section className="flex flex-col gap-4" aria-label={t.nav.stats}>
+        <ProgressHighlights overview={withChart} />
+        <div className="grid gap-4 lg:grid-cols-2">
+          <TimelineCard overview={withChart} />
+          <WeeklySummaryCard overview={withChart} />
+        </div>
+        <AchievementsStrip achievements={list} />
       </section>
+      <ChallengesSection />
     </div>
   )
 }

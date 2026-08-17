@@ -16,6 +16,7 @@ import {
   type TooltipProps,
 } from "recharts"
 
+import { cn } from "@/lib/utils"
 import { useLocale } from "@/lib/i18n"
 import { formatCount, type ChartPoint } from "@/lib/flowfic/gamification"
 
@@ -25,6 +26,9 @@ type Props = {
   wordsLabel: string
   /** Accessible caption describing what the chart shows. */
   caption: string
+  /** Take the parent's height instead of the default fixed one — the landing's
+   *  timeline card splits a fixed pane, so its plot has to shrink with it. */
+  fill?: boolean
 }
 
 type Row = { label: string; words: number; iso: string }
@@ -38,7 +42,7 @@ function weekdayLabel(iso: string, locale: string): string {
   }).format(date)
 }
 
-export function WeeklyChart({ data, wordsLabel, caption }: Props) {
+export function WeeklyChart({ data, wordsLabel, caption, fill = false }: Props) {
   const locale = useLocale()
   const rows: Row[] = data.map((p) => ({
     label: weekdayLabel(p.date, locale),
@@ -47,8 +51,8 @@ export function WeeklyChart({ data, wordsLabel, caption }: Props) {
   }))
 
   return (
-    <figure className="m-0">
-      <div className="h-40 w-full" aria-hidden="true">
+    <figure className={cn("m-0", fill && "flex min-h-0 flex-1 flex-col")}>
+      <div className={cn("w-full", fill ? "min-h-0 flex-1" : "h-40")} aria-hidden="true">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={rows} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
             <defs>
@@ -88,29 +92,35 @@ export function WeeklyChart({ data, wordsLabel, caption }: Props) {
         </ResponsiveContainer>
       </div>
 
-      {/* Accessible, non-visual equivalent of the plot. */}
+      {/* Accessible, non-visual equivalent of the plot. The table is WRAPPED in
+          the `sr-only` box rather than wearing the class itself: a table box
+          grows to its own min-content width whatever width is set on it, so the
+          hidden table escaped the 1px clip and gave the page a horizontal
+          scrollbar at phone width. Clipping it from a plain div holds. */}
       <figcaption className="sr-only">{caption}</figcaption>
-      <table className="sr-only">
-        <caption>{caption}</caption>
-        <thead>
-          <tr>
-            {rows.map((r) => (
-              <th key={r.iso} scope="col">
-                {r.label}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            {rows.map((r) => (
-              <td key={r.iso}>
-                {r.words} {wordsLabel}
-              </td>
-            ))}
-          </tr>
-        </tbody>
-      </table>
+      <div className="sr-only">
+        <table>
+          <caption>{caption}</caption>
+          <thead>
+            <tr>
+              {rows.map((r) => (
+                <th key={r.iso} scope="col">
+                  {r.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              {rows.map((r) => (
+                <td key={r.iso}>
+                  {r.words} {wordsLabel}
+                </td>
+              ))}
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </figure>
   )
 }

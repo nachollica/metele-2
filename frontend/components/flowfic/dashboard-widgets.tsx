@@ -28,11 +28,17 @@ export function IconChip({
   tone,
   className,
   iconClassName,
+  label,
 }: {
   icon: LucideIcon
   tone: Tone
   className?: string
   iconClassName?: string
+  /** Names the chip when it stands alone (an achievement badge in a row of
+   *  them) rather than decorating labelled text beside it. Doubles as the
+   *  hover tooltip, so the badge is identifiable by pointer and by screen
+   *  reader alike. */
+  label?: string
 }) {
   return (
     <div
@@ -41,6 +47,9 @@ export function IconChip({
         TONE_CHIP[tone],
         className,
       )}
+      role={label ? "img" : undefined}
+      aria-label={label}
+      title={label}
     >
       <Icon className={cn("size-5", iconClassName)} aria-hidden />
     </div>
@@ -265,6 +274,7 @@ export function StatTile({
   label,
   delta,
   deltaPositive,
+  compact = false,
 }: {
   icon?: LucideIcon
   tone?: Tone
@@ -272,12 +282,24 @@ export function StatTile({
   label: string
   delta?: string | null
   deltaPositive?: boolean
+  /** Trim the chip and the figure so a row of these fits a short box — the
+   *  landing packs them into a pane that must not scroll. */
+  compact?: boolean
 }) {
   return (
     <div className="flex flex-col items-center gap-1 text-center">
-      {Icon ? <IconChip icon={Icon} tone={tone} className="mb-1 size-11" iconClassName="size-5" /> : null}
+      {Icon ? (
+        <IconChip
+          icon={Icon}
+          tone={tone}
+          className={cn("mb-1", compact ? "size-9" : "size-11")}
+          iconClassName={compact ? "size-4" : "size-5"}
+        />
+      ) : null}
       <div className="flex items-baseline gap-1">
-        <span className="text-2xl font-extrabold tabular-nums">{value}</span>
+        <span className={cn("font-extrabold tabular-nums", compact ? "text-xl" : "text-2xl")}>
+          {value}
+        </span>
         {delta ? (
           <span
             className={cn(
@@ -289,7 +311,7 @@ export function StatTile({
           </span>
         ) : null}
       </div>
-      <span className="text-muted-foreground text-sm">{label}</span>
+      <span className={cn("text-muted-foreground", compact ? "text-xs" : "text-sm")}>{label}</span>
     </div>
   )
 }
@@ -382,79 +404,6 @@ export function ChallengeItem({
           </span>
         ) : (
           action
-        )}
-      </div>
-    </div>
-  )
-}
-
-// ---- Featured challenge (the colorful "challenge of the day") --------------
-
-/**
- * High-contrast, attention-grabbing challenge card for the landing "challenge of
- * the day". Unlike the muted `ChallengeItem`, it wears a bold violet→fuchsia
- * gradient with white content so it stands out among the neutral dashboard cards.
- */
-export function FeaturedChallenge({
-  icon: Icon,
-  name,
-  description,
-  progress,
-  completed,
-  progressLabel,
-  completedLabel,
-  ctaLabel,
-  onCta,
-}: {
-  icon: LucideIcon
-  name: string
-  description: string
-  progress: number
-  completed: boolean
-  progressLabel: string
-  completedLabel: string
-  ctaLabel: string
-  onCta: () => void
-}) {
-  const pct = Math.round(Math.max(0, Math.min(1, progress)) * 100)
-  return (
-    <div className="relative flex flex-col overflow-hidden rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-600 p-5 text-white shadow-md">
-      <Icon
-        className="pointer-events-none absolute -top-3 -right-3 size-24 text-white/15"
-        aria-hidden
-      />
-      <div className="mb-2 flex items-center gap-2">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white/20">
-          <Icon className="size-5" aria-hidden />
-        </span>
-        <div className="text-lg font-bold">{name}</div>
-      </div>
-      <p className="mb-3 text-sm leading-relaxed text-white/90">{description}</p>
-      <div
-        className="h-1.5 w-full overflow-hidden rounded-full bg-white/25"
-        role="progressbar"
-        aria-label={name}
-        aria-valuenow={pct}
-        aria-valuemin={0}
-        aria-valuemax={100}
-      >
-        <div className="h-full rounded-full bg-white transition-[width] duration-500" style={{ width: `${pct}%` }} />
-      </div>
-      <div className="mt-1.5 mb-3 text-xs font-medium text-white/80 tabular-nums">{progressLabel}</div>
-      <div className="mt-auto">
-        {completed ? (
-          <span className="inline-flex items-center gap-1.5 text-sm font-semibold">
-            <CircleCheckBig className="size-4" aria-hidden />
-            {completedLabel}
-          </span>
-        ) : (
-          <Button
-            type="button"
-            onClick={onCta}
-            className="w-full bg-white font-semibold text-violet-700 hover:bg-white/90"
-          >
-            {ctaLabel}
-          </Button>
         )}
       </div>
     </div>

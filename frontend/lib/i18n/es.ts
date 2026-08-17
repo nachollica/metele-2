@@ -298,6 +298,9 @@ export const es = {
     today: "Hoy",
     emptyStories: "Aún no hay historias — terminá una sesión para verla aquí.",
     progressTitle: "Tu progreso",
+    // Título del gráfico de palabras por día. Nombrado por lo que será: los
+    // botones de semana/mes lo cambiarán junto al resumen que tiene al lado.
+    timeline: "Cronología",
     thisWeek: "Esta semana",
     chartCaption: "Palabras escritas por día en los últimos 7 días.",
     wordsWritten: "Palabras escritas",
@@ -325,6 +328,9 @@ export const es = {
 
   achievements: {
     unlockedSummary: "{count} de {total} desbloqueados",
+    // El logro bloqueado más cerca de caer. No es "reciente": el backend no
+    // guarda cuándo se desbloqueó, así que la recencia sería una suposición.
+    nextUp: "Siguiente",
     items: {
       first_session: { name: "Primer paso", description: "Completá tu primera sesión" },
       streak_7: { name: "Escritor constante", description: "Escribí 7 días seguidos" },

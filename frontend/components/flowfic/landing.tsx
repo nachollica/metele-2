@@ -88,7 +88,6 @@ export function LandingHome({
         face={showcaseFace}
         onChangeFace={onChangeShowcaseFace}
         onShowSection={onShowSection}
-        onNewStory={onStart}
         stories={stories}
         storiesError={storiesError}
         onViewStory={onViewStory}

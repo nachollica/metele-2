@@ -586,7 +586,6 @@ function ScreenContent({
             section={screen.section}
             stories={stories}
             storiesError={storiesError}
-            onNewStory={onBackHome}
             onViewStory={onViewStory}
             onDeleteStory={onDeleteStory}
             onUpdateStoryTitle={onUpdateStoryTitle}
@@ -649,7 +648,6 @@ function SectionDetail({
   section,
   stories,
   storiesError,
-  onNewStory,
   onViewStory,
   onDeleteStory,
   onUpdateStoryTitle,
@@ -657,7 +655,6 @@ function SectionDetail({
   section: Section
   stories: Story[] | null
   storiesError: boolean
-  onNewStory: () => void
   onViewStory: (story: Story) => void
   onDeleteStory: (id: number) => Promise<boolean>
   onUpdateStoryTitle: (id: number, title: string | null) => Promise<boolean>
@@ -674,6 +671,6 @@ function SectionDetail({
         />
       )
     case "progress":
-      return <ProgressSection onNewStory={onNewStory} />
+      return <ProgressSection />
   }
 }

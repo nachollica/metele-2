@@ -294,6 +294,9 @@ export const en = {
     today: "Today",
     emptyStories: "No stories yet — finish a sprint to see it here.",
     progressTitle: "Your progress",
+    // Heading of the words-per-day chart. Named for what it will become: the
+    // week/month range buttons will drive it and the summary beside it together.
+    timeline: "Timeline",
     thisWeek: "This week",
     chartCaption: "Words written per day over the last 7 days.",
     wordsWritten: "Words written",
@@ -321,6 +324,9 @@ export const en = {
 
   achievements: {
     unlockedSummary: "{count} of {total} unlocked",
+    // The locked achievement closest to falling. Not "recent": the payload
+    // carries no unlock time, so recency would be a guess (see AchievementsStrip).
+    nextUp: "Next up",
     items: {
       first_session: { name: "First step", description: "Complete your first sprint" },
       streak_7: { name: "Consistent writer", description: "Write 7 days in a row" },

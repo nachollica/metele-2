@@ -24,16 +24,16 @@ const CIRCLE_SIZE = "size-24 sm:size-32 md:size-40"
 
 // The pane. Desktop takes the 4:3 the inspiration card always had; a phone
 // swaps it for a fixed height, because 4:3 at 375px wide is 281px — too short
-// for five story rows, and it would squash the progress face flat.
-const PANE_SHAPE = "h-[30rem] sm:aspect-[4/3] sm:h-auto"
+// for five story rows, and it would squash the progress face flat. 34rem is
+// what the progress face needs at that width once its halves stack: less, and
+// the weekly tiles outgrow their box and ride up over its heading.
+const PANE_SHAPE = "h-[34rem] sm:aspect-[4/3] sm:h-auto"
 
 type Props = {
   face: ShowcaseFace
   onChangeFace: (face: ShowcaseFace) => void
   /** Open an expanded subsection (from a face's "Show all"). */
   onShowSection: (section: Section) => void
-  /** Begin the new-story flow (the progress face's challenge CTA). */
-  onNewStory: () => void
   stories: Story[] | null
   storiesError: boolean
   onViewStory: (story: Story) => void
@@ -58,7 +58,6 @@ export function LandingShowcase({
   face,
   onChangeFace,
   onShowSection,
-  onNewStory,
   stories,
   storiesError,
   onViewStory,
@@ -140,12 +139,7 @@ export function LandingShowcase({
         ) : (
           <div className="flex size-full flex-col p-5">
             {face === "progress" ? (
-              <ProgressSection
-                preview
-                flush
-                onNewStory={onNewStory}
-                onShowAll={() => onShowSection("progress")}
-              />
+              <ProgressSection preview flush onShowAll={() => onShowSection("progress")} />
             ) : (
               <StoriesSection
                 preview
