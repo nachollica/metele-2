@@ -445,7 +445,7 @@ export function Dashboard() {
                 e.preventDefault()
                 confirmQuit()
               }}
-              className="bg-destructive text-white hover:bg-destructive/90"
+              variant="destructive"
             >
               {t.game.quitConfirm}
             </AlertDialogAction>

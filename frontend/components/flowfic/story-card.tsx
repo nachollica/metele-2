@@ -248,7 +248,7 @@ export function StoryCard({ story, onSelect, onDelete, onUpdateTitle, fill = fal
                 void handleConfirm()
               }}
               disabled={busy}
-              className="bg-destructive hover:bg-destructive/90 text-white"
+              variant="destructive"
             >
               {t.sidebar.deleteStoryConfirm}
             </AlertDialogAction>

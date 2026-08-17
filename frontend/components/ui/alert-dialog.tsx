@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
+import { type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 import { HINT, SECTION_TITLE } from "@/lib/text-styles"
@@ -119,13 +120,21 @@ function AlertDialogDescription({
   )
 }
 
+/**
+ * The affirmative button. Takes `variant` so a destructive confirmation can say
+ * so — all three call sites used to hand-style the red themselves, in two
+ * different class orders, and all three were missing the `dark:bg-destructive/60`
+ * step `buttonVariants` already carries.
+ */
 function AlertDialogAction({
   className,
+  variant,
   ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Action>) {
+}: React.ComponentProps<typeof AlertDialogPrimitive.Action> &
+  VariantProps<typeof buttonVariants>) {
   return (
     <AlertDialogPrimitive.Action
-      className={cn(buttonVariants(), className)}
+      className={cn(buttonVariants({ variant }), className)}
       {...props}
     />
   )

@@ -276,7 +276,7 @@ export function PresetGrid({ settings, mode, onApply, onStartChallenge }: Props)
                 void confirmDelete()
               }}
               disabled={deleteBusy}
-              className="bg-destructive text-white hover:bg-destructive/90"
+              variant="destructive"
             >
               {t.profile.customPresetDelete}
             </AlertDialogAction>
