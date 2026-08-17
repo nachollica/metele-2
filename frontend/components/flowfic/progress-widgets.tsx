@@ -38,6 +38,12 @@ const BOX = "bg-muted/40 flex flex-col rounded-xl border p-3 sm:p-4"
 /**
  * Level (with the bar toward the next one) and the current streak.
  *
+ * The anchor of the section, and tinted to say so: it borrows the brand green
+ * the launcher's "challenge of the day" cell wears, but as a wash behind the
+ * figures rather than that cell's solid fill. Loudest thing in the progress
+ * card, still clearly quieter than the one button on the page that starts a
+ * sprint — two solid primary fills stacked down the landing would compete.
+ *
  * Lifetime word and time totals are deliberately absent: those figures belong to
  * the weekly summary, where they mean "this week" and can move. A lifetime count
  * beside them read as a second, contradictory pair of the same two numbers.
@@ -56,7 +62,14 @@ export function ProgressHighlights({
   // the scale — everything else here (weekly figures, achievement badges) is
   // deliberately a step down from them.
   return (
-    <section className={cn(BOX, "min-h-0", className)} aria-label={t.dashboard.level}>
+    <section
+      className={cn(
+        BOX,
+        "border-primary/40 bg-primary/12 dark:bg-primary/20 min-h-0",
+        className,
+      )}
+      aria-label={t.dashboard.level}
+    >
       <div className="grid min-h-0 flex-1 grid-cols-2 content-center gap-3">
         {/* Level carries its own bar: the number says how far you have come,
             the bar how far to the next one. */}
