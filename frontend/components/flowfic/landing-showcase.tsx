@@ -12,7 +12,7 @@ import { type Section } from "./dashboard-nav"
 import { InspirationDisplay } from "./inspiration-panel"
 import { ProgressSection } from "./progress-section"
 import { StoriesSection } from "./stories-section"
-import { panelVariants } from "./dashboard-widgets"
+import { panelVariants, selectableCardVariants } from "./dashboard-widgets"
 
 /** Which face the pane below the selectors is showing. */
 export type ShowcaseFace = "progress" | "inspiration" | "stories"
@@ -226,11 +226,8 @@ function ShowcaseSelector({
       aria-label={label}
       className={cn(
         CIRCLE_SIZE,
-        "mx-auto flex aspect-square flex-col items-center justify-center gap-1 rounded-full border p-[14%] text-center transition-colors",
-        "hover:bg-accent/20 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
-        active
-          ? "border-highlight bg-highlight/20 ring-highlight/30 ring-1"
-          : "border-border bg-card",
+        selectableCardVariants({ shape: "circle", state: active ? "selected" : "idle" }),
+        "mx-auto gap-1",
       )}
     >
       <Icon

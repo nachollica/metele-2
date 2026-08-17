@@ -130,6 +130,43 @@ export function ProgressMeter({
   )
 }
 
+// ---- Selectable card ------------------------------------------------------
+
+/**
+ * A card the player picks: a game mode, a custom-mode slot, a showcase circle.
+ *
+ * Written out five times before this, and one copy had already drifted — the "+"
+ * add slot carried a different focus-ring width from the four cells beside it.
+ * The variants are the two things that actually differ: the outline (a rounded
+ * cell or a circle) and whether it is the current choice.
+ *
+ * Not used by the inline rename form, which wears the selected treatment while
+ * being a form container rather than a control — it must not light up on hover.
+ */
+export const selectableCardVariants = cva(
+  cn(
+    "flex flex-col items-center justify-center border text-center transition-colors",
+    "hover:bg-accent/20 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
+  ),
+  {
+    variants: {
+      shape: {
+        cell: "rounded-xl p-3",
+        /** A percentage inset, so the legend keeps clear of the curve at every
+         *  size — a fixed one that looks right at 206px crowds the edge at 106. */
+        circle: "aspect-square rounded-full p-[14%]",
+      },
+      state: {
+        idle: "border-border bg-card",
+        selected: "border-highlight bg-highlight/20 ring-highlight/30 ring-1",
+        /** A slot that can be filled but is not a choice yet. */
+        empty: "border-border border-dashed",
+      },
+    },
+    defaultVariants: { shape: "cell", state: "idle" },
+  },
+)
+
 // ---- Section card + header ------------------------------------------------
 
 /**

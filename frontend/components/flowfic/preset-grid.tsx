@@ -35,6 +35,8 @@ import {
   type PresetSettings,
 } from "@/lib/flowfic/types"
 
+import { selectableCardVariants } from "./dashboard-widgets"
+
 export type GridMode = "system" | "custom"
 
 type Props = {
@@ -369,11 +371,7 @@ export function PresetGrid({ settings, mode, onApply, onStartChallenge }: Props)
             onClick={() => startCreatingAt(i)}
             aria-label={t.settings.createPresetLabel}
             title={t.settings.createPresetTooltip}
-            className={cn(
-              CARD_SHAPE,
-              "border-border hover:bg-accent/20 focus-visible:ring-ring flex items-center justify-center rounded-xl border border-dashed p-3 text-center transition-colors",
-              "focus-visible:ring-2 focus-visible:outline-none",
-            )}
+            className={cn(CARD_SHAPE, selectableCardVariants({ state: "empty" }))}
           >
             <Plus className="text-muted-foreground size-7" strokeWidth={3} aria-hidden />
           </button>,
@@ -487,11 +485,8 @@ function PresetButton({
       aria-pressed={active}
       className={cn(
         CARD_SHAPE,
-        "flex flex-col items-center justify-center overflow-hidden rounded-xl border p-3 text-center transition-colors",
-        "hover:bg-accent/20 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
-        active
-          ? "border-highlight bg-highlight/20 ring-highlight/30 ring-1"
-          : "border-border bg-card",
+        selectableCardVariants({ state: active ? "selected" : "idle" }),
+        "overflow-hidden",
       )}
     >
       <span className={CARD_TEXT}>
@@ -601,11 +596,8 @@ function CustomPresetCard({
         onClick={onApply}
         aria-pressed={active}
         className={cn(
-          "flex size-full cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border p-3 text-center transition-colors",
-          "hover:bg-accent/20 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
-          active
-            ? "border-highlight bg-highlight/20 ring-highlight/30 ring-1"
-            : "border-border bg-card",
+          selectableCardVariants({ state: active ? "selected" : "idle" }),
+          "size-full cursor-pointer overflow-hidden",
         )}
       >
         <span className={CARD_TEXT}>
