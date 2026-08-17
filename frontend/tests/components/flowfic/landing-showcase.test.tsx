@@ -128,15 +128,19 @@ describe("LandingShowcase", () => {
     expect(screen.queryByText("Click here to get some inspiration")).toBeNull()
   })
 
-  it("picks an inspiration when selected with nothing to show", async () => {
+  it("fills an empty store as soon as its face is showing", () => {
+    authState.current = makeAuth()
+    const pick = mockStore({ status: "unset" })
+    renderWithLocale(<Harness initialFace="inspiration" />)
+    // No invitation to click: landing on the face IS the request.
+    expect(pick).toHaveBeenCalledOnce()
+  })
+
+  it("leaves an empty store alone while another face is showing", () => {
     authState.current = makeAuth()
     const pick = mockStore({ status: "unset" })
     renderWithLocale(<Harness initialFace="stories" />)
-
-    await userEvent.click(
-      screen.getByRole("button", { name: "Click here to get some inspiration" }),
-    )
-    expect(pick).toHaveBeenCalledOnce()
+    expect(pick).not.toHaveBeenCalled()
   })
 
   it("shows the existing pick when switching back, without re-rolling it", async () => {
@@ -145,7 +149,9 @@ describe("LandingShowcase", () => {
     renderWithLocale(<Harness initialFace="stories" />)
 
     // Switching faces must not throw the player's inspiration away.
-    await userEvent.click(screen.getByRole("button", { name: "Show me another inspiration" }))
+    await userEvent.click(
+      screen.getByRole("button", { name: "Click here to get some inspiration" }),
+    )
     expect(pick).not.toHaveBeenCalled()
   })
 
@@ -156,7 +162,7 @@ describe("LandingShowcase", () => {
 
     const circle = screen.getByRole("button", { name: "Show me another inspiration" })
     expect(circle).toHaveAttribute("aria-pressed", "true")
-    expect(screen.getByText("Click again for a new one")).toBeInTheDocument()
+    expect(screen.getByText("Click for another")).toBeInTheDocument()
 
     await userEvent.click(circle)
     expect(pick).toHaveBeenCalledOnce()

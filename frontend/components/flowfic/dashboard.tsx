@@ -81,7 +81,7 @@ export function Dashboard() {
   const [quitConfirmOpen, setQuitConfirmOpen] = useState(false)
   // Whether the in-game inspiration pane is expanded (desktop only).
   const [inspirationOpen, setInspirationOpen] = useState(true)
-  const { state: inspirationState } = useInspiration()
+  const { state: inspirationState, clear: clearInspiration } = useInspiration()
   const hasInspiration =
     inspirationState.status === "image" || inspirationState.status === "quote"
   // The pane is only up when there is something to put in it AND the player
@@ -197,7 +197,13 @@ export function Dashboard() {
 
   // "Start writing": start the sprint with the configured settings. Reached
   // from the launcher's Start button and its challenge card.
+  //
+  // The showcase decides whether the sprint gets an inspiration: starting with
+  // that circle selected carries the pick into the game, starting from any other
+  // face drops it. So the player asks for an inspiration by looking at one, and
+  // the pane never appears beside a session they didn't want it for.
   function startWriting() {
+    if (showcaseFace !== "inspiration") clearInspiration()
     engine.saveCurrentStoryIfNeeded()
     engine.startGame(engine.settings)
   }

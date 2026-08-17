@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect } from "react"
 import { ChartLine, NotebookPen, Wand2, type LucideIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -17,17 +18,41 @@ export type ShowcaseFace = "progress" | "inspiration" | "stories"
 
 export const SHOWCASE_FACES: readonly ShowcaseFace[] = ["progress", "inspiration", "stories"]
 
-// The circle, ~70% of the session dial's diameter at every breakpoint. Three of
-// the smallest still clear a 375px viewport with their gaps, which is why they
-// never wrap — the strip reads the same on a phone, just tighter.
-const CIRCLE_SIZE = "size-24 sm:size-32 md:size-40"
+// The strip mirrors the launcher's own grid — three equal columns, same gutter —
+// so each circle is centred on the column its counterpart above occupies. That
+// is what lines the left circle up with the session dial rather than shoving it
+// against the container edge, and it holds at any width, since the columns are
+// derived rather than a hardcoded inset.
+const STRIP_GRID = "grid grid-cols-3 gap-3 md:gap-5"
+
+// The circle: 90% of the session dial's diameter. The dial's size comes from the
+// launcher's fixed height, so it is a constant per breakpoint — `w-44` (176px)
+// while the pieces are stacked, and 229px once the `md` canvas takes over. On a
+// phone the column is narrower than either cap, so `w-full` wins and the three
+// circles fill the width, which is what we want there.
+const CIRCLE_SIZE = "w-full sm:max-w-[9.9rem] md:max-w-[12.875rem]"
+
+// Room around the strip, so the three circles read as their own band rather
+// than as an appendix to the launcher. The reference is the circle's own inset
+// from the container edge — the gap its column leaves beside it — mirrored
+// above. That inset is `(column − circle) / 2`, i.e.
+// `(((100% − 2×gap) / 3) − 12.875rem) / 2`, and the landing column already
+// contributes its own `gap-6` (1.5rem), so the padding here makes up the
+// difference: 3.8125rem − 1.5rem = 2.3125rem at the full 64rem measure, for
+// 61px in total. Spelled out rather than interpolated from the constants
+// above, because Tailwind only generates classes it can read literally in the
+// source. The gap *under* the strip is deliberately smaller — the pane belongs
+// to the circles, the launcher above does not.
+const SHOWCASE_SPACING =
+  "flex flex-col gap-5 pt-6 md:gap-8 md:pt-[calc(((100%_-_2.5rem)/3_-_12.875rem)/2_-_1.5rem)]"
 
 // The pane. Desktop takes the 4:3 the inspiration card always had; a phone
 // swaps it for a fixed height, because 4:3 at 375px wide is 281px — too short
-// for five story rows, and it would squash the progress face flat. 34rem is
-// what the progress face needs at that width once its halves stack: less, and
-// the weekly tiles outgrow their box and ride up over its heading.
-const PANE_SHAPE = "h-[34rem] sm:aspect-[4/3] sm:h-auto"
+// for five story rows, and it would squash the progress face flat. 45rem is
+// what the progress face needs at that width: all four of its boxes stack there
+// and the two rows split the pane evenly, so each box gets a quarter of it —
+// and at anything less the level pair outgrows its share.
+const PANE_SHAPE = "h-[45rem] sm:aspect-[4/3] sm:h-auto"
 
 type Props = {
   face: ShowcaseFace
@@ -70,25 +95,33 @@ export function LandingShowcase({
   const hasPick = state.status === "image" || state.status === "quote"
   const inspirationSelected = face === "inspiration"
 
-  // Selecting inspiration picks one when there is nothing to show; clicking it
-  // again re-rolls. Coming back to a pick that is already made just shows it —
-  // switching faces must not silently throw the player's inspiration away.
+  // Selecting the face IS asking for an inspiration, so an empty store fills
+  // itself rather than showing an invitation to click again. `unavailable` is
+  // terminal (both pools failed to load), so this cannot loop.
+  useEffect(() => {
+    if (inspirationSelected && state.status === "unset") pick()
+    // `pick` is a fresh closure each render; the status is what gates the call.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inspirationSelected, state.status])
+
+  // Clicking the selected circle re-rolls. Coming back to it from another face
+  // just shows what is already there — switching faces must not silently throw
+  // the player's inspiration away.
   function selectInspiration() {
     onChangeFace("inspiration")
-    if (!inspirationSelected && hasPick) return
-    pick()
+    if (inspirationSelected) pick()
   }
 
-  const inspirationLabel = hasPick
-    ? inspirationSelected
+  const inspirationLabel =
+    inspirationSelected && hasPick
       ? t.dashboard.inspirationTabAnother
       : t.dashboard.inspirationTabCurrent
-    : t.dashboard.inspirationTab
-  // The visible legend is short enough for a circle; the accessible name spells
-  // out what the click does.
-  const inspirationAction = hasPick
-    ? t.dashboard.inspirationAnother
-    : t.dashboard.inspirationPrompt
+  // The legend is trimmed to fit inside the circle; the accessible name spells
+  // out what the click actually does.
+  const inspirationAction =
+    inspirationSelected && hasPick
+      ? t.dashboard.inspirationAnother
+      : t.dashboard.inspirationPrompt
 
   const faceName =
     face === "progress"
@@ -98,12 +131,8 @@ export function LandingShowcase({
         : t.dashboard.inspirationTabCurrent
 
   return (
-    <section className="flex flex-col gap-5" aria-label={t.dashboard.showcaseLabel}>
-      <div
-        role="group"
-        aria-label={t.dashboard.showcaseLabel}
-        className="flex items-start justify-center gap-3 sm:gap-8"
-      >
+    <section className={SHOWCASE_SPACING} aria-label={t.dashboard.showcaseLabel}>
+      <div role="group" aria-label={t.dashboard.showcaseLabel} className={STRIP_GRID}>
         <ShowcaseSelector
           icon={ChartLine}
           legend={t.nav.progress}
@@ -160,10 +189,14 @@ export function LandingShowcase({
 }
 
 /**
- * One circular selector: an icon in the circle with its legend underneath, both
- * inside the button so the caption is part of the hit area and the accessible
- * name. Wears the mode cards' hover/selected treatment, since it is the same
- * kind of choice — only round.
+ * One circular selector: the button IS the circle, holding its icon with the
+ * legend under it. Wears the mode cards' hover/selected treatment, since it is
+ * the same kind of choice — only round.
+ *
+ * The inner padding is a percentage rather than a fixed inset, so the text keeps
+ * clear of the curve at every size: a circle's usable width shrinks fast as the
+ * circle does, and a fixed `p-4` that looks right at 206px pushes the legend
+ * into the edge at 106px.
  */
 function ShowcaseSelector({
   icon: Icon,
@@ -185,32 +218,28 @@ function ShowcaseSelector({
       onClick={onClick}
       aria-pressed={active}
       aria-label={label}
-      className="group focus-visible:ring-ring flex w-24 flex-col items-center gap-2 rounded-2xl focus-visible:ring-2 focus-visible:outline-none sm:w-32 md:w-40"
+      className={cn(
+        CIRCLE_SIZE,
+        "mx-auto flex aspect-square flex-col items-center justify-center gap-1 rounded-full border p-[14%] text-center transition-colors",
+        "hover:bg-accent/20 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
+        active
+          ? "border-highlight bg-highlight/20 ring-highlight/30 ring-1"
+          : "border-border bg-card",
+      )}
     >
-      <span
+      <Icon
         className={cn(
-          CIRCLE_SIZE,
-          "flex items-center justify-center rounded-full border transition-colors",
-          "group-hover:bg-accent/20",
-          active
-            ? "border-highlight bg-highlight/20 ring-highlight/30 ring-1"
-            : "border-border bg-card",
+          "size-6 shrink-0 transition-colors sm:size-8 md:size-10",
+          active ? "text-highlight" : "text-muted-foreground",
         )}
-      >
-        <Icon
-          className={cn(
-            "size-8 transition-colors sm:size-10 md:size-12",
-            active ? "text-highlight" : "text-muted-foreground",
-          )}
-          aria-hidden
-        />
-      </span>
+        aria-hidden
+      />
       {/* Clamped rather than truncated: the inspiration legend is a short
-          sentence and must stay readable across both languages. */}
+          phrase and must stay readable across both languages. */}
       <span
         className={cn(
-          "line-clamp-2 text-center text-xs font-semibold transition-colors sm:text-sm",
-          active ? "text-foreground" : "text-muted-foreground group-hover:text-foreground",
+          "line-clamp-2 text-[0.65rem] leading-tight font-semibold transition-colors sm:text-xs md:text-sm",
+          active ? "text-foreground" : "text-muted-foreground",
         )}
       >
         {legend}

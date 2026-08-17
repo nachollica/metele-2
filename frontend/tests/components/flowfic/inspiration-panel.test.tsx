@@ -37,11 +37,13 @@ function mockStore(state: InspirationState, pick = vi.fn()): ReturnType<typeof v
 describe("InspirationDisplay", () => {
   afterEach(() => vi.restoreAllMocks())
 
-  it("invites a first pick while unset, pointing at the control that picks", () => {
+  it("shows the spinner while unset, since a pick is already on its way", () => {
     mockStore({ status: "unset" })
     const { container } = renderWithLocale(<InspirationDisplay />)
 
-    expect(screen.getByText("Click here to get some inspiration")).toBeInTheDocument()
+    // Selecting the face fills an empty store, so `unset` is a frame or two in
+    // transit rather than a resting state needing its own invitation.
+    expect(screen.getByRole("status")).toBeInTheDocument()
     expect(container.querySelector("img")).toBeNull()
   })
 

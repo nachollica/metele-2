@@ -166,8 +166,10 @@ export function InspirationQuote({
  * circular selector above it, so a click in here must mean nothing — which is
  * also what leaves a quote's text selectable.
  *
- * Unset (or unavailable) shows the wand invitation, pointing at the control that
- * does the picking.
+ * There is no "nothing picked yet" face: selecting the inspiration circle fills
+ * an empty store straight away, so `unset` is a frame or two on the way to a
+ * pick and reads as the spinner. Only `unavailable` — both pools failed to load
+ * — is a resting state worth wording.
  */
 export function InspirationDisplay({ className }: { className?: string }) {
   const t = useTranslations()
@@ -180,18 +182,14 @@ export function InspirationDisplay({ className }: { className?: string }) {
           <FadeInImage src={state.image.img} alt={t.dashboard.inspirationAlt} />
         ) : state.status === "quote" ? (
           <InspirationQuote quote={state.quote} />
-        ) : state.status === "picking" ? (
-          <span role="status" className="flex size-full items-center justify-center">
-            <Loader2 className="text-primary size-8 animate-spin" aria-hidden />
-          </span>
-        ) : (
+        ) : state.status === "unavailable" ? (
           <span className="text-muted-foreground flex size-full flex-col items-center justify-center gap-3">
             <Wand2 className="text-primary size-10" aria-hidden />
-            <span className="text-sm font-medium">
-              {state.status === "unavailable"
-                ? t.dashboard.inspirationUnavailable
-                : t.dashboard.inspirationPrompt}
-            </span>
+            <span className="text-sm font-medium">{t.dashboard.inspirationUnavailable}</span>
+          </span>
+        ) : (
+          <span role="status" className="flex size-full items-center justify-center">
+            <Loader2 className="text-primary size-8 animate-spin" aria-hidden />
           </span>
         )}
       </CrossFade>

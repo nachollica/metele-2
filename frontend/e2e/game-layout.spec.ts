@@ -6,6 +6,11 @@ import { dismissWelcomeBeforeLoad, mockBackend } from "./fixtures"
 // pane is up. The regression this guards: with no inspiration picked at all,
 // only one of the two gutters rendered, so the column was shoved against the
 // opposite edge instead of being centred.
+//
+// The showcase decides whether a sprint gets an inspiration at all: starting
+// with that circle selected carries the pick into the game, starting from any
+// other face drops it. The landing opens on the inspiration face and fills it
+// straight away, so "no inspiration" now means picking a different circle first.
 test.use({ locale: "en-US" })
 
 const VIEWPORT = { width: 1280, height: 800 }
@@ -23,21 +28,22 @@ async function editorCentre(page: Page): Promise<number> {
   return Math.round(box.x + box.width / 2)
 }
 
-/** Reveal an inspiration on the home screen (50/50 image or quote — either
- *  gives the game a pane, which is all these assertions care about). The
- *  showcase's circular selector is what picks; the pane it fills is inert. */
-async function pickInspiration(page: Page) {
-  const circle = page.getByRole("button", { name: /inspiration/i })
-  await circle.scrollIntoViewIfNeeded()
-  await circle.click()
+/** Wait for the landing's default face to have filled itself with an
+ *  inspiration (50/50 image or quote — either gives the game a pane, which is
+ *  all these assertions care about). */
+async function awaitInspiration(page: Page) {
   await expect(page.getByRole("button", { name: /another inspiration/i })).toBeVisible()
 }
 
-test("with no inspiration picked, the game is centred and the margins are empty", async ({
+test("starting from another face leaves the game centred, with empty margins", async ({
   page,
 }) => {
   await page.goto("/")
-  // Straight to Start, exactly as a first-time player would.
+  await awaitInspiration(page)
+
+  // Look at something else, and the sprint is deliberately started without an
+  // inspiration — even though one was picked while the wand circle was up.
+  await page.getByRole("button", { name: "Recent stories" }).click()
   await page.getByRole("button", { name: "Start writing" }).click()
   await expect(page.getByRole("textbox")).toBeVisible()
 
@@ -51,7 +57,7 @@ test("an inspiration takes the right pane, and hiding it re-centres the game", a
   page,
 }) => {
   await page.goto("/")
-  await pickInspiration(page)
+  await awaitInspiration(page)
   await page.getByRole("button", { name: "Start writing" }).click()
   await expect(page.getByRole("textbox")).toBeVisible()
 

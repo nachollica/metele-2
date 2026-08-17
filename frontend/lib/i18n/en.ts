@@ -312,21 +312,18 @@ export const en = {
     inspirationPrompt: "Click here to get some inspiration",
     inspirationAnother: "Show me another inspiration",
     inspirationUnavailable: "No inspiration available right now.",
-    // The landing's three circular selectors and the pane they fill. The
-    // inspiration one is the only selector that is also an action, so it takes
-    // three legends: pick / re-roll / just switch back to what is already up.
+    // The landing's three circular selectors and the pane they fill. These sit
+    // INSIDE the circles, so they have to stay short in both languages. The
+    // inspiration one is the only selector that is also an action: once
+    // selected it re-rolls, so it says so.
     showcaseLabel: "Choose what to show",
     showcasePaneLabel: "Showing: {name}",
-    inspirationTab: "Get inspiration",
     inspirationTabCurrent: "Inspiration",
-    inspirationTabAnother: "Click again for a new one",
+    inspirationTabAnother: "Click for another",
   },
 
   achievements: {
     unlockedSummary: "{count} of {total} unlocked",
-    // The locked achievement closest to falling. Not "recent": the payload
-    // carries no unlock time, so recency would be a guess (see AchievementsStrip).
-    nextUp: "Next up",
     items: {
       first_session: { name: "First step", description: "Complete your first sprint" },
       streak_7: { name: "Consistent writer", description: "Write 7 days in a row" },

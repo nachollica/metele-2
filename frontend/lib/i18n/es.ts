@@ -316,21 +316,18 @@ export const es = {
     inspirationPrompt: "Haz clic aquí para inspirarte",
     inspirationAnother: "Muéstrame otra inspiración",
     inspirationUnavailable: "No hay inspiración disponible ahora mismo.",
-    // Los tres selectores circulares del inicio y el panel que rellenan. El de
-    // inspiración es el único que además es una acción, así que tiene tres
-    // leyendas: elegir / volver a tirar / volver a lo que ya está puesto.
+    // Los tres selectores circulares del inicio y el panel que rellenan. Van
+    // DENTRO de los círculos, así que tienen que ser cortas en ambos idiomas.
+    // El de inspiración es el único que además es una acción: una vez elegido,
+    // vuelve a tirar, y así lo dice.
     showcaseLabel: "Elige qué mostrar",
     showcasePaneLabel: "Mostrando: {name}",
-    inspirationTab: "Inspírate",
     inspirationTabCurrent: "Inspiración",
-    inspirationTabAnother: "Haz clic otra vez para cambiarla",
+    inspirationTabAnother: "Haz clic para otra",
   },
 
   achievements: {
     unlockedSummary: "{count} de {total} desbloqueados",
-    // El logro bloqueado más cerca de caer. No es "reciente": el backend no
-    // guarda cuándo se desbloqueó, así que la recencia sería una suposición.
-    nextUp: "Siguiente",
     items: {
       first_session: { name: "Primer paso", description: "Completá tu primera sesión" },
       streak_7: { name: "Escritor constante", description: "Escribí 7 días seguidos" },
