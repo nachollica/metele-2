@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { AlertTriangle, Wand2 } from "lucide-react"
+import { Wand2 } from "lucide-react"
 
 import {
   AlertDialog,
@@ -13,40 +13,30 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 
 import { useAuth } from "@/lib/auth"
 import { useBackendStatus } from "@/lib/backend"
 import { useTranslations } from "@/lib/i18n"
 import { useInspiration } from "@/lib/flowfic/inspiration"
-import { deriveTitle } from "@/lib/flowfic/gamification"
 import { useGameEngine } from "@/lib/flowfic/use-game-engine"
 import { useStories } from "@/lib/flowfic/use-stories"
-import type { GameSettings } from "@/lib/flowfic/types"
 import type { Story } from "@/lib/flowfic/stories-api"
-import { FIELD_LABEL, HINT } from "@/lib/text-styles"
 
 import { type Section } from "./dashboard-nav"
 import { pathToScreen, screenToPath, type Screen } from "./navigation"
 import { screenHeader } from "./screen-header"
 import { ScreenAnnouncer } from "./screen-announcer"
 import { AppHeader } from "./app-header"
-import { ContentColumn, Spinner } from "./dashboard-widgets"
+import { ContentColumn } from "./dashboard-widgets"
+import { GameArea, LoadingSplash } from "./game-area"
+import { ScreenContent } from "./screen-content"
 import { GamificationProvider } from "./gamification-context"
-import { GameHud } from "./game-hud"
 import { InspirationPane } from "./inspiration-panel"
-import { ProgressSection } from "./progress-section"
-import { LandingHome } from "./landing"
 import { type ShowcaseFace } from "./landing-showcase"
 import { type GridMode } from "./preset-grid"
-import { ProfilePanel } from "./profile-panel"
 import { ResultsModal } from "./results-modal"
-import { StoriesSection } from "./stories-section"
 import { WelcomeModal } from "./welcome-modal"
-import { WritingArea } from "./writing-area"
 
 const WELCOME_STORAGE_KEY = "flowfic.welcome.dismissed"
 
@@ -461,291 +451,4 @@ export function Dashboard() {
       />
     </GamificationProvider>
   )
-}
-
-// ---- Game area (left column while loading/playing/ended) -----------------
-
-function LoadingSplash() {
-  const t = useTranslations()
-  return (
-    <div role="status" aria-live="polite" className="flex flex-1 flex-col items-center justify-center gap-4">
-      <Spinner size="page" />
-      <span className={HINT}>{t.settings.loadingWords}</span>
-    </div>
-  )
-}
-
-function GameArea({
-  engine,
-  onQuit,
-  onFinish,
-}: {
-  engine: ReturnType<typeof useGameEngine>
-  onQuit: () => void
-  onFinish: () => void
-}) {
-  const t = useTranslations()
-  return (
-    <>
-      {engine.failedSave !== null ? (
-        <div
-          role="alert"
-          className="border-destructive/40 bg-destructive/10 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border p-3 text-sm"
-        >
-          <AlertTriangle className="text-destructive size-4 shrink-0" aria-hidden />
-          <span className="text-destructive flex-1">{t.game.saveFailed}</span>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={engine.retryFailedSave}
-              disabled={engine.retryingSave}
-            >
-              {engine.retryingSave ? t.game.saveRetrying : t.game.saveRetry}
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={engine.dismissFailedSave}
-              disabled={engine.retryingSave}
-            >
-              {t.game.saveDismiss}
-            </Button>
-          </div>
-        </div>
-      ) : null}
-
-      <GameHud
-        idleSecondsLeft={engine.idleSecondsLeft}
-        idleSecondsTotal={engine.settings.mainTimerSeconds}
-        globalSecondsLeft={engine.globalSecondsLeft}
-        globalSecondsTotal={engine.settings.globalTimerSeconds}
-        requiredWordsEnabled={engine.settings.requiredWordIntervalEnabled}
-        requiredWord={engine.currentRequiredWord}
-        useWordIn={engine.useWordIn !== null ? Math.ceil(engine.useWordIn) : null}
-        useWordTotal={
-          engine.settings.requiredWordUseTimerEnabled ? engine.settings.requiredWordUseTimerSeconds : null
-        }
-        paused={engine.isPaused}
-        ended={engine.gameState === "ended"}
-        onPause={engine.pause}
-        onResume={engine.resume}
-        onQuit={onQuit}
-        onFinish={onFinish}
-      />
-      {/* Ended: the story is finished but still editable, so this is where it
-          gets named. Sits between the HUD and the text, pushing the editor down
-          — a shift the player never sees mid-flow, since the results modal is
-          over it when the state changes. */}
-      {engine.gameState === "ended" ? (
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="story-title" className={FIELD_LABEL}>
-            {t.game.titleLabel}
-          </Label>
-          <Input
-            id="story-title"
-            type="text"
-            value={engine.storyTitle}
-            onChange={(e) => engine.setStoryTitle(e.target.value)}
-            maxLength={200}
-            placeholder={deriveTitle(engine.text, t.dashboard.untitledStory)}
-            className="text-base"
-          />
-        </div>
-      ) : null}
-
-      <div className="flex min-h-0 flex-1">
-        <WritingArea
-          ref={engine.textareaRef}
-          value={engine.text}
-          onChange={engine.handleChange}
-          matches={engine.matches}
-          paused={engine.isPaused}
-        />
-      </div>
-    </>
-  )
-}
-
-// ---- Non-split screens (landing / detail subsections / profile / story) --
-
-function ScreenContent({
-  screen,
-  story,
-  storyMissing,
-  settings,
-  onChangeSettings,
-  onStart,
-  settingsOpen,
-  onToggleSettings,
-  gridMode,
-  onToggleGridMode,
-  showcaseFace,
-  onChangeShowcaseFace,
-  stories,
-  storiesError,
-  storiesTotal,
-  storiesHasMore,
-  storiesLoadingMore,
-  onLoadMoreStories,
-  onShowSection,
-  onViewStory,
-  onDeleteStory,
-  onUpdateStoryTitle,
-  onBackHome,
-  onBackToStories,
-}: {
-  screen: Screen
-  /** The record behind a `story` screen, resolved by the parent (which shares
-   *  the verdict with the header). `null` while loading or when missing. */
-  story: Story | null
-  storyMissing: boolean
-  settings: GameSettings
-  onChangeSettings: (settings: GameSettings) => void
-  onStart: () => void
-  settingsOpen: boolean
-  onToggleSettings: () => void
-  gridMode: GridMode
-  onToggleGridMode: () => void
-  showcaseFace: ShowcaseFace
-  onChangeShowcaseFace: (face: ShowcaseFace) => void
-  stories: Story[] | null
-  storiesError: boolean
-  storiesTotal: number | null
-  storiesHasMore: boolean
-  storiesLoadingMore: boolean
-  onLoadMoreStories: () => void
-  onShowSection: (section: Section) => void
-  onViewStory: (story: Story) => void
-  onDeleteStory: (id: number) => Promise<boolean>
-  onUpdateStoryTitle: (id: number, title: string | null) => Promise<boolean>
-  onBackHome: () => void
-  onBackToStories: () => void
-}) {
-  const t = useTranslations()
-
-  switch (screen.name) {
-    // `landing` and `configuring` are the same screen; the latter just has the
-    // advanced-settings face of its panel open (and owns the /new URL).
-    case "landing":
-    case "configuring":
-      return (
-        <LandingHome
-          settings={settings}
-          onChangeSettings={onChangeSettings}
-          onStart={onStart}
-          settingsOpen={settingsOpen}
-          onToggleSettings={onToggleSettings}
-          gridMode={gridMode}
-          onToggleGridMode={onToggleGridMode}
-          showcaseFace={showcaseFace}
-          onChangeShowcaseFace={onChangeShowcaseFace}
-          onShowSection={onShowSection}
-          stories={stories}
-          storiesError={storiesError}
-          onViewStory={onViewStory}
-          onDeleteStory={onDeleteStory}
-          onUpdateStoryTitle={onUpdateStoryTitle}
-        />
-      )
-    case "section":
-      return (
-        <SectionDetail
-          section={screen.section}
-          stories={stories}
-          storiesError={storiesError}
-          storiesTotal={storiesTotal}
-          storiesHasMore={storiesHasMore}
-          storiesLoadingMore={storiesLoadingMore}
-          onLoadMoreStories={onLoadMoreStories}
-          onViewStory={onViewStory}
-          onDeleteStory={onDeleteStory}
-          onUpdateStoryTitle={onUpdateStoryTitle}
-        />
-      )
-    case "profile":
-      return <ProfilePanel />
-    case "story":
-      // The title and the back arrow are in the header; here it is just the
-      // spinner, the not-found body, or the read-only story.
-      if (story === null && !storyMissing) {
-        return (
-          <div role="status" aria-live="polite" className="flex justify-center py-16">
-            <Spinner />
-          </div>
-        )
-      }
-      if (story === null) return <NotFoundBody onBack={onBackToStories} label={t.nav.backToStories} />
-      return (
-        // Sized against the scroll pane, not the viewport: this is the same
-        // story the game area shows, and it should read at a comparable height
-        // whichever screen it is on.
-        <div className="h-[65vh] min-h-96">
-          <WritingArea value={story.text} onChange={() => {}} matches={[]} readOnly />
-        </div>
-      )
-    case "notfound":
-      return <NotFoundBody onBack={onBackHome} label={t.notFound.backHome} />
-  }
-}
-
-// Client-rendered not-found screen (no server 404 — the shell is served for
-// every app path). Reached for an unknown URL or a story id that doesn't
-// resolve; its title and back arrow are in the header, and this button shares
-// the arrow's destination, so both are labelled after where they lead.
-function NotFoundBody({ onBack, label }: { onBack: () => void; label: string }) {
-  const t = useTranslations()
-  return (
-    <div className="flex flex-col items-start gap-4 py-8">
-      <p className="text-muted-foreground">{t.notFound.body}</p>
-      <Button type="button" variant="outline" onClick={onBack}>
-        {label}
-      </Button>
-    </div>
-  )
-}
-
-function SectionDetail({
-  section,
-  stories,
-  storiesError,
-  storiesTotal,
-  storiesHasMore,
-  storiesLoadingMore,
-  onLoadMoreStories,
-  onViewStory,
-  onDeleteStory,
-  onUpdateStoryTitle,
-}: {
-  section: Section
-  stories: Story[] | null
-  storiesError: boolean
-  storiesTotal: number | null
-  storiesHasMore: boolean
-  storiesLoadingMore: boolean
-  onLoadMoreStories: () => void
-  onViewStory: (story: Story) => void
-  onDeleteStory: (id: number) => Promise<boolean>
-  onUpdateStoryTitle: (id: number, title: string | null) => Promise<boolean>
-}) {
-  switch (section) {
-    case "stories":
-      return (
-        <StoriesSection
-          stories={stories}
-          error={storiesError}
-          total={storiesTotal}
-          hasMore={storiesHasMore}
-          loadingMore={storiesLoadingMore}
-          onLoadMore={onLoadMoreStories}
-          onViewStory={onViewStory}
-          onDeleteStory={onDeleteStory}
-          onUpdateTitle={onUpdateStoryTitle}
-        />
-      )
-    case "progress":
-      return <ProgressSection />
-  }
 }
