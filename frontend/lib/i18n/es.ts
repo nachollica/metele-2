@@ -241,7 +241,7 @@ export const es = {
     logOut: "Cerrar sesión",
     title: "Inicia sesión en Flowfic",
     description:
-      "Puedes jugar sin cuenta. Inicia sesión para guardar tus historias y acceder a tablas de líderes (próximamente).",
+      "Puedes jugar sin cuenta. Inicia sesión para guardar tus historias y seguir tu progreso.",
     continueWith: "Continuar con {provider}",
     google: "Google",
     finishingSignIn: "Terminando el inicio de sesión…",

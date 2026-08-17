@@ -236,7 +236,7 @@ export const en = {
     logOut: "Log out",
     title: "Sign in to Flowfic",
     description:
-      "You can play without an account. Sign in to unlock saved stories and leaderboards (coming soon).",
+      "You can play without an account. Sign in to save your stories and track your progress.",
     continueWith: "Continue with {provider}",
     google: "Google",
     finishingSignIn: "Finishing sign-in…",
