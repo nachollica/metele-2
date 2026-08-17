@@ -4,7 +4,7 @@ import { useAuth } from "@/lib/auth"
 import { useTranslations } from "@/lib/i18n"
 import { challengeText, challengeVisual } from "@/lib/flowfic/gamification"
 
-import { ChallengeItem, EmptyHint } from "./dashboard-widgets"
+import { BLOCK_CARD_GRID, ChallengeItem, EmptyHint } from "./dashboard-widgets"
 import { useGamification } from "./gamification-context"
 
 /**
@@ -30,7 +30,7 @@ export function ChallengesSection() {
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className={BLOCK_CARD_GRID}>
       {list.map((c) => {
         const v = challengeVisual(c.id)
         const text = challengeText(t, c.id)

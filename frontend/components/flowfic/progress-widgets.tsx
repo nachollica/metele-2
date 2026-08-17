@@ -116,11 +116,13 @@ export function ProgressHighlights({
 export function WeeklySummaryCard({
   overview,
   compact = false,
+  className,
 }: {
   overview: Overview
   /** Packed into the landing's fixed pane: the chart takes its height from the
    *  card rather than its own default, so the card can shrink with the pane. */
   compact?: boolean
+  className?: string
 }) {
   const t = useTranslations()
   const locale = useLocale()
@@ -128,7 +130,7 @@ export function WeeklySummaryCard({
   const titleId = useId()
 
   return (
-    <section className={cn(BOX, "min-h-0")} aria-labelledby={titleId}>
+    <section className={cn(BOX, "min-h-0", className)} aria-labelledby={titleId}>
       <CardSubtitle id={titleId}>{t.dashboard.weeklySummary}</CardSubtitle>
       {/* Explicit row AND column counts at both breakpoints: left to `auto` a
           grid row sizes to its content and escapes the card it was given, which

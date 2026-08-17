@@ -2,6 +2,13 @@
 
 // Small presentational building blocks shared across the dashboard sections.
 // All copy is passed in already-localized so these stay dumb and testable.
+//
+// Prop-shape rule, so the API here stays predictable rather than growing an
+// escape hatch per component: something the CALLER PLACES in a layout takes
+// `className` (its parent decides where it sits, and only the parent knows);
+// something that fills whatever box it is handed does not. `Panel` additionally
+// spreads `...rest`, because it is a generic surface a caller may need to hang
+// `role` or `aria-*` on — nothing else does.
 
 import { type ReactNode } from "react"
 import { cva, type VariantProps } from "class-variance-authority"
@@ -60,6 +67,26 @@ export function IconChip({
     </div>
   )
 }
+
+// ---- List grids -----------------------------------------------------------
+
+/**
+ * How a list of cards breaks across columns. Two options, and the card's SHAPE
+ * picks between them — that is the whole policy, and it is here rather than
+ * inline so a third list chooses one instead of inventing a third breakpoint.
+ *
+ * The two lists on `/progress` looked arbitrarily different before this said
+ * why: achievements cap at two columns, daily challenges reach three.
+ */
+
+/** A row-shaped card: an icon beside a title and a *truncating* description
+ *  (`AchievementItem`). Caps at two — a third column truncates the description
+ *  down to nothing, so the extra density costs more than it buys. */
+export const ROW_CARD_GRID = "grid gap-4 sm:grid-cols-2"
+
+/** A block-shaped card: an icon over a wrapping paragraph and a bar
+ *  (`ChallengeItem`). Reads fine narrower, so it takes the third column. */
+export const BLOCK_CARD_GRID = "grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
 
 // ---- Spinner --------------------------------------------------------------
 
@@ -569,7 +596,7 @@ export function ChallengeItem({
     <div className="bg-muted/40 flex flex-col rounded-xl border p-4">
       <div className="mb-2 flex items-center gap-2">
         <IconChip icon={icon} tone={tone} className="size-10" iconClassName="size-5" />
-        <div className="text-base font-bold">{name}</div>
+        <div className={ITEM_TITLE}>{name}</div>
       </div>
       <p className={cn(HINT, "mb-3 leading-relaxed")}>{description}</p>
       <ProgressMeter value={progress} tone={tone} label={name} />

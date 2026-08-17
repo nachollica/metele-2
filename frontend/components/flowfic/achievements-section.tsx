@@ -5,7 +5,7 @@ import { useTranslations } from "@/lib/i18n"
 import { achievementText, achievementVisual } from "@/lib/flowfic/gamification"
 import { HINT } from "@/lib/text-styles"
 
-import { AchievementItem, EmptyHint, Panel } from "./dashboard-widgets"
+import { AchievementItem, EmptyHint, Panel, ROW_CARD_GRID } from "./dashboard-widgets"
 import { useGamification } from "./gamification-context"
 
 /**
@@ -35,7 +35,7 @@ export function AchievementsSection() {
           .replace("{count}", String(unlockedCount))
           .replace("{total}", String(list.length))}
       </p>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className={ROW_CARD_GRID}>
         {list.map((a) => {
           const v = achievementVisual(a.id)
           const text = achievementText(t, a.id)

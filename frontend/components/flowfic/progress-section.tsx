@@ -110,6 +110,11 @@ export function ProgressSection({ preview = false, flush = false, onShowAll }: P
           straight past a level. `DetailSubsection` names its own the same way,
           which is what keeps all three siblings on one rung. */}
       <DetailSubsection title={t.nav.stats}>
+        {/* `lg` here where the landing preview unstacks at `sm` — the same
+            components, deliberately different. The preview has to match a pane
+            that becomes 3:2 at `sm`, so it unstacks when the pane does. This
+            screen is unconstrained, so the pair stays stacked longer and each
+            half keeps a readable width on a tablet. */}
         <div className="grid gap-4 lg:grid-cols-5">
           <ProgressHighlights overview={withChart} className="lg:col-span-2" />
           <AchievementHighlights achievements={list} className="lg:col-span-3" />
