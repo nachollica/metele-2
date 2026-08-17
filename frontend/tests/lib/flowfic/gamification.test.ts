@@ -46,6 +46,17 @@ describe("formatDelta / deltaIsPositive", () => {
     expect(formatDelta(-8.6)).toBe("-9%")
     expect(formatDelta(null)).toBeNull()
   })
+  it("says nothing for a week that matched the last one", () => {
+    // "+0%" beside an up-arrow claims progress that did not happen; no
+    // indicator at all reads as "unchanged", which is the truth.
+    expect(formatDelta(0)).toBeNull()
+    expect(formatDelta(0.3)).toBeNull()
+    expect(formatDelta(-0.4)).toBeNull()
+  })
+  it("keeps a genuine doubling or collapse", () => {
+    expect(formatDelta(100)).toBe("+100%")
+    expect(formatDelta(-100)).toBe("-100%")
+  })
   it("treats null and negatives as not-positive", () => {
     expect(deltaIsPositive(0)).toBe(true)
     expect(deltaIsPositive(-1)).toBe(false)

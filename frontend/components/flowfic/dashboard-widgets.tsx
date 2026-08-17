@@ -4,7 +4,15 @@
 // All copy is passed in already-localized so these stay dumb and testable.
 
 import { type ReactNode } from "react"
-import { ChevronRight, Check, CircleCheckBig, Trophy, type LucideIcon } from "lucide-react"
+import {
+  ArrowDown,
+  ArrowUp,
+  ChevronRight,
+  Check,
+  CircleCheckBig,
+  Trophy,
+  type LucideIcon,
+} from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -315,15 +323,30 @@ export function StatTile({
       {Icon ? (
         <IconChip icon={Icon} tone={tone} className={cn("mb-1", s.chip)} iconClassName={s.icon} />
       ) : null}
-      <div className="flex items-baseline gap-1">
-        <span className={cn("font-extrabold tabular-nums", s.value)}>{value}</span>
+      {/* Wrapping, because three of these share a phone's width and a two-part
+          figure like "2h 1m" would otherwise break across lines to make room for
+          the delta. `whitespace-nowrap` keeps the value whole and sends the
+          delta to the next line instead — it is the part that can move. */}
+      <div className="flex flex-wrap items-baseline justify-center gap-x-1">
+        <span className={cn("font-extrabold whitespace-nowrap tabular-nums", s.value)}>
+          {value}
+        </span>
         {delta ? (
           <span
             className={cn(
-              "text-xs font-semibold",
+              "flex items-center gap-0.5 text-xs font-semibold",
               deltaPositive ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground",
             )}
           >
+            {/* The arrow carries the direction as shape, not only as colour and
+                a leading sign — the muted "down" tint is a weak signal, and the
+                two greens are indistinguishable to some viewers. `aria-hidden`
+                because the sign in the text already says it. */}
+            {deltaPositive ? (
+              <ArrowUp className="size-3 shrink-0" aria-hidden />
+            ) : (
+              <ArrowDown className="size-3 shrink-0" aria-hidden />
+            )}
             {delta}
           </span>
         ) : null}
