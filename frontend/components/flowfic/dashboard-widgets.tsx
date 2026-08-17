@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Check,
   CircleCheckBig,
+  Loader2,
   Trophy,
   type LucideIcon,
 } from "lucide-react"
@@ -18,7 +19,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { HINT, ITEM_TITLE, OVERLINE, SECTION_TITLE } from "@/lib/text-styles"
-import { TONE_BAR, TONE_CHIP, type Tone } from "@/lib/flowfic/gamification"
+import { TONE_BAR, TONE_CHIP, TONE_TEXT, type Tone } from "@/lib/flowfic/gamification"
 
 // The muted → accent ghost styling for a soft action sitting in a section
 // header. Used by the "Show all" links; kept as a token so a second header
@@ -57,6 +58,42 @@ export function IconChip({
     >
       <Icon className={cn("size-5", iconClassName)} aria-hidden />
     </div>
+  )
+}
+
+// ---- Spinner --------------------------------------------------------------
+
+const SPINNER_SIZE = {
+  /** Beside a label, inside a button or a line of text. */
+  inline: "size-4",
+  /** Standing in for a section's content while it loads. */
+  block: "size-8",
+  /** The whole screen is waiting. */
+  page: "size-10",
+} as const
+
+/**
+ * The app's loading spinner. Re-rolled at seven sites across four sizes and two
+ * colours before this — which also meant seven chances to forget `aria-hidden`,
+ * and seven classes the app-wide `prefers-reduced-motion` rule had to keep
+ * matching by name.
+ *
+ * Always decorative: it is the *container* that carries `role="status"` and the
+ * words, because a spinning icon with an accessible name announces a shape
+ * rather than what is being waited for.
+ */
+export function Spinner({
+  size = "block",
+  className,
+}: {
+  size?: keyof typeof SPINNER_SIZE
+  className?: string
+}) {
+  return (
+    <Loader2
+      className={cn("text-primary animate-spin", SPINNER_SIZE[size], className)}
+      aria-hidden
+    />
   )
 }
 
@@ -435,7 +472,8 @@ export function StatTile({
           <span
             className={cn(
               "flex items-center gap-0.5 text-xs font-semibold",
-              deltaPositive ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground",
+              // "Success" is the palette's green, not a colour picked here.
+              deltaPositive ? TONE_TEXT.green : "text-muted-foreground",
             )}
           >
             {/* The arrow carries the direction as shape, not only as colour and
@@ -538,7 +576,12 @@ export function ChallengeItem({
       <div className="text-muted-foreground mt-1.5 mb-3 text-xs tabular-nums">{progressLabel}</div>
       <div className="mt-auto">
         {completed ? (
-          <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+          <span
+            className={cn(
+              "inline-flex items-center gap-1.5 text-xs font-semibold",
+              TONE_TEXT.green,
+            )}
+          >
             <CircleCheckBig className="size-4" aria-hidden />
             {completedLabel}
           </span>

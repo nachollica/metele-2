@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { AlertTriangle, Loader2, Wand2 } from "lucide-react"
+import { AlertTriangle, Wand2 } from "lucide-react"
 
 import {
   AlertDialog,
@@ -34,7 +34,7 @@ import { pathToScreen, screenToPath, type Screen } from "./navigation"
 import { screenHeader } from "./screen-header"
 import { ScreenAnnouncer } from "./screen-announcer"
 import { AppHeader } from "./app-header"
-import { ContentColumn } from "./dashboard-widgets"
+import { ContentColumn, Spinner } from "./dashboard-widgets"
 import { GamificationProvider } from "./gamification-context"
 import { GameHud } from "./game-hud"
 import { InspirationPane } from "./inspiration-panel"
@@ -469,7 +469,7 @@ function LoadingSplash() {
   const t = useTranslations()
   return (
     <div role="status" aria-live="polite" className="flex flex-1 flex-col items-center justify-center gap-4">
-      <Loader2 className="text-primary size-10 animate-spin" aria-hidden />
+      <Spinner size="page" />
       <span className={HINT}>{t.settings.loadingWords}</span>
     </div>
   )
@@ -673,7 +673,7 @@ function ScreenContent({
       if (story === null && !storyMissing) {
         return (
           <div role="status" aria-live="polite" className="flex justify-center py-16">
-            <Loader2 className="text-primary size-8 animate-spin" aria-hidden />
+            <Spinner />
           </div>
         )
       }

@@ -149,6 +149,19 @@ export const TONE_CHIP: Record<Tone, string> = {
   indigo: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400",
 }
 
+/** The same palette as text, for the places that colour a word or a figure
+ *  rather than a chip or a bar — a week-on-week gain, a "completed" line. Third
+ *  copies of `green`'s pair were written out by hand before this existed. */
+export const TONE_TEXT: Record<Tone, string> = {
+  amber: "text-amber-600 dark:text-amber-400",
+  orange: "text-orange-600 dark:text-orange-400",
+  red: "text-red-600 dark:text-red-400",
+  green: "text-emerald-600 dark:text-emerald-400",
+  violet: "text-violet-600 dark:text-violet-400",
+  blue: "text-blue-600 dark:text-blue-400",
+  indigo: "text-indigo-600 dark:text-indigo-400",
+}
+
 export const TONE_BAR: Record<Tone, string> = {
   amber: "bg-amber-500",
   orange: "bg-orange-500",

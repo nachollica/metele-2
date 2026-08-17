@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { Loader2, AlertTriangle } from "lucide-react"
+import { AlertTriangle } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { useTranslations } from "@/lib/i18n"
-import { panelVariants } from "@/components/flowfic/dashboard-widgets"
+import { Spinner, panelVariants } from "@/components/flowfic/dashboard-widgets"
 import { cn } from "@/lib/utils"
 
 // Auth0Provider's `onRedirectCallback` runs as soon as the SDK finishes the
@@ -35,7 +35,7 @@ export function CallbackClient() {
       >
         {error === null ? (
           <>
-            <Loader2 className="text-primary size-8 animate-spin" aria-hidden />
+            <Spinner />
             <p className="text-muted-foreground text-sm">{t.auth.finishingSignIn}</p>
           </>
         ) : (

@@ -7,7 +7,7 @@ import {
   useState,
   type ChangeEvent,
 } from "react"
-import { Loader2, Upload, User as UserIcon } from "lucide-react"
+import { Upload, User as UserIcon } from "lucide-react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -18,7 +18,7 @@ import { isValidEmail, useAuth } from "@/lib/auth"
 import { useTranslations } from "@/lib/i18n"
 import { updateProfile } from "@/lib/flowfic/profile-api"
 import { HINT } from "@/lib/text-styles"
-import { panelVariants } from "./dashboard-widgets"
+import { Spinner, panelVariants } from "./dashboard-widgets"
 import { cn } from "@/lib/utils"
 
 // Cap on the picture file size we'll accept, in bytes. Pictures end up as a
@@ -116,7 +116,7 @@ export function ProfilePanel() {
   if (!user) {
     return (
       <section className="flex flex-1 items-center justify-center">
-        <Loader2 className="text-muted-foreground size-6 animate-spin" aria-hidden />
+        <Spinner />
       </section>
     )
   }
@@ -244,7 +244,7 @@ export function ProfilePanel() {
           disabled={status === "saving" || !hasChanges || !emailShapeValid}
         >
           {status === "saving" ? (
-            <Loader2 className="size-4 animate-spin" aria-hidden />
+            <Spinner size="inline" className="text-current" />
           ) : null}
           {t.profile.save}
         </Button>

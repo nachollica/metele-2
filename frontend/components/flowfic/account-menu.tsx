@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
+import { Skeleton } from "@/components/ui/skeleton"
 import { LoginModal } from "@/components/auth/login-modal"
 import { useAuth } from "@/lib/auth"
 import { useBackendStatus } from "@/lib/backend"
@@ -54,7 +55,9 @@ export function AccountMenu({ onShowSection, onOpenProfile, disabled = false }: 
 
   // Wait for auth + the first /ping before deciding what to show.
   if (status === "loading" || backendStatus === "unknown") {
-    return <div className="bg-muted size-9 animate-pulse rounded-full" aria-hidden />
+    // The shared Skeleton, not a hand-rolled pulse: that one used bg-muted
+    // where every other placeholder in the app uses the primitive's bg-accent.
+    return <Skeleton className="size-9 rounded-full" aria-hidden />
   }
 
   // No offline auth: hide the control entirely when the backend is down.

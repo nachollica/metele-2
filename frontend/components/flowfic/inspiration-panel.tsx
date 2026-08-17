@@ -8,13 +8,13 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react"
-import { Loader2, Wand2 } from "lucide-react"
+import { Wand2 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { useLocale, useTranslations } from "@/lib/i18n"
 import { quoteBlocks, quoteTitle, type Quote } from "@/lib/flowfic/quotes"
 import { useInspiration, type InspirationState } from "@/lib/flowfic/inspiration"
-import { panelVariants } from "./dashboard-widgets"
+import { Spinner, panelVariants } from "./dashboard-widgets"
 
 // How fast the wheel zooms. Multiplicative per wheel delta so it feels even
 // across the range.
@@ -190,7 +190,7 @@ export function InspirationDisplay({ className }: { className?: string }) {
           </span>
         ) : (
           <span role="status" className="flex size-full items-center justify-center">
-            <Loader2 className="text-primary size-8 animate-spin" aria-hidden />
+            <Spinner />
           </span>
         )}
       </CrossFade>
