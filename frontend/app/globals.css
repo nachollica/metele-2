@@ -107,14 +107,16 @@
 
 @theme inline {
   /* ── Main UI font ─────────────────────────────────────────────────
-   * Uncomment ONE of the lines below and comment the others to switch
-   * the display font across the entire app.                          */
+   * Swapping the display font across the entire app is a matter of
+   * mounting another `next/font` in `app/layout.tsx` and pointing this
+   * at its variable.                                                  */
   --font-sans: var(--font-geist), 'Geist Fallback', system-ui, sans-serif;
-  /* --font-sans: var(--font-lora), 'Lora Fallback', Georgia, serif; */
-  /* --font-sans: 'Inter', system-ui, sans-serif; */
-  /* --font-sans: 'Outfit', system-ui, sans-serif; */
 
-  /* Serif alias — kept for backward compat; points to the same font */
+  /* Serif alias, and today a deliberate no-op: it resolves to the sans
+     stack, so the handful of `font-serif` call sites (the editor, the
+     inspiration quote, the welcome modal) render in Geist like everything
+     else. They mark where a real serif WOULD go — point this at a serif
+     webfont and those sites pick it up on their own. */
   --font-serif: var(--font-sans);
   --font-mono: 'Geist Mono', 'Geist Mono Fallback', ui-monospace, monospace;
   --color-background: var(--background);
