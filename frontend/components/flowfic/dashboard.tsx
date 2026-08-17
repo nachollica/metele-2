@@ -277,6 +277,21 @@ export function Dashboard() {
     <GamificationProvider refreshKey={engine.storiesRefreshKey}>
       <div className="bg-background text-foreground flex h-dvh flex-col">
         <ScreenAnnouncer title={screenTitle} />
+        {/* Off-screen until focused, then a real button in the top-left. Has to
+            be the first focusable node in the tree, so it lives above the
+            header rather than inside it. */}
+        <a
+          href="#main"
+          onClick={(e) => {
+            // The href is for AT semantics; a fragment jump would push a
+            // history entry this SPA does not own, so move focus by hand.
+            e.preventDefault()
+            mainRef.current?.focus()
+          }}
+          className="bg-background text-foreground focus:ring-ring sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:not-sr-only focus:rounded-md focus:border focus:px-3 focus:py-2 focus:text-sm focus:font-semibold focus:ring-2 focus:outline-none"
+        >
+          {t.app.skipToContent}
+        </a>
         <AppHeader
           authStatus={authStatus}
           devUserEnabled={devUserEnabled}
@@ -292,7 +307,12 @@ export function Dashboard() {
         {/* `tabIndex={-1}` so navigation can move focus here; it is never in the
             Tab order itself, and `outline-none` keeps the focus ring off a
             region the pointer user never asked to focus. */}
-        <main ref={mainRef} tabIndex={-1} className="min-h-0 flex-1 outline-none">
+        <main id="main" ref={mainRef} tabIndex={-1} className="min-h-0 flex-1 outline-none">
+          {/* The sprint suppresses the bar's title, which left the game screen
+              with no h1 at all — the one screen a player spends real time on.
+              Restored here for assistive tech only; on screen the HUD and the
+              editor say plainly enough what this is. */}
+          {splitLayout ? <h1 className="sr-only">{t.game.sprintHeading}</h1> : null}
           {splitLayout ? (
             // Two shapes, depending on whether the inspiration pane is up:
             //   shown  — writing column beside a 5/12 pane, as the split has

@@ -230,4 +230,31 @@
   .overflow-x-scroll {
     overscroll-behavior: contain;
   }
+
+  /* Motion is decorative everywhere in this app: spinners, the required word's
+     zoom-in as each new one fires, the dialogs' scale-in, the timer bars' width
+     tween. None of it carries meaning that the static frame does not, so a
+     player who asks for less motion can have all of it collapsed rather than
+     each component remembering a `motion-reduce:` variant of its own.
+
+     Not `animation: none`: a spinner with no animation is a frozen graphic that
+     reads as a hang. A very long duration keeps it running imperceptibly while
+     removing the vestibular trigger, which is what the WCAG technique asks for.
+     `!important` because these compete with Tailwind utilities and the
+     `data-[state=*]` animations tw-animate-css attaches to the Radix primitives. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+    /* The one exception: a spinner still has to look like it is spinning. */
+    .animate-spin {
+      animation-duration: 1.5s !important;
+      animation-iteration-count: infinite !important;
+    }
+  }
 }

@@ -212,3 +212,52 @@ test("logging out resets navigation to the landing", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1, name: "My stories" })).toBeHidden()
   await expect(page.getByRole("button", { name: /log in/i })).toBeVisible()
 })
+
+// The top bar carries eight-odd controls between the page edge and the screen
+// itself, so a keyboard user had a long walk to reach anything. These two are
+// the accessibility scaffolding around that: a skip link ahead of the header,
+// and a title/announcement whenever the screen changes under client-side
+// routing (no document load fires, so nothing announces itself).
+test("a skip link sits ahead of the header and jumps past it", async ({ page }) => {
+  await mockBackend(page)
+  await dismissWelcomeBeforeLoad(page)
+  await page.goto("/")
+
+  const skip = page.getByRole("link", { name: "Skip to content" })
+  // Measured rather than `toBeHidden`: `sr-only` clips the link to a 1px box
+  // that is still technically in the layout, so only its size tells the two
+  // states apart.
+  expect((await skip.boundingBox())?.width ?? 0).toBeLessThan(4)
+
+  // Focused directly rather than by pressing Tab: `next dev` injects its own
+  // focusable overlay ahead of the app, which production does not have. What
+  // decides the real tab order is DOM position, asserted below.
+  await skip.focus()
+  expect((await skip.boundingBox())?.width ?? 0).toBeGreaterThan(40)
+
+  await expect(
+    page.evaluate(() => {
+      const link = document.querySelector("a[href='#main']")
+      const header = document.querySelector("header")
+      if (!link || !header) return false
+      return (link.compareDocumentPosition(header) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0
+    }),
+  ).resolves.toBe(true)
+
+  await page.keyboard.press("Enter")
+  await expect(page.locator("main")).toBeFocused()
+})
+
+test("a client-side screen change retitles the document", async ({ page }) => {
+  await mockBackend(page)
+  await dismissWelcomeBeforeLoad(page)
+  await seedDevSession(page)
+  await page.goto("/")
+  await expect(page).toHaveTitle("Create a story — Flowfic")
+
+  await page.getByRole("button", { name: /account menu/i }).click()
+  await page.getByRole("menuitem", { name: "My stories" }).click()
+
+  await expect(page).toHaveURL("/stories")
+  await expect(page).toHaveTitle("My stories — Flowfic")
+})

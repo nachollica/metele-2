@@ -6,6 +6,9 @@ export const en = {
   app: {
     title: "Flowfic",
     loading: "Loading FLOWFIC…",
+    // First focusable thing on the page: jumps past the top bar's eight-odd
+    // controls, which otherwise stand between a keyboard user and the screen.
+    skipToContent: "Skip to content",
   },
 
   welcome: {
@@ -130,6 +133,10 @@ export const en = {
     titleLabel: "Story title",
     inspirationShow: "Show inspiration",
     inspirationHide: "Hide inspiration",
+    // The sprint's h1. Never rendered visibly — the top bar's centre is empty
+    // mid-session on purpose, so this exists to keep the screen from being
+    // headingless for assistive tech.
+    sprintHeading: "Writing sprint",
     viewingStory: "Viewing a previous story (read-only).",
     // Names the read-only archive viewer. Without it the field inherits the
     // editor's `placeholder`, so a saved story announces itself as an

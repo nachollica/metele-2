@@ -10,6 +10,9 @@ export const es = {
   app: {
     title: "Flowfic",
     loading: "Cargando FLOWFIC…",
+    // Lo primero que recibe el foco: salta los controles de la barra superior,
+    // que si no se interponen entre el teclado y la pantalla.
+    skipToContent: "Saltar al contenido",
   },
 
   welcome: {
@@ -135,6 +138,10 @@ export const es = {
     titleLabel: "Título de la historia",
     inspirationShow: "Mostrar inspiración",
     inspirationHide: "Ocultar inspiración",
+    // El h1 de la sesión. Nunca se ve: el centro de la barra está vacío
+    // durante la sesión a propósito, así que esto existe para que la pantalla
+    // no se quede sin encabezado.
+    sprintHeading: "Sesión de escritura",
     viewingStory: "Viendo una historia anterior (solo lectura).",
     // Nombra el visor de solo lectura. Sin esto el campo hereda el
     // `placeholder` del editor, así que una historia guardada se anuncia como
