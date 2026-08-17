@@ -5,6 +5,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { XIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { HINT, SECTION_TITLE } from "@/lib/text-styles"
 import { useTranslations } from "@/lib/i18n"
 
 function Dialog({
@@ -112,7 +113,7 @@ function DialogTitle({
   return (
     <DialogPrimitive.Title
       data-slot="dialog-title"
-      className={cn("text-lg leading-none font-semibold", className)}
+      className={cn(SECTION_TITLE, "leading-none", className)}
       {...props}
     />
   )
@@ -125,7 +126,7 @@ function DialogDescription({
   return (
     <DialogPrimitive.Description
       data-slot="dialog-description"
-      className={cn("text-muted-foreground text-sm", className)}
+      className={cn(HINT, className)}
       {...props}
     />
   )

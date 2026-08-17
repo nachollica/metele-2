@@ -8,14 +8,8 @@ import { ChevronRight, Check, CircleCheckBig, Trophy, type LucideIcon } from "lu
 
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { OVERLINE, SECTION_TITLE } from "@/lib/text-styles"
 import { TONE_BAR, TONE_CHIP, type Tone } from "@/lib/flowfic/gamification"
-
-// Shared treatment for every card/section title. One definition keeps them
-// consistent wherever two cards share a region of the screen — the home
-// screen's swappable panel shows "Recent stories" and "Advanced settings" in
-// the very same box, so they must not read as different kinds of heading.
-// Colour is layered on per card, so this token carries only the shape.
-export const CARD_TITLE_CLASS = "text-xl font-semibold"
 
 // The muted → accent ghost styling for a soft action sitting in a section
 // header. Used by the "Show all" links; kept as a token so a second header
@@ -129,7 +123,7 @@ export function SectionHeader({
   return (
     <div className="mb-4 flex items-start justify-between gap-3">
       <div className="flex min-w-0 flex-col gap-1">
-        <h2 id={id} className={cn(CARD_TITLE_CLASS, "min-w-0 truncate")}>
+        <h2 id={id} className={cn(SECTION_TITLE, "min-w-0 truncate")}>
           {title}
         </h2>
         {description ? (
@@ -169,16 +163,7 @@ export function CardSubtitle({
   children: ReactNode
   className?: string
 }) {
-  return (
-    <div
-      className={cn(
-        "text-muted-foreground mb-2 text-xs font-semibold uppercase tracking-wide",
-        className,
-      )}
-    >
-      {children}
-    </div>
-  )
+  return <div className={cn(OVERLINE, "mb-2", className)}>{children}</div>
 }
 
 // ---- Empty / sign-in hint -------------------------------------------------
