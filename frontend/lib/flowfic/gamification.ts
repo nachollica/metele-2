@@ -308,17 +308,19 @@ export function formatHoursMinutes(ms: number): string {
  * Signed, rounded percentage delta (`+12%`), or null when there is nothing worth
  * saying.
  *
- * Two cases produce no delta. `null` in means the backend had no baseline to
+ * Three cases produce no delta. `null` in means the backend had no baseline to
  * compare against (last week was zero — see `_pct_delta` in gamification.py), so
- * any percentage would be a division by nothing. And a delta that rounds to zero
- * means "same as last week": rendering `+0%` next to an up-arrow claims progress
+ * any percentage would be a division by nothing. A delta that rounds to zero
+ * means "same as last week": rendering `+0%` next to an up arrow claims progress
  * that did not happen, and the absent indicator says "unchanged" better than a
- * zero does.
+ * zero does. And exactly `-100%` means the week went to nothing — the figure
+ * beside it is already `0`, so the percentage adds no information and only
+ * lands a red mark on the worst week someone could be having.
  */
 export function formatDelta(pct: number | null): string | null {
   if (pct === null) return null
   const rounded = Math.round(pct)
-  if (rounded === 0) return null
+  if (rounded === 0 || rounded === -100) return null
   return `${rounded > 0 ? "+" : ""}${rounded}%`
 }
 

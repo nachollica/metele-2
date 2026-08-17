@@ -53,9 +53,13 @@ describe("formatDelta / deltaIsPositive", () => {
     expect(formatDelta(0.3)).toBeNull()
     expect(formatDelta(-0.4)).toBeNull()
   })
-  it("keeps a genuine doubling or collapse", () => {
+  it("keeps a genuine doubling", () => {
     expect(formatDelta(100)).toBe("+100%")
-    expect(formatDelta(-100)).toBe("-100%")
+    expect(formatDelta(-99)).toBe("-99%")
+  })
+  it("says nothing for a week that went to zero", () => {
+    // The figure beside it already reads 0; "-100%" only adds a red mark.
+    expect(formatDelta(-100)).toBeNull()
   })
   it("treats null and negatives as not-positive", () => {
     expect(deltaIsPositive(0)).toBe(true)

@@ -13,8 +13,6 @@
 import { type ReactNode } from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import {
-  ArrowDown,
-  ArrowUp,
   ChevronRight,
   Check,
   CircleCheckBig,
@@ -482,40 +480,47 @@ export function StatTile({
   size?: StatTileSize
 }) {
   const s = STAT_TILE_SIZE[size]
+  // Passing `delta` AT ALL — even as `null` — opts the tile into a reserved line
+  // above the icon. A row of these must not jog up and down as weeks go by:
+  // whether a given figure has a delta this week is data, and data must not
+  // change the layout. Tiles that can never have one (the level, the streak)
+  // omit the prop and get no line.
+  const hasDeltaSlot = delta !== undefined
   return (
     <div className="flex flex-col items-center gap-1 text-center">
-      {Icon ? (
-        <IconChip icon={Icon} tone={tone} className={cn("mb-1", s.chip)} iconClassName={s.icon} />
-      ) : null}
-      {/* Wrapping, because three of these share a phone's width and a two-part
-          figure like "2h 1m" would otherwise break across lines to make room for
-          the delta. `whitespace-nowrap` keeps the value whole and sends the
-          delta to the next line instead — it is the part that can move. */}
-      <div className="flex flex-wrap items-baseline justify-center gap-x-1">
-        <span className={cn("font-extrabold whitespace-nowrap tabular-nums", s.value)}>
-          {value}
-        </span>
-        {delta ? (
+      {hasDeltaSlot ? (
+        delta ? (
           <span
             className={cn(
-              "flex items-center gap-0.5 text-xs font-semibold",
+              "flex items-center gap-0.5 text-xs font-semibold whitespace-nowrap",
               // "Success" is the palette's green, not a colour picked here.
               deltaPositive ? TONE_TEXT.green : "text-muted-foreground",
             )}
           >
-            {/* The arrow carries the direction as shape, not only as colour and
-                a leading sign — the muted "down" tint is a weak signal, and the
-                two greens are indistinguishable to some viewers. `aria-hidden`
-                because the sign in the text already says it. */}
-            {deltaPositive ? (
-              <ArrowUp className="size-3 shrink-0" aria-hidden />
-            ) : (
-              <ArrowDown className="size-3 shrink-0" aria-hidden />
-            )}
+            {/* The triangle carries the direction as shape, not only as colour
+                and a leading sign — the muted "down" tint is a weak signal, and
+                the two greens are indistinguishable to some viewers.
+                `aria-hidden` because the sign in the text already says it, and
+                because screen readers name the glyph ("black down-pointing
+                triangle"), which is noise. */}
+            <span aria-hidden>{deltaPositive ? "▲" : "▼"}</span>
             {delta}
           </span>
-        ) : null}
-      </div>
+        ) : (
+          // The empty half of the slot. `aria-hidden` and a non-breaking space:
+          // it exists only to hold the line open, so nothing should read it and
+          // nothing should be able to select it.
+          <span aria-hidden className="text-xs font-semibold select-none">
+            &nbsp;
+          </span>
+        )
+      ) : null}
+      {Icon ? (
+        <IconChip icon={Icon} tone={tone} className={cn("mb-1", s.chip)} iconClassName={s.icon} />
+      ) : null}
+      <span className={cn("font-extrabold whitespace-nowrap tabular-nums", s.value)}>
+        {value}
+      </span>
       <span className={cn("text-muted-foreground", s.label)}>{label}</span>
     </div>
   )
