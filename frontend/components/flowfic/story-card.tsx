@@ -135,24 +135,28 @@ export function StoryCard({ story, onSelect, onDelete, onUpdateTitle, fill = fal
               className={cn("h-8", FIELD_LABEL)}
               disabled={renameBusy}
             />
-            <button
+            {/* Cancel then Save: the mode grid's copy of this pair and every
+                confirmation dialog put the affirmative on the right. */}
+            <Button
               type="button"
-              onClick={() => void submitRename()}
-              aria-label={t.sidebar.renameSave}
-              disabled={renameBusy}
-              className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex size-7 shrink-0 items-center justify-center rounded-md disabled:opacity-50"
-            >
-              <Check className="size-4" aria-hidden />
-            </button>
-            <button
-              type="button"
+              variant="ghost"
+              size="icon-xs"
               onClick={() => setRenaming(false)}
               aria-label={t.sidebar.renameCancel}
               disabled={renameBusy}
-              className="hover:bg-accent text-muted-foreground inline-flex size-7 shrink-0 items-center justify-center rounded-md"
+              className="text-muted-foreground"
             >
               <X className="size-4" aria-hidden />
-            </button>
+            </Button>
+            <Button
+              type="button"
+              size="icon-xs"
+              onClick={() => void submitRename()}
+              aria-label={t.sidebar.renameSave}
+              disabled={renameBusy}
+            >
+              <Check className="size-4" aria-hidden />
+            </Button>
           </div>
         ) : (
           <button

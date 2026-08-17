@@ -13,6 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
 import { cn } from "@/lib/utils"
@@ -440,25 +441,29 @@ function InlineNameForm({
         className="h-8 text-sm"
         disabled={busy}
       />
+      {/* Cancel then Save, matching the order the confirmation dialogs use —
+          the story card's copy of this pair had them the other way round. */}
       <div className="flex justify-end gap-1">
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon-xs"
           onClick={onCancel}
           aria-label={cancelLabel}
-          className="hover:bg-accent text-muted-foreground inline-flex size-6 items-center justify-center rounded-md"
+          className="text-muted-foreground"
           disabled={busy}
         >
           <X className="size-3.5" aria-hidden />
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          size="icon-xs"
           onClick={onSubmit}
           aria-label={saveLabel}
-          className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex size-6 items-center justify-center rounded-md disabled:opacity-50"
           disabled={busy || value.trim().length === 0}
         >
           <Check className="size-3.5" aria-hidden />
-        </button>
+        </Button>
       </div>
     </div>
   )
@@ -612,24 +617,28 @@ function CustomPresetCard({
       {/* Action chips. Visible on hover/focus-within so the unhovered card
           stays clean. Keyboard users tab through them after the card. */}
       <div className="absolute top-1.5 right-1.5 flex gap-0.5 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon-xs"
           onClick={onStartEdit}
           aria-label={t.profile.customPresetEdit}
           disabled={busy}
-          className="hover:bg-accent text-muted-foreground inline-flex size-6 items-center justify-center rounded-md"
+          className="text-muted-foreground"
         >
           <Pencil className="size-3.5" aria-hidden />
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant="ghost"
+          size="icon-xs"
           onClick={onDelete}
           aria-label={t.profile.customPresetDelete}
           disabled={busy}
-          className="hover:bg-destructive/10 text-destructive inline-flex size-6 items-center justify-center rounded-md"
+          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
         >
           <Trash2 className="size-3.5" aria-hidden />
-        </button>
+        </Button>
       </div>
     </div>
   )
