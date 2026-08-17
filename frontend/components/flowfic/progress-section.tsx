@@ -14,7 +14,6 @@ import { useGamification } from "./gamification-context"
 import {
   AchievementHighlights,
   ProgressHighlights,
-  TimelineCard,
   WeeklySummaryCard,
 } from "./progress-widgets"
 
@@ -31,15 +30,16 @@ type Props = {
  * "My Progress" — the merged progress section (formerly Statistics, Challenges,
  * and Achievements).
  *
- * Both faces are built from the same parts (see `progress-widgets.tsx`), each
- * taking a `compact` flag rather than being written twice:
+ * Both faces are built from the same three parts (see `progress-widgets.tsx`) —
+ * literally the same components, so the two screens cannot drift. Only the
+ * `compact` flag differs, and it now means one thing: fit a fixed pane.
  *
- *   preview — packed into the showcase's fixed 3:2 pane as two rows of two:
- *     level + streak beside the achievement highlights on top, the timeline
- *     beside the weekly summary below. The rows split the pane evenly, so it
- *     always fills exactly and never scrolls. Each row stacks on a phone.
+ *   preview — packed into the showcase's fixed 3:2 pane as two rows: level +
+ *     streak beside the achievement highlights on top, the weekly summary full
+ *     width below. The rows split the pane evenly, so it always fills exactly
+ *     and never scrolls. Each row stacks on a phone.
  *
- *   full screen — the same four parts unconstrained, then the achievements and
+ *   full screen — the same three parts unconstrained, then the achievements and
  *     challenges subsections in full.
  *
  * The "challenge of the day" is deliberately not here: the launcher's mode grid
@@ -81,21 +81,17 @@ export function ProgressSection({ preview = false, flush = false, onShowAll }: P
           <EmptyHint className="py-6">{t.dashboard.signInHint}</EmptyHint>
         ) : (
           <div className="flex min-h-0 flex-1 flex-col gap-3">
-            {/* Two rows of two, splitting the pane evenly. Each row's column
-                count is explicit, because a stacked `auto` row let the chart (a
-                `flex-1` plot in a `min-h-0` column) resolve to zero and collapse
-                its card to the heading. Within the top row, 2/5 and 3/5 rather
-                than halves: the level pair is two figures and the achievements
-                are three cards, so an even split left one cramped and the other
-                airy. */}
+            {/* Two rows splitting the pane evenly. The row's column count is
+                explicit, because a stacked `auto` row let the chart (a `flex-1`
+                plot in a `min-h-0` column) resolve to zero and collapse its card
+                to the heading. 2/5 and 3/5 rather than halves: the level pair is
+                two figures and the achievements are three cards, so an even
+                split left one cramped and the other airy. */}
             <div className="grid min-h-0 flex-1 grid-rows-2 gap-3 sm:grid-cols-5 sm:grid-rows-1">
               <ProgressHighlights overview={withChart} className="sm:col-span-2" />
               <AchievementHighlights achievements={list} className="sm:col-span-3" />
             </div>
-            <div className="grid min-h-0 flex-1 grid-rows-2 gap-3 sm:grid-cols-2 sm:grid-rows-1">
-              <TimelineCard overview={withChart} compact />
-              <WeeklySummaryCard overview={withChart} compact />
-            </div>
+            <WeeklySummaryCard overview={withChart} compact />
           </div>
         )}
       </Wrapper>
@@ -118,10 +114,7 @@ export function ProgressSection({ preview = false, flush = false, onShowAll }: P
           <ProgressHighlights overview={withChart} className="lg:col-span-2" />
           <AchievementHighlights achievements={list} className="lg:col-span-3" />
         </div>
-        <div className="grid gap-4 lg:grid-cols-2">
-          <TimelineCard overview={withChart} />
-          <WeeklySummaryCard overview={withChart} />
-        </div>
+        <WeeklySummaryCard overview={withChart} />
       </DetailSubsection>
 
       <DetailSubsection title={t.nav.achievements}>

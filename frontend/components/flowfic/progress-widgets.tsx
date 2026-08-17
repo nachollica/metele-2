@@ -14,6 +14,7 @@ import { useLocale, useTranslations } from "@/lib/i18n"
 import {
   achievementText,
   achievementVisual,
+  deltaIsPositive,
   formatCount,
   formatDelta,
   formatHoursMinutes,
@@ -87,46 +88,25 @@ export function ProgressHighlights({
 }
 
 /**
- * The timeline: words per day over the rolling week. Half the width, sharing its
- * row with the weekly summary — the two answer the same question (how did this
- * week go) from different angles, and the week/month range buttons to come will
- * drive both at once.
- */
-export function TimelineCard({
-  overview,
-  compact = false,
-}: {
-  overview: Overview
-  compact?: boolean
-}) {
-  const t = useTranslations()
-  const titleId = useId()
-  return (
-    <section className={cn(BOX, "min-h-0")} aria-labelledby={titleId}>
-      <CardSubtitle id={titleId}>{t.dashboard.timeline}</CardSubtitle>
-      <WeeklyChart
-        data={overview.chart}
-        wordsLabel={t.dashboard.words}
-        caption={t.dashboard.chartCaption}
-        fill={compact}
-      />
-    </section>
-  )
-}
-
-/**
- * This week's totals, sized to match the timeline beside it. These are the only
- * word and time figures in the section, and they are weekly by definition — see
- * `ProgressHighlights` for why no lifetime pair sits above them. Deltas against
- * the previous week are shown where there is room for them.
+ * This week, whole: the three totals beside the words-per-day chart, in one
+ * full-width card.
+ *
+ * They used to be two cards sharing a row, which read as two separate answers to
+ * the same question ("how did this week go") and left the range buttons still to
+ * come with two headers to drive. Totals lead — they are the figures — and the
+ * chart takes the right half from `sm`, stacking under them on a phone.
+ *
+ * These are the only word and time figures in the section, and they are weekly
+ * by definition: see `ProgressHighlights` for why no lifetime pair sits above
+ * them.
  */
 export function WeeklySummaryCard({
   overview,
   compact = false,
 }: {
   overview: Overview
-  /** Drops the week-on-week deltas; the figures themselves keep their size,
-   *  since this card shares its row with the timeline and reads as its peer. */
+  /** Packed into the landing's fixed pane: the chart takes its height from the
+   *  card rather than its own default, so the card can shrink with the pane. */
   compact?: boolean
 }) {
   const t = useTranslations()
@@ -137,36 +117,49 @@ export function WeeklySummaryCard({
   return (
     <section className={cn(BOX, "min-h-0")} aria-labelledby={titleId}>
       <CardSubtitle id={titleId}>{t.dashboard.weeklySummary}</CardSubtitle>
-      {/* Centred in whatever height the timeline settles on, so the two boxes
-          read as a pair rather than one floating above the other. */}
-      <div className="grid min-h-0 flex-1 grid-cols-3 content-center gap-2">
-        <StatTile
-          icon={Sparkles}
-          tone="green"
-          value={formatCount(weekly.sessions, locale)}
-          label={t.dashboard.sessions}
-          size="md"
-          delta={compact ? null : formatDelta(weekly.deltaSessions)}
-          deltaPositive={(weekly.deltaSessions ?? 0) >= 0}
-        />
-        <StatTile
-          icon={Flame}
-          tone="amber"
-          value={formatCount(weekly.words, locale)}
-          label={t.dashboard.words}
-          size="md"
-          delta={compact ? null : formatDelta(weekly.deltaWords)}
-          deltaPositive={(weekly.deltaWords ?? 0) >= 0}
-        />
-        <StatTile
-          icon={Clock}
-          tone="violet"
-          value={formatHoursMinutes(weekly.durationMs)}
-          label={t.dashboard.totalTime}
-          size="md"
-          delta={compact ? null : formatDelta(weekly.deltaDurationMs)}
-          deltaPositive={(weekly.deltaDurationMs ?? 0) >= 0}
-        />
+      {/* Explicit row AND column counts at both breakpoints: left to `auto` a
+          grid row sizes to its content and escapes the card it was given, which
+          is how the stacked chart previously collapsed to nothing. */}
+      <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-2 gap-3 sm:grid-cols-2 sm:grid-rows-1">
+        {/* Centred in whatever height the chart settles on, so the two halves
+            read as a pair rather than one floating above the other. */}
+        <div className="grid min-h-0 grid-cols-3 content-center gap-2">
+          <StatTile
+            icon={Sparkles}
+            tone="green"
+            value={formatCount(weekly.sessions, locale)}
+            label={t.dashboard.sessions}
+            size="md"
+            delta={formatDelta(weekly.deltaSessions)}
+            deltaPositive={deltaIsPositive(weekly.deltaSessions)}
+          />
+          <StatTile
+            icon={Flame}
+            tone="amber"
+            value={formatCount(weekly.words, locale)}
+            label={t.dashboard.words}
+            size="md"
+            delta={formatDelta(weekly.deltaWords)}
+            deltaPositive={deltaIsPositive(weekly.deltaWords)}
+          />
+          <StatTile
+            icon={Clock}
+            tone="violet"
+            value={formatHoursMinutes(weekly.durationMs)}
+            label={t.dashboard.totalTime}
+            size="md"
+            delta={formatDelta(weekly.deltaDurationMs)}
+            deltaPositive={deltaIsPositive(weekly.deltaDurationMs)}
+          />
+        </div>
+        <div className="flex min-h-0 flex-col justify-center">
+          <WeeklyChart
+            data={overview.chart}
+            wordsLabel={t.dashboard.words}
+            caption={t.dashboard.chartCaption}
+            fill={compact}
+          />
+        </div>
       </div>
     </section>
   )
