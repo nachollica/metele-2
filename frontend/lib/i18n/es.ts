@@ -119,6 +119,11 @@ export const es = {
     // Los controles de sesión son cuadros con solo icono, así que esto son
     // nombres accesibles y no etiquetas visibles: caben completos.
     resume: "Continuar",
+    // Se anuncia al congelar o reanudar la sesión. Se puede pausar sin que el
+    // botón llegue a tener el foco (el diálogo de salir también pausa), así que
+    // el estado hay que decirlo, no dejarlo en el nombre del botón.
+    pausedStatus: "Sesión en pausa. Los temporizadores están congelados.",
+    resumedStatus: "Sesión reanudada.",
     quit: "Salir de sesión",
     quitConfirmTitle: "¿Salir de esta sesión?",
     quitConfirmDescription:

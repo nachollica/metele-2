@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useRef, useState } from "react"
 import { Check, Timer, Clock, Pause, Play, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -87,10 +88,13 @@ export function GameHud({
   // takes the right half when the mechanic is on, otherwise the timers spread
   // across the full width.
   //
-  // Pause carries no banner of its own: a line of copy here would grow the
-  // card and shove everything below it. The state reads from the controls
-  // (Pause has become Play) plus the greyed timers and editor, and is
-  // announced through the toggle's own accessible name.
+  // Pause carries no visible banner of its own: a line of copy here would grow
+  // the card and shove everything below it. Sighted players read the state off
+  // the controls (Pause has become Play) plus the greyed timers and editor;
+  // everyone else gets it from `PauseAnnouncer` below, which speaks it outright
+  // rather than leaving it on the toggle's accessible name — that only reaches
+  // someone whose focus is already on the toggle, and the quit dialog pauses
+  // the sprint without it ever being focused.
   const timers = (
     <div className="flex items-center gap-3">
       <SessionControls
@@ -113,6 +117,7 @@ export function GameHud({
       aria-label={t.app.title}
       className="bg-card text-card-foreground rounded-lg border p-4 shadow-sm"
     >
+      <PauseAnnouncer paused={paused} />
       {requiredWordsEnabled ? (
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-4">
           {timers}
@@ -126,6 +131,32 @@ export function GameHud({
         timers
       )}
     </section>
+  )
+}
+
+/**
+ * Speaks the frozen/running state of the sprint.
+ *
+ * Silent on mount: a sprint always starts running, so the only thing worth
+ * announcing is the change.
+ */
+function PauseAnnouncer({ paused }: { paused: boolean }) {
+  const t = useTranslations()
+  const [message, setMessage] = useState("")
+  const previous = useRef<boolean | null>(null)
+
+  useEffect(() => {
+    const isFirst = previous.current === null
+    const changed = previous.current !== paused
+    previous.current = paused
+    if (isFirst || !changed) return
+    setMessage(paused ? t.game.pausedStatus : t.game.resumedStatus)
+  }, [paused, t])
+
+  return (
+    <div role="status" aria-live="polite" className="sr-only">
+      {message}
+    </div>
   )
 }
 
@@ -230,6 +261,10 @@ function TimerBar({
           {formatSeconds(seconds, t.units)}
         </span>
       </div>
+      {/* `aria-valuetext` because the raw value is a second count against a
+          second count, which a screen reader renders as a bare percentage
+          ("42 percent") — useless for a clock. This is the same string the
+          sighted player reads off the row above. */}
       <div
         className="bg-muted h-1.5 w-full overflow-hidden rounded-full"
         role="progressbar"
@@ -237,6 +272,7 @@ function TimerBar({
         aria-valuenow={Math.max(0, Math.round(seconds))}
         aria-valuemin={0}
         aria-valuemax={Math.max(1, Math.round(total))}
+        aria-valuetext={formatSeconds(seconds, t.units)}
       >
         <div
           className={cn(

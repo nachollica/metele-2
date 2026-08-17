@@ -81,4 +81,40 @@ describe("GameHud", () => {
     renderHud({ requiredWord: "ghost" })
     expect(screen.getByText("ghost")).toBeInTheDocument()
   })
+
+  it("spells the timer bars out as a clock, not a percentage", () => {
+    renderHud({ idleSecondsLeft: 5, globalSecondsLeft: 90 })
+
+    expect(screen.getByRole("progressbar", { name: /idle timeout in/i })).toHaveAttribute(
+      "aria-valuetext",
+      "5s",
+    )
+    expect(screen.getByRole("progressbar", { name: /session ends in/i })).toHaveAttribute(
+      "aria-valuetext",
+      "1m 30s",
+    )
+  })
+
+  it("announces the pause and the resume, but says nothing on mount", () => {
+    // A sprint always starts running, so the initial state is not news.
+    const { rerender } = renderHud()
+    expect(screen.getByRole("status")).toHaveTextContent("")
+
+    rerender(<GameHud {...baseProps} paused />)
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Session paused. The timers are frozen.",
+    )
+
+    rerender(<GameHud {...baseProps} paused={false} />)
+    expect(screen.getByRole("status")).toHaveTextContent("Session resumed.")
+  })
+
+  it("announces the pause in the active locale", () => {
+    const { rerender } = renderWithLocale(<GameHud {...baseProps} />, { locale: "es" })
+
+    rerender(<GameHud {...baseProps} paused />)
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Sesión en pausa. Los temporizadores están congelados.",
+    )
+  })
 })

@@ -114,6 +114,11 @@ export const en = {
     // The session controls are icon-only squares, so these are accessible
     // names rather than visible labels and can carry the full phrase.
     resume: "Resume",
+    // Spoken when the sprint freezes or restarts. Pause is reachable without
+    // the toggle ever holding focus (the quit dialog pauses too), so the state
+    // needs saying outright rather than riding on the button's name.
+    pausedStatus: "Session paused. The timers are frozen.",
+    resumedStatus: "Session resumed.",
     quit: "Quit session",
     quitConfirmTitle: "Quit this session?",
     quitConfirmDescription:
