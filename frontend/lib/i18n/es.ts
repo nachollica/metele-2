@@ -136,6 +136,10 @@ export const es = {
     inspirationShow: "Mostrar inspiración",
     inspirationHide: "Ocultar inspiración",
     viewingStory: "Viendo una historia anterior (solo lectura).",
+    // Nombra el visor de solo lectura. Sin esto el campo hereda el
+    // `placeholder` del editor, así que una historia guardada se anuncia como
+    // una invitación a empezar a escribirla.
+    storyTextLabel: "Texto de la historia",
     saveFailed: "No se pudo guardar tu última historia.",
     saveRetry: "Reintentar",
     saveRetrying: "Reintentando…",
@@ -257,6 +261,8 @@ export const es = {
     stats: "Estadísticas",
     achievements: "Logros",
     showAll: "Ver todo",
+    // Nombre accesible de la X en la esquina de un diálogo, común a todos.
+    closeDialog: "Cerrar",
     // Título en la cabecera de la pantalla de inicio: la única pantalla sin
     // título propio, nombrada por aquello para lo que sirve.
     createStory: "Crea una historia",

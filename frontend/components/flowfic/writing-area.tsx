@@ -66,7 +66,10 @@ export function WritingArea({
           "selection:bg-highlight/25",
           paused && "text-muted-foreground cursor-default",
         )}
-        aria-label={t.game.placeholder}
+        /* The archive viewer shows a finished story, so it is named after what
+           it holds. Only the live editor is named after the prompt to write —
+           there the placeholder IS the instruction. */
+        aria-label={readOnly ? t.game.storyTextLabel : t.game.placeholder}
       />
     </div>
   )

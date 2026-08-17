@@ -154,7 +154,11 @@ export function LandingShowcase({
         />
       </div>
 
+      {/* `role="group"` because ARIA forbids naming a role-less element: as a
+          bare div this was `role="generic"`, and the localized "Showing: …"
+          label was dropped on the floor by every screen reader. */}
       <div
+        role="group"
         aria-label={t.dashboard.showcasePaneLabel.replace("{name}", faceName)}
         className={cn(
           "bg-card text-card-foreground w-full overflow-hidden rounded-2xl border shadow-sm",

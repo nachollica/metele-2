@@ -131,6 +131,10 @@ export const en = {
     inspirationShow: "Show inspiration",
     inspirationHide: "Hide inspiration",
     viewingStory: "Viewing a previous story (read-only).",
+    // Names the read-only archive viewer. Without it the field inherits the
+    // editor's `placeholder`, so a saved story announces itself as an
+    // invitation to start typing one.
+    storyTextLabel: "Story text",
     saveFailed: "Couldn't save your last story.",
     saveRetry: "Retry",
     saveRetrying: "Retrying…",
@@ -252,6 +256,8 @@ export const en = {
     stats: "Statistics",
     achievements: "Achievements",
     showAll: "Show all",
+    // Accessible name of the X in a dialog's corner, shared by every dialog.
+    closeDialog: "Close",
     // Header title of the landing screen — the one screen with no title of its
     // own, named after what it is for.
     createStory: "Create a story",
