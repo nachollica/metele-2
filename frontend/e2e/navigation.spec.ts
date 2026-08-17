@@ -31,7 +31,8 @@ test("'More options' pushes /new; browser Back closes the settings panel", async
   await page.goBack()
   await expect(page).toHaveURL("/")
   await expect(page.getByRole("heading", { name: "Advanced settings" })).toBeHidden()
-  // The recent-stories face is back in the swappable panel.
+  // The settings are shown/hidden rather than swapped with anything, so the
+  // recent stories are there in both states — only the landing's height moves.
   await expect(page.getByRole("heading", { name: "Recent stories" })).toBeVisible()
 
   await page.goForward()

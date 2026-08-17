@@ -33,9 +33,9 @@ type Props = {
 }
 
 /**
- * Advanced session settings, shown in the Home screen's swappable panel behind
- * the "More options" toggle. Purely controlled — the parent owns the settings
- * object and the surrounding scroll.
+ * Advanced session settings, shown on the Home screen behind the "More options"
+ * toggle. Purely controlled — the parent owns the settings object, and the
+ * panel is sized by its own content rather than fitted into a fixed box.
  *
  * The session length and the mode picker are NOT here: both live in the
  * launcher above (the dial and the mode grid), since they are the two choices
@@ -152,10 +152,9 @@ export function SettingsPanel({ settings, onChange }: Props) {
           }
         />
 
-        {/* Required-word sub-settings. Always rendered so the panel keeps a
-            stable height (the home screen swaps it in and out of a fixed-size
-            container); the master toggle greys them out and disables their
-            controls instead of collapsing the rows away. */}
+        {/* Required-word sub-settings. Always rendered: the master toggle greys
+            them out and disables their controls rather than collapsing the rows
+            away, so flipping it never reflows what is under the pointer. */}
         <SettingRow
           id="word-interval"
           label={t.settings.requiredWordIntervalLabel}
