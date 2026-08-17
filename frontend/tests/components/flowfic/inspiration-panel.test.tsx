@@ -2,7 +2,7 @@ import { screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-import { InspirationCard, InspirationPane } from "@/components/flowfic/inspiration-panel"
+import { InspirationDisplay, InspirationPane } from "@/components/flowfic/inspiration-panel"
 import { ShowAllButton } from "@/components/flowfic/dashboard-widgets"
 import type { Quote } from "@/lib/flowfic/quotes"
 import * as inspirationModule from "@/lib/flowfic/inspiration"
@@ -34,37 +34,33 @@ function mockStore(state: InspirationState, pick = vi.fn()): ReturnType<typeof v
   return pick
 }
 
-describe("InspirationCard", () => {
+describe("InspirationDisplay", () => {
   afterEach(() => vi.restoreAllMocks())
 
-  it("invites a first pick while unset, and picking is the whole card", async () => {
-    const pick = mockStore({ status: "unset" })
-    const { container } = renderWithLocale(<InspirationCard />)
+  it("invites a first pick while unset, pointing at the control that picks", () => {
+    mockStore({ status: "unset" })
+    const { container } = renderWithLocale(<InspirationDisplay />)
 
-    const card = screen.getByRole("button", { name: "Click here to get some inspiration" })
     expect(screen.getByText("Click here to get some inspiration")).toBeInTheDocument()
     expect(container.querySelector("img")).toBeNull()
-
-    await userEvent.click(card)
-    expect(pick).toHaveBeenCalledOnce()
   })
 
-  it("renders a picked image and offers a re-roll", async () => {
-    const pick = mockStore({ status: "image", image: IMAGE })
-    const { container } = renderWithLocale(<InspirationCard />)
+  it("renders a picked image, inert — the selector above owns the re-roll", () => {
+    mockStore({ status: "image", image: IMAGE })
+    const { container } = renderWithLocale(<InspirationDisplay />)
 
     expect(container.querySelector("img")).toHaveAttribute("src", IMAGE.img)
-    // No title, credit link, or separate refresh control by design.
+    // Nothing here is clickable: a click in the pane must not re-roll, which is
+    // also what leaves a quote's text selectable.
+    expect(screen.queryByRole("button")).toBeNull()
+    // No title or credit link by design.
     expect(screen.queryByRole("link")).toBeNull()
     expect(screen.queryByText(IMAGE.title)).toBeNull()
-
-    await userEvent.click(screen.getByRole("button", { name: "Show me another inspiration" }))
-    expect(pick).toHaveBeenCalledOnce()
   })
 
   it("renders a picked quote with its attribution", () => {
     mockStore({ status: "quote", quote: QUOTE })
-    renderWithLocale(<InspirationCard />)
+    renderWithLocale(<InspirationDisplay />)
     expect(screen.getByText("Curiouser and curiouser!")).toBeInTheDocument()
     expect(
       screen.getByText(/Lewis Carroll · Alice's Adventures in Wonderland/),
@@ -73,13 +69,13 @@ describe("InspirationCard", () => {
 
   it("renders the localized quote text for the active locale", () => {
     mockStore({ status: "quote", quote: QUOTE })
-    renderWithLocale(<InspirationCard />, { locale: "es" })
+    renderWithLocale(<InspirationDisplay />, { locale: "es" })
     expect(screen.getByText("¡Cada vez más raro!")).toBeInTheDocument()
   })
 
   it("says so when neither pool is available", () => {
     mockStore({ status: "unavailable" })
-    renderWithLocale(<InspirationCard />)
+    renderWithLocale(<InspirationDisplay />)
     expect(screen.getByText("No inspiration available right now.")).toBeInTheDocument()
   })
 })

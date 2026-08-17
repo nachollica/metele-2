@@ -24,10 +24,12 @@ import { filterAndSortStories, type SortOrder } from "@/lib/flowfic/story-search
 import { EmptyHint, Panel, SectionHeader, ShowAllButton } from "./dashboard-widgets"
 import { StoryCard } from "./story-card"
 
-// How many stories the landing preview shows before "Show all". The landing's
-// panel divides its fixed height into exactly this many rows, so the number is
-// a layout decision as much as a content one — raising it shrinks every row.
-const PREVIEW_COUNT = 3
+// How many stories the landing preview shows before "Show all". The showcase
+// pane divides its fixed height into exactly this many rows, so the number is a
+// layout decision as much as a content one — raising it shrinks every row.
+// Five lands each row near a StoryCard's natural height in the 4:3 pane, so the
+// landing's cards read like the ones on the detail screen.
+const PREVIEW_COUNT = 5
 
 type Props = {
   stories: Story[] | null
@@ -37,7 +39,7 @@ type Props = {
   onUpdateTitle: (id: number, title: string | null) => Promise<boolean>
   /** Render a trimmed card for the landing dashboard instead of the full screen. */
   preview?: boolean
-  /** Drop the preview's own card chrome — the landing already supplies it. */
+  /** Drop the preview's own card chrome — the showcase pane already supplies it. */
   flush?: boolean
   /** Open the expanded My-stories screen (preview only). */
   onShowAll?: () => void
@@ -87,9 +89,9 @@ export function StoriesSection({
           PREVIEW_COUNT,
         )
       : []
-    // Flush drops the card chrome (the landing panel already supplies it) and,
+    // Flush drops the card chrome (the showcase pane already supplies it) and,
     // with it, the wrapper element — so the preview's own flex column is the
-    // direct child of that fixed-height panel and can fill it.
+    // direct child of that fixed-shape pane and can fill it.
     const Wrapper = flush ? Fragment : Panel
     return (
       <Wrapper>

@@ -1,5 +1,6 @@
 "use client"
 
+import { Fragment } from "react"
 import { Clock, Flame, Sparkles, Trophy } from "lucide-react"
 
 import { useAuth } from "@/lib/auth"
@@ -33,7 +34,9 @@ type Props = {
   onNewStory: () => void
   /** Render the combined landing card instead of the full detail screen. */
   preview?: boolean
-  /** Open the expanded My-Journey screen (preview only). */
+  /** Drop the preview's own card chrome — the showcase pane already supplies it. */
+  flush?: boolean
+  /** Open the expanded My-Progress screen (preview only). */
   onShowAll?: () => void
 }
 
@@ -51,7 +54,12 @@ type Props = {
  * The full screen is comprehensive: all challenges, then achievements, then the
  * complete statistics view (reusing the two section components as-is).
  */
-export function ProgressSection({ onNewStory, preview = false, onShowAll }: Props) {
+export function ProgressSection({
+  onNewStory,
+  preview = false,
+  flush = false,
+  onShowAll,
+}: Props) {
   const t = useTranslations()
   const locale = useLocale()
   const { status } = useAuth()
@@ -66,8 +74,12 @@ export function ProgressSection({ onNewStory, preview = false, onShowAll }: Prop
     // "Challenge of the day": rotate through the live set so it changes daily.
     const featured = list.length > 0 ? list[dailyIndex(list.length)] : null
 
+    // Flush drops the card chrome (the showcase pane already supplies it) and,
+    // with it, the wrapper element — so this column is the direct child of that
+    // fixed-shape pane and can fill it.
+    const Wrapper = flush ? Fragment : Panel
     return (
-      <Panel>
+      <Wrapper>
         <SectionHeader
           title={t.nav.progress}
           action={
@@ -150,7 +162,7 @@ export function ProgressSection({ onNewStory, preview = false, onShowAll }: Prop
             </div>
           </div>
         )}
-      </Panel>
+      </Wrapper>
     )
   }
 

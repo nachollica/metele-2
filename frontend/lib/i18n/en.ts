@@ -309,6 +309,14 @@ export const en = {
     inspirationPrompt: "Click here to get some inspiration",
     inspirationAnother: "Show me another inspiration",
     inspirationUnavailable: "No inspiration available right now.",
+    // The landing's three circular selectors and the pane they fill. The
+    // inspiration one is the only selector that is also an action, so it takes
+    // three legends: pick / re-roll / just switch back to what is already up.
+    showcaseLabel: "Choose what to show",
+    showcasePaneLabel: "Showing: {name}",
+    inspirationTab: "Get inspiration",
+    inspirationTabCurrent: "Inspiration",
+    inspirationTabAnother: "Click again for a new one",
   },
 
   achievements: {

@@ -38,6 +38,7 @@ import { GameHud } from "./game-hud"
 import { InspirationPane } from "./inspiration-panel"
 import { ProgressSection } from "./progress-section"
 import { LandingHome } from "./landing"
+import { type ShowcaseFace } from "./landing-showcase"
 import { type GridMode } from "./preset-grid"
 import { ProfilePanel } from "./profile-panel"
 import { ResultsModal } from "./results-modal"
@@ -71,6 +72,10 @@ export function Dashboard() {
   // Mode grid face, held here so flipping it survives the panel toggling and
   // a trip into a detail screen and back.
   const [gridMode, setGridMode] = useState<GridMode>("system")
+  // Showcase face, held here for the same reason. Inspiration is the default:
+  // it is the one face that reads the same signed in or out, and it is the
+  // app's own invitation rather than a sign-in prompt.
+  const [showcaseFace, setShowcaseFace] = useState<ShowcaseFace>("inspiration")
   // Quit confirmation. Opening it pauses the sprint; cancelling leaves it
   // paused, since the player can't interact with the editor while it is up.
   const [quitConfirmOpen, setQuitConfirmOpen] = useState(false)
@@ -342,6 +347,8 @@ export function Dashboard() {
                 onToggleGridMode={() =>
                   setGridMode((m) => (m === "system" ? "custom" : "system"))
                 }
+                showcaseFace={showcaseFace}
+                onChangeShowcaseFace={setShowcaseFace}
                 stories={stories}
                 storiesError={storiesError}
                 onShowSection={showSection}
@@ -512,6 +519,8 @@ function ScreenContent({
   onToggleSettings,
   gridMode,
   onToggleGridMode,
+  showcaseFace,
+  onChangeShowcaseFace,
   stories,
   storiesError,
   onShowSection,
@@ -533,6 +542,8 @@ function ScreenContent({
   onToggleSettings: () => void
   gridMode: GridMode
   onToggleGridMode: () => void
+  showcaseFace: ShowcaseFace
+  onChangeShowcaseFace: (face: ShowcaseFace) => void
   stories: Story[] | null
   storiesError: boolean
   onShowSection: (section: Section) => void
@@ -558,6 +569,8 @@ function ScreenContent({
           onToggleSettings={onToggleSettings}
           gridMode={gridMode}
           onToggleGridMode={onToggleGridMode}
+          showcaseFace={showcaseFace}
+          onChangeShowcaseFace={onChangeShowcaseFace}
           onShowSection={onShowSection}
           stories={stories}
           storiesError={storiesError}

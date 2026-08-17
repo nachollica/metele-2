@@ -313,6 +313,14 @@ export const es = {
     inspirationPrompt: "Haz clic aquí para inspirarte",
     inspirationAnother: "Muéstrame otra inspiración",
     inspirationUnavailable: "No hay inspiración disponible ahora mismo.",
+    // Los tres selectores circulares del inicio y el panel que rellenan. El de
+    // inspiración es el único que además es una acción, así que tiene tres
+    // leyendas: elegir / volver a tirar / volver a lo que ya está puesto.
+    showcaseLabel: "Elige qué mostrar",
+    showcasePaneLabel: "Mostrando: {name}",
+    inspirationTab: "Inspírate",
+    inspirationTabCurrent: "Inspiración",
+    inspirationTabAnother: "Haz clic otra vez para cambiarla",
   },
 
   achievements: {

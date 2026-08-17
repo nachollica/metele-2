@@ -24,11 +24,12 @@ async function editorCentre(page: Page): Promise<number> {
 }
 
 /** Reveal an inspiration on the home screen (50/50 image or quote — either
- *  gives the game a pane, which is all these assertions care about). */
+ *  gives the game a pane, which is all these assertions care about). The
+ *  showcase's circular selector is what picks; the pane it fills is inert. */
 async function pickInspiration(page: Page) {
-  const card = page.getByRole("button", { name: /inspiration/i })
-  await card.scrollIntoViewIfNeeded()
-  await card.click()
+  const circle = page.getByRole("button", { name: /inspiration/i })
+  await circle.scrollIntoViewIfNeeded()
+  await circle.click()
   await expect(page.getByRole("button", { name: /another inspiration/i })).toBeVisible()
 }
 

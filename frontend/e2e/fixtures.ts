@@ -1,4 +1,4 @@
-import { type Page } from "@playwright/test"
+import { expect, type Page } from "@playwright/test"
 
 // Shared helpers for the e2e suite. These deliberately avoid any real network
 // or real Auth0: the backend is stubbed at the route layer (`mockBackend`) and
@@ -42,6 +42,14 @@ export async function dismissWelcomeBeforeLoad(page: Page): Promise<void> {
   await page.addInitScript((key) => {
     window.localStorage.setItem(key as string, "1")
   }, WELCOME_DISMISSED_KEY)
+}
+
+// Select the landing showcase's "Recent stories" face. The showcase opens on
+// the inspiration face, so anything that asserts on the stories list — or uses
+// its "Show all" link to reach /stories — has to switch to it first.
+export async function openRecentStories(page: Page): Promise<void> {
+  await page.getByRole("button", { name: "Recent stories" }).click()
+  await expect(page.getByRole("heading", { name: "Recent stories" })).toBeVisible()
 }
 
 // Seed a dev-user session into localStorage so the app boots authenticated

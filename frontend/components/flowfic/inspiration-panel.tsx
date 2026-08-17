@@ -161,35 +161,23 @@ export function InspirationQuote({
 }
 
 /**
- * The home screen's inspiration card: a full-width 4:3 frame that starts as an
- * invitation (magic wand + legend) and, on click, reveals a random film still or
- * quote — a 50/50 coin flip between the two pools. Clicking again re-rolls, so
- * the whole card is one big button; there is no title, credit link, or separate
- * refresh control by design.
+ * The current inspiration, rendered inert to fill whatever box it is given (the
+ * home showcase's 4:3 pane). Deliberately NOT a button: the picker is the
+ * circular selector above it, so a click in here must mean nothing — which is
+ * also what leaves a quote's text selectable.
+ *
+ * Unset (or unavailable) shows the wand invitation, pointing at the control that
+ * does the picking.
  */
-export function InspirationCard({ className }: { className?: string }) {
+export function InspirationDisplay({ className }: { className?: string }) {
   const t = useTranslations()
-  const { state, pick } = useInspiration()
-
-  const label =
-    state.status === "unset" || state.status === "unavailable"
-      ? t.dashboard.inspirationPrompt
-      : t.dashboard.inspirationAnother
+  const { state } = useInspiration()
 
   return (
-    <button
-      type="button"
-      onClick={pick}
-      aria-label={label}
-      className={cn(
-        "bg-card text-card-foreground group relative aspect-[4/3] w-full overflow-hidden rounded-2xl border shadow-sm transition-colors",
-        "hover:border-primary/40 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
-        className,
-      )}
-    >
+    <div className={cn("relative size-full overflow-hidden", className)}>
       <CrossFade contentKey={inspirationKey(state)}>
         {state.status === "image" ? (
-          <FadeInImage src={state.image.img} alt="" />
+          <FadeInImage src={state.image.img} alt={t.dashboard.inspirationAlt} />
         ) : state.status === "quote" ? (
           <InspirationQuote quote={state.quote} />
         ) : state.status === "picking" ? (
@@ -197,7 +185,7 @@ export function InspirationCard({ className }: { className?: string }) {
             <Loader2 className="text-primary size-8 animate-spin" aria-hidden />
           </span>
         ) : (
-          <span className="text-muted-foreground group-hover:text-foreground flex size-full flex-col items-center justify-center gap-3 transition-colors">
+          <span className="text-muted-foreground flex size-full flex-col items-center justify-center gap-3">
             <Wand2 className="text-primary size-10" aria-hidden />
             <span className="text-sm font-medium">
               {state.status === "unavailable"
@@ -207,7 +195,7 @@ export function InspirationCard({ className }: { className?: string }) {
           </span>
         )}
       </CrossFade>
-    </button>
+    </div>
   )
 }
 

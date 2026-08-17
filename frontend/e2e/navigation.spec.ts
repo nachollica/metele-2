@@ -3,6 +3,7 @@ import { expect, test } from "@playwright/test"
 import {
   dismissWelcomeBeforeLoad,
   mockBackend,
+  openRecentStories,
   seedDevSession,
   type StoryWire,
 } from "./fixtures"
@@ -24,15 +25,19 @@ test("'More options' pushes /new; browser Back closes the settings panel", async
   await expect(page).toHaveURL("/")
   await expect(page.getByRole("heading", { name: "Advanced settings" })).toBeHidden()
 
+  // Put the showcase on a non-default face first: the settings are now shown
+  // and hidden rather than swapped with anything, so toggling them must leave
+  // the face below alone — only the landing's height moves.
+  await openRecentStories(page)
+
   await page.getByRole("button", { name: "More options" }).click()
   await expect(page).toHaveURL("/new")
   await expect(page.getByRole("heading", { name: "Advanced settings" })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "Recent stories" })).toBeVisible()
 
   await page.goBack()
   await expect(page).toHaveURL("/")
   await expect(page.getByRole("heading", { name: "Advanced settings" })).toBeHidden()
-  // The settings are shown/hidden rather than swapped with anything, so the
-  // recent stories are there in both states — only the landing's height moves.
   await expect(page.getByRole("heading", { name: "Recent stories" })).toBeVisible()
 
   await page.goForward()
@@ -183,6 +188,7 @@ test("the landing's 'Show all' opens the stories section", async ({ page }) => {
   await seedDevSession(page)
   await page.goto("/")
 
+  await openRecentStories(page)
   await page.getByRole("button", { name: "Show all: My stories" }).click()
   await expect(page).toHaveURL("/stories")
   await expect(page.getByRole("heading", { level: 1, name: "My stories" })).toBeVisible()

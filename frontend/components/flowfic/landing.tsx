@@ -5,26 +5,26 @@ import { type Story } from "@/lib/flowfic/stories-api"
 
 import { type Section } from "./dashboard-nav"
 import { ContentColumn, Panel } from "./dashboard-widgets"
+import { LandingShowcase, type ShowcaseFace } from "./landing-showcase"
 import { type GridMode } from "./preset-grid"
-import { InspirationCard } from "./inspiration-panel"
 import { SessionLauncher } from "./session-launcher"
 import { SettingsPanel } from "./settings-panel"
-import { StoriesSection } from "./stories-section"
 
 // Landing order: the session launcher (dial + modes + actions), the advanced
-// settings when "More options" is on, a fixed-height recent-stories panel, then
-// the full-width inspiration card.
-
-// Height of the recent-stories panel. Its rows divide this box and nothing
-// inside it scrolls (see StoriesSection's preview).
-const PANEL_HEIGHT = "h-[30rem]"
+// settings when "More options" is on, then the showcase — three circular
+// selectors over one pane holding whichever they pick.
+//
+// Every box below the launcher has a fixed shape, so the landing's height is
+// the same whatever the player is looking at. The settings panel is the single
+// deliberate exception: it is sized by its own content and moves the page when
+// it appears.
 
 type Props = {
   settings: GameSettings
   onChangeSettings: (settings: GameSettings) => void
   /** Begin the sprint with the current settings. */
   onStart: () => void
-  /** Whether the swappable panel shows the settings face (URL-backed: /new). */
+  /** Whether the advanced settings are shown (URL-backed: /new). */
   settingsOpen: boolean
   onToggleSettings: () => void
   /** Open an expanded subsection (from a "Show all" link). */
@@ -37,6 +37,9 @@ type Props = {
   /** Mode grid face, lifted here so it survives the panel toggling. */
   gridMode: GridMode
   onToggleGridMode: () => void
+  /** Showcase face, lifted for the same reason plus a trip into a detail screen. */
+  showcaseFace: ShowcaseFace
+  onChangeShowcaseFace: (face: ShowcaseFace) => void
 }
 
 export function LandingHome({
@@ -53,6 +56,8 @@ export function LandingHome({
   onUpdateStoryTitle,
   gridMode,
   onToggleGridMode,
+  showcaseFace,
+  onChangeShowcaseFace,
 }: Props) {
   return (
     <ContentColumn className="gap-6">
@@ -70,33 +75,26 @@ export function LandingHome({
 
       {/* Advanced settings: shown or hidden by "More options" rather than
           swapped with anything, so the panel is free to be exactly as tall as
-          the settings it holds — the one place the landing's height moves.
-          Desktop-only (see SessionLauncher), so on a phone `/new` just renders
-          the normal home screen and needs no redirect. */}
+          the settings it holds. Desktop-only (see SessionLauncher), so on a
+          phone `/new` just renders the normal home screen and needs no
+          redirect. */}
       {settingsOpen ? (
         <Panel className="hidden md:block">
           <SettingsPanel settings={settings} onChange={onChangeSettings} />
         </Panel>
       ) : null}
 
-      {/* Recent stories. Fixed height and deliberately NOT scrollable — the
-          rows are sized to fill it exactly. */}
-      <div
-        className={`bg-card text-card-foreground ${PANEL_HEIGHT} flex flex-col overflow-hidden rounded-2xl border p-5 shadow-sm`}
-      >
-        <StoriesSection
-          preview
-          flush
-          onShowAll={() => onShowSection("stories")}
-          stories={stories}
-          error={storiesError}
-          onViewStory={onViewStory}
-          onDeleteStory={onDeleteStory}
-          onUpdateTitle={onUpdateStoryTitle}
-        />
-      </div>
-
-      <InspirationCard />
+      <LandingShowcase
+        face={showcaseFace}
+        onChangeFace={onChangeShowcaseFace}
+        onShowSection={onShowSection}
+        onNewStory={onStart}
+        stories={stories}
+        storiesError={storiesError}
+        onViewStory={onViewStory}
+        onDeleteStory={onDeleteStory}
+        onUpdateStoryTitle={onUpdateStoryTitle}
+      />
     </ContentColumn>
   )
 }

@@ -63,27 +63,27 @@ function renderPreview(stories: Story[] | null) {
 }
 
 describe("StoriesSection preview", () => {
-  it("shows at most three stories, newest first", () => {
+  it("shows at most five stories, newest first", () => {
     authState.current = makeAuth()
-    renderPreview([story(1), story(2), story(3), story(4), story(5)])
-    // Five available, three rendered — the landing panel is divided into
-    // exactly three rows, so a fourth would shrink them all.
-    expect(screen.getAllByRole("button", { name: /^Story \d/ })).toHaveLength(3)
+    renderPreview([story(1), story(2), story(3), story(4), story(5), story(6)])
+    // Six available, five rendered — the showcase pane is divided into exactly
+    // five rows, so a sixth would shrink them all.
+    expect(screen.getAllByRole("button", { name: /^Story \d/ })).toHaveLength(5)
   })
 
-  it("keeps three equal rows when the user has fewer stories", () => {
+  it("keeps five equal rows when the user has fewer stories", () => {
     authState.current = makeAuth()
     const { container } = renderPreview([story(1)])
     expect(screen.getAllByRole("button", { name: /^Story \d/ })).toHaveLength(1)
-    // The two unused rows are reserved, so one story lays the panel out the
-    // same way three do rather than stretching over the whole box.
+    // The four unused rows are reserved, so one story lays the pane out the
+    // same way five do rather than stretching over the whole box.
     expect(container.querySelectorAll("[aria-hidden]")).not.toHaveLength(0)
   })
 
-  it("renders three skeleton rows while the first load is in flight", () => {
+  it("renders five skeleton rows while the first load is in flight", () => {
     authState.current = makeAuth()
     const { container } = renderPreview(null)
-    expect(container.querySelectorAll("[data-slot=\"skeleton\"]")).toHaveLength(3)
+    expect(container.querySelectorAll("[data-slot=\"skeleton\"]")).toHaveLength(5)
   })
 
   it("prompts anonymous users to sign in instead of listing rows", () => {
