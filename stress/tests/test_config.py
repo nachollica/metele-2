@@ -243,6 +243,7 @@ class TestK6Env:
             "mix",
             "devToken",
             "userCount",
+            "canaryIterations",
         }
 
     def test_resolves_the_profile_into_stages(self) -> None:
@@ -259,6 +260,11 @@ class TestK6Env:
 
     def test_cdn_mode_sends_no_host_override(self) -> None:
         assert self._payload(target=Target(via_cdn=True))["hosts"] == {}
+
+    def test_canary_iterations_default_low(self) -> None:
+        # The browser probe must never become part of the load it measures, so
+        # its default iteration count stays small.
+        assert self._payload()["canaryIterations"] <= 10
 
     def test_passes_the_population_size_through(self) -> None:
         # k6 derives usernames from runId plus this count, so it has to match

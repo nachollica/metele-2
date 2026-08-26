@@ -60,6 +60,27 @@ Usage: just stress::run --run-id RUN --profile stress --rate 20 --mix sprint=25"
 run *ARGS:
     {{harness}} run {{ARGS}}
 
+[group("canary")]
+[doc("Install k6 and Google Chrome on the canary host (one-time). Uses Google's \
+own apt repo rather than the distro `chromium`, which on Ubuntu 24.04 is only a \
+snap shim. Usage: just stress::provision-canary [HOST]")]
+provision-canary HOST="luigi": (provision-load HOST)
+    ssh {{HOST}} 'set -eu; \
+      if command -v google-chrome >/dev/null 2>&1; then \
+        echo "chrome already installed: $(google-chrome --version)"; exit 0; fi; \
+      tmp=$(mktemp -d); trap "rm -rf $tmp" EXIT; \
+      curl -fsSL -o "$tmp/chrome.deb" https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb; \
+      sudo apt-get update -qq; \
+      sudo apt-get install -y -qq "$tmp/chrome.deb"; \
+      google-chrome --version'
+
+[group("canary")]
+[doc("Run the headless browser probe. Compare an idle run against one taken \
+during load — the delta is the signal, the absolute number carries the \
+generator's distance to the origin. Usage: just stress::canary --run-id RUN")]
+canary *ARGS:
+    {{harness}} canary {{ARGS}}
+
 [group("load")]
 [doc("Re-render a finished run's report from its stored artifacts. \
 Usage: just stress::report --run-id RUN")]

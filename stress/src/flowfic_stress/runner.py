@@ -131,3 +131,66 @@ def _run_streaming(host: str, command: str) -> int:
 
 def _run_quiet(host: str, command: str) -> int:
     return ssh(host, command, check=False).code
+
+
+# ---- Browser canary ----------------------------------------------------
+
+
+def ensure_chrome(host: str) -> str:
+    """Confirm a Chromium-based browser is present on the canary host."""
+    result = ssh(host, "google-chrome --version", check=False)
+    if result.code != 0:
+        raise RuntimeError(
+            f"Google Chrome is not installed on {host!r}. "
+            "Install it with `just stress::provision-canary`."
+        )
+    return result.stdout.strip()
+
+
+def run_canary(
+    config: RunConfig,
+    *,
+    iterations: int,
+    run_dir: Path,
+    label: str,
+) -> Path:
+    """
+    Drive a headless browser through the landing page and keep its summary.
+
+    ``label`` separates the idle baseline from the under-load sample, since the
+    difference between the two is the only figure here that is independent of
+    how far the canary host sits from the origin.
+    """
+    run_dir.mkdir(parents=True, exist_ok=True)
+    env_blob = config.k6_env(dev_token="", user_count=0, canary_iterations=iterations)
+    remote_summary = f"canary-{config.run_id}-{label}.json"
+
+    # Chromium ignores k6's `hosts` option — it resolves names itself — so the
+    # origin override has to be restated as a browser flag. --no-sandbox is
+    # required to run as a non-root user without a user namespace; these hosts
+    # exist to be load generators and run nothing else.
+    browser_args = [*config.target.chromium_resolver_args(), "--no-sandbox"]
+    if not config.target.via_cdn:
+        # The origin presents a Cloudflare Origin certificate, which no public
+        # root signs. Chromium would refuse the navigation outright.
+        browser_args.append("--ignore-certificate-errors")
+
+    command = (
+        f"cd {shlex.quote(REMOTE_DIR)} && "
+        f"K6_BROWSER_HEADLESS=true "
+        f"K6_BROWSER_ARGS={shlex.quote(','.join(arg.lstrip('-') for arg in browser_args))} "
+        f"k6 run -e FLOWFIC_CONFIG={shlex.quote(env_blob)} "
+        f"--summary-export={shlex.quote(remote_summary)} "
+        f"--no-usage-report k6/canary.js"
+    )
+
+    exit_code = _run_streaming(config.canary_host, command)
+    out = run_dir / f"canary-{label}.json"
+    try:
+        out.write_text(ssh(config.canary_host, f"cat {REMOTE_DIR}/{remote_summary}").stdout)
+    except RemoteError as exc:
+        raise RuntimeError(
+            f"The canary produced no summary on {config.canary_host} (exit {exit_code})."
+        ) from exc
+    ssh(config.canary_host, f"rm -f {REMOTE_DIR}/{remote_summary}", check=False)
+    return out

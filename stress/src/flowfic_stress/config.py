@@ -268,7 +268,7 @@ class RunConfig:
     sut_host: str = DEFAULT_SUT_HOST
     sut_path: str = DEFAULT_SUT_PATH
 
-    def k6_env(self, *, dev_token: str, user_count: int) -> str:
+    def k6_env(self, *, dev_token: str, user_count: int, canary_iterations: int = 5) -> str:
         """
         The JSON blob handed to k6 as FLOWFIC_CONFIG.
 
@@ -286,5 +286,6 @@ class RunConfig:
                 "mix": self.mix,
                 "devToken": dev_token,
                 "userCount": user_count,
+                "canaryIterations": canary_iterations,
             }
         )

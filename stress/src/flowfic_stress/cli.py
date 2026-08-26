@@ -13,7 +13,7 @@ import json
 import sys
 from pathlib import Path
 
-from flowfic_stress import devlogin, runner, seeding
+from flowfic_stress import devlogin, monitor, report, runner, seeding
 from flowfic_stress.config import (
     DEFAULT_CANARY_HOST,
     DEFAULT_LOAD_HOST,
@@ -274,17 +274,70 @@ def cmd_run(args: argparse.Namespace) -> int:
     print()
 
     runner.push_scripts(config.load_host)
-    artifacts = runner.run_load(
-        config,
-        dev_token=dev_token,
-        user_count=user_count,
-        run_dir=run_dir,
-    )
-    print(f"\nSummary written to {artifacts.summary_path}")
+
+    # Sampling brackets the load, so the series always covers the whole run.
+    # The context manager stops it on the way out, which means a run that fails
+    # partway still leaves usable host data behind.
+    monitor_path = run_dir / "monitor.csv"
+    with monitor.Monitor(config.sut_host, monitor_path, interval=args.sample_interval):
+        artifacts = runner.run_load(
+            config,
+            dev_token=dev_token,
+            user_count=user_count,
+            run_dir=run_dir,
+        )
+
+    print(f"\nSummary  {artifacts.summary_path}")
+    print(f"Samples  {monitor_path}")
     if not artifacts.passed:
         # A breached threshold is a finding, not a broken harness — say so
         # rather than reporting it as a crash.
-        print("Thresholds were breached (k6 exit 99). The summary is still valid.")
+        print("Thresholds were breached (k6 exit 99); the measurements still stand.")
+
+    try:
+        report_path = report.build(run_dir)
+    except (ValueError, FileNotFoundError) as exc:
+        print(f"Report not rendered: {exc}")
+        return 0
+    print(f"Report   {report_path}")
+    return 0
+
+
+def cmd_canary(args: argparse.Namespace) -> int:
+    """Drive a real headless browser through the landing page."""
+    config = _config_from(args)
+    run_dir = RUNS_DIR / config.run_id
+
+    print(f"chrome        {runner.ensure_chrome(config.canary_host)} on {config.canary_host}")
+    print(f"k6            {runner.ensure_k6(config.canary_host)}")
+    destination = "CDN" if config.target.via_cdn else config.target.ip
+    print(f"target        {config.target.base_url} -> {destination}")
+    print(f"label         {args.label} ({args.iterations} iterations)")
+    print()
+
+    runner.push_scripts(config.canary_host)
+    path = runner.run_canary(
+        config,
+        iterations=args.iterations,
+        run_dir=run_dir,
+        label=args.label,
+    )
+    print(f"\nCanary summary {path}")
+    print(
+        "Compare a `baseline` label against a `loaded` one — the delta is the "
+        "signal, while the absolute number carries the canary host's distance "
+        "to the origin."
+    )
+    return 0
+
+
+def cmd_report(args: argparse.Namespace) -> int:
+    """Re-render a completed run's report from its stored artifacts."""
+    run_dir = RUNS_DIR / validate_run_id(args.run_id)
+    if not run_dir.exists():
+        print(f"error: no run directory at {run_dir}", file=sys.stderr)
+        return 1
+    print(f"Report   {report.build(run_dir)}")
     return 0
 
 
@@ -337,7 +390,33 @@ def build_parser() -> argparse.ArgumentParser:
     run = sub.add_parser("run", help="Generate load against the target.")
     _add_run_args(run)
     _add_target_args(run)
+    run.add_argument(
+        "--sample-interval",
+        type=int,
+        default=1,
+        help="Seconds between host samples (default: %(default)s).",
+    )
     run.set_defaults(func=cmd_run)
+
+    canary = sub.add_parser("canary", help="Run the headless browser probe.")
+    _add_run_args(canary)
+    _add_target_args(canary)
+    canary.add_argument(
+        "--label",
+        default="baseline",
+        help="Names this sample, e.g. baseline or loaded (default: %(default)s).",
+    )
+    canary.add_argument(
+        "--iterations",
+        type=int,
+        default=5,
+        help="Page loads to perform (default: %(default)s).",
+    )
+    canary.set_defaults(func=cmd_canary)
+
+    rep = sub.add_parser("report", help="Re-render a completed run's report.")
+    rep.add_argument("--run-id", required=True, help="Run to render.")
+    rep.set_defaults(func=cmd_report)
 
     clean = sub.add_parser("clean", help="Delete synthetic rows created by a run.")
     clean.add_argument("--run-id", default=None, help="Run to clean.")
