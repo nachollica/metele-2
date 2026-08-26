@@ -9,6 +9,8 @@ mod frontend
 # Build-time generator for the word artifacts (vector pools + match maps) that
 # feed the backend and frontend. Its heavy NLP deps live only here.
 mod word-assets
+# Load-test harness for the deployed stack — drives it over ssh, ships nothing.
+mod stress
 
 [doc("Print available commands.")]
 help:
@@ -55,11 +57,13 @@ dev: up
 # ----- Code checks --------------------------------------------
 
 [group("checks")]
-[doc("Run all checks across frontend, backend, and the word-assets tool.")]
+[doc("Run all checks across frontend, backend, the word-assets tool, and the \
+stress harness.")]
 cc:
     just frontend::cc
     just backend::cc
     just word-assets::cc
+    just stress::cc
 
 [group("checks")]
 [doc("Verify the generated word artifacts are present (pools + match maps).")]

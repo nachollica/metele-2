@@ -1,0 +1,98 @@
+# stress — load-test harness for the production stack.
+#
+# Every recipe forwards its arguments straight to the Python CLI, so the flags
+# documented by `just stress::cli --help` work verbatim from the repo root:
+#
+#   just stress::seed --seed 40,5 --seed 8,80 --seed 2,300
+#
+# Read stress/README.md before pointing any of this at production.
+
+# The project is not installed (`package = false`, matching word-assets), so
+# `-m` needs src/ on the path. pytest gets this from its own `pythonpath`.
+harness := "PYTHONPATH=src uv run python -m flowfic_stress"
+
+[doc("Print available commands.")]
+help:
+    @just --list
+
+[doc("Install / refresh dependencies into ./.venv/.")]
+init:
+    uv sync
+
+# ----- The harness -----------------------------------------------------
+
+[group("harness")]
+[doc("Run the harness CLI directly. `just stress::cli --help` lists every flag.")]
+cli *ARGS:
+    {{harness}} {{ARGS}}
+
+[group("harness")]
+[doc("Report what the deployed server currently is: version, environment, \
+whether dev-login is open, which workers answer, and what they loaded.")]
+status *ARGS:
+    {{harness}} status {{ARGS}}
+
+# ----- The dev-login window --------------------------------------------
+
+[group("window")]
+[doc("Open or close the dev-login window on the server. Usage: \
+just stress::devlogin on | just stress::devlogin off. While open, /api/docs is \
+public and dev-login can mint a token for any existing user — close it as soon \
+as the run finishes.")]
+devlogin STATE *ARGS:
+    {{harness}} devlogin {{STATE}} {{ARGS}}
+
+# ----- Synthetic data --------------------------------------------------
+
+[group("data")]
+[doc("Create the synthetic population. Repeat --seed USERS,STORIES to build \
+tiers: `just stress::seed --seed 40,5 --seed 8,80 --seed 2,300` is a realistic \
+long tail, `--seed 50,50` a flat one. Story depth is what decides whether the \
+/stats endpoints' full-history scan is exercised at all.")]
+seed *ARGS:
+    {{harness}} seed {{ARGS}}
+
+[group("data")]
+[doc("Delete a run's synthetic rows. Usage: just stress::clean --run-id RUN, \
+or --all for every load-test row. Only ever matches the lt_ prefix.")]
+clean *ARGS:
+    {{harness}} clean {{ARGS}}
+
+# ----- Code checks -----------------------------------------------------
+
+[group("development")]
+[doc("Lint with ruff.")]
+lint:
+    uv run ruff check .
+
+[group("development")]
+[doc("Check-only lint + format (no autofix).")]
+check:
+    uv run ruff check .
+    uv run ruff format --check .
+
+[group("development")]
+[doc("Autofix lint findings + format.")]
+fix:
+    uv run ruff check --fix .
+    uv run ruff format .
+
+[group("development")]
+[doc("Static type check.")]
+tc:
+    uv run mypy src tests
+
+[group("development")]
+[doc("Run the pytest suite. Covers the pure configuration logic — the parts \
+that decide how much load lands on prod and which rows cleanup deletes. The \
+rest talks to real servers and is exercised by a smoke run instead.")]
+test:
+    uv run pytest
+
+[group("development")]
+[doc("Run all harness code checks.")]
+cc: fix tc test
+
+[group("development")]
+[doc("Run all harness checks without mutating files (CI entry point).")]
+ci: check tc test
