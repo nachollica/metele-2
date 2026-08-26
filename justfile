@@ -79,9 +79,12 @@ inspiration INPUT_DIR=".":
 # ----- Deploy ----------------------------------------------------------
 
 # Host this deploys to (must be defined in `~/.ssh/config`).
-deploy_host := "ash"
+deploy_host := "misty"
 # Path on the remote server where the project lives.
-deploy_path := "repos/flowfic"
+deploy_path := ".0/flowfic"
+# CPU architecture of the deploy host. The build machine is arm64, the server
+# amd64, so the backend image must be cross-built or Docker refuses to run it.
+deploy_platform := "linux/amd64"
 
 [group("deploy")]
 [doc("Sync prod files to the SSH server.")]
@@ -110,7 +113,7 @@ prod-restart-api:
 [doc("Build the backend image, ship it via SSH, and load it on the server.")]
 deploy-backend:
     # docker compose build api
-    docker build -t flowfic-api:latest ./backend
+    docker build --platform {{deploy_platform}} -t flowfic-api:latest ./backend
     docker save flowfic-api:latest | gzip > flowfic-api.tar.gz
     scp flowfic-api.tar.gz {{deploy_host}}:{{deploy_path}}/
     # `docker rmi` is tolerant (`|| true`): it fails when the image doesn't
@@ -135,7 +138,7 @@ deploy: deploy-backend deploy-frontend prod-down prod-up
 [group("prod-db")]
 [doc("Open SSH tunnel for Prod DB.")]
 db-tunnel:
-    ssh -nNT -L 5432:127.0.0.1:5432 ash
+    ssh -nNT -L 5432:127.0.0.1:5432 {{deploy_host}}
 
 [group("prod-db")]
 [doc("Connect to the remote Prod DB.")]
