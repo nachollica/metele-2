@@ -60,6 +60,12 @@ Usage: just stress::run --run-id RUN --profile stress --rate 20 --mix sprint=25"
 run *ARGS:
     {{harness}} run {{ARGS}}
 
+[group("load")]
+[doc("Re-render a finished run's report from its stored artifacts. \
+Usage: just stress::report --run-id RUN")]
+report *ARGS:
+    {{harness}} report {{ARGS}}
+
 # ----- The dev-login window --------------------------------------------
 
 [group("window")]
