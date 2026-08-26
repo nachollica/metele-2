@@ -13,15 +13,22 @@ import json
 import sys
 from pathlib import Path
 
-from flowfic_stress import devlogin, seeding
+from flowfic_stress import devlogin, runner, seeding
 from flowfic_stress.config import (
+    DEFAULT_CANARY_HOST,
+    DEFAULT_LOAD_HOST,
+    DEFAULT_PROFILE,
     DEFAULT_SUT_HOST,
     DEFAULT_SUT_PATH,
     DEFAULT_TARGET_IP,
+    JOURNEYS,
+    PROFILES,
     PUBLIC_HOST,
+    RunConfig,
     Target,
     new_run_id,
     parse_cohorts,
+    parse_mix,
     validate_run_id,
 )
 
@@ -64,6 +71,74 @@ def _add_target_args(parser: argparse.ArgumentParser) -> None:
 
 def _target_from(args: argparse.Namespace) -> Target:
     return Target(host=PUBLIC_HOST, ip=args.target_ip, via_cdn=args.via_cdn)
+
+
+def _add_run_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--run-id",
+        default=None,
+        help="Identifier tagging every row and artifact (default: a UTC timestamp).",
+    )
+    parser.add_argument(
+        "--profile",
+        default=DEFAULT_PROFILE,
+        choices=sorted(PROFILES),
+        help="Load shape (default: %(default)s).",
+    )
+    parser.add_argument(
+        "--rate",
+        type=float,
+        default=5.0,
+        help=(
+            "Baseline arrivals per second the profile's stages scale. Open model: "
+            "arrivals do not slow down when the server does (default: %(default)s)."
+        ),
+    )
+    parser.add_argument(
+        "--lang",
+        default="es",
+        choices=["es", "en"],
+        help=(
+            "Locale the journeys use. Decides which match map is fetched — 2.9MB "
+            "for es against 800KB for en (default: %(default)s)."
+        ),
+    )
+    parser.add_argument(
+        "--mix",
+        action="append",
+        default=[],
+        metavar="JOURNEY=WEIGHT",
+        help=(
+            "Relative weight of one journey; repeatable. Unnamed journeys keep "
+            f"their default. Journeys: {', '.join(JOURNEYS)}."
+        ),
+    )
+    parser.add_argument(
+        "--load-host",
+        default=DEFAULT_LOAD_HOST,
+        help="SSH host generating the load (default: %(default)s).",
+    )
+    parser.add_argument(
+        "--canary-host",
+        default=DEFAULT_CANARY_HOST,
+        help="SSH host running the browser canary (default: %(default)s).",
+    )
+
+
+def _config_from(args: argparse.Namespace) -> RunConfig:
+    run_id = validate_run_id(args.run_id) if args.run_id else new_run_id()
+    return RunConfig(
+        run_id=run_id,
+        profile=args.profile,
+        rate=args.rate,
+        lang=args.lang,
+        mix=parse_mix(args.mix),
+        target=_target_from(args),
+        load_host=args.load_host,
+        canary_host=args.canary_host,
+        sut_host=args.sut_host,
+        sut_path=args.sut_path,
+    )
 
 
 # ---- Commands ----------------------------------------------------------
@@ -156,6 +231,76 @@ def cmd_clean(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_run(args: argparse.Namespace) -> int:
+    config = _config_from(args)
+    target = config.target
+    run_dir = RUNS_DIR / config.run_id
+
+    # Refuse to start unless the server is actually in a state these journeys
+    # can authenticate against. Without this the run would "succeed" with every
+    # authenticated request 401ing, which reads as a fast, healthy server.
+    info = devlogin.fetch_ping(target.base_url)
+    if not info.dev_user_enabled:
+        print(
+            "error: dev-login is closed on the target, so no journey could "
+            "authenticate.\n       Open it first: just stress::devlogin on",
+            file=sys.stderr,
+        )
+        return 2
+
+    token_path = _find_token(config.run_id)
+    if token_path is None:
+        print(
+            "error: no dev-login token found. Re-open the window with `just stress::devlogin on`.",
+            file=sys.stderr,
+        )
+        return 2
+    dev_token = token_path.read_text().strip()
+
+    user_count = _seeded_user_count(args.sut_host, config.run_id)
+    if user_count == 0:
+        print(
+            f"error: run {config.run_id} has no seeded users. "
+            f"Seed first: just stress::seed --run-id {config.run_id} --seed 20,10",
+            file=sys.stderr,
+        )
+        return 2
+
+    print(f"k6            {runner.ensure_k6(config.load_host)} on {config.load_host}")
+    print(f"target        {target.base_url} -> {'CDN' if target.via_cdn else target.ip}")
+    print(f"profile       {config.profile} at {config.rate}/s baseline, lang={config.lang}")
+    print(f"mix           {config.mix}")
+    print(f"population    {user_count} seeded users (run {config.run_id})")
+    print()
+
+    runner.push_scripts(config.load_host)
+    artifacts = runner.run_load(
+        config,
+        dev_token=dev_token,
+        user_count=user_count,
+        run_dir=run_dir,
+    )
+    print(f"\nSummary written to {artifacts.summary_path}")
+    if not artifacts.passed:
+        # A breached threshold is a finding, not a broken harness — say so
+        # rather than reporting it as a crash.
+        print("Thresholds were breached (k6 exit 99). The summary is still valid.")
+    return 0
+
+
+def _find_token(run_id: str) -> Path | None:
+    """The token written when the window opened, under its run or the default."""
+    for candidate in (RUNS_DIR / run_id / "token", RUNS_DIR / "current" / "token"):
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def _seeded_user_count(sut_host: str, run_id: str) -> int:
+    users, _ = seeding.count_rows(sut_host, run_id)
+    return users
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="flowfic-stress",
@@ -188,6 +333,11 @@ def build_parser() -> argparse.ArgumentParser:
     seed.add_argument("--run-id", default=None, help="Run id (default: a UTC timestamp).")
     _add_target_args(seed)
     seed.set_defaults(func=cmd_seed)
+
+    run = sub.add_parser("run", help="Generate load against the target.")
+    _add_run_args(run)
+    _add_target_args(run)
+    run.set_defaults(func=cmd_run)
 
     clean = sub.add_parser("clean", help="Delete synthetic rows created by a run.")
     clean.add_argument("--run-id", default=None, help="Run to clean.")

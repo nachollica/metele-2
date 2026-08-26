@@ -32,6 +32,34 @@ whether dev-login is open, which workers answer, and what they loaded.")]
 status *ARGS:
     {{harness}} status {{ARGS}}
 
+# ----- Generating load -------------------------------------------------
+
+# The k6 release to install on the generator hosts. Pinned so a run is
+# reproducible and two generators cannot silently differ.
+k6_version := "2.2.0"
+
+[group("load")]
+[doc("Install the pinned k6 on a generator host (one-time). Fetches the release \
+tarball rather than adding an apt repo — the Oracle images ship no dirmngr, so \
+the keyserver path fails, and a single static binary needs no package manager \
+at all. Usage: just stress::provision-load [HOST]")]
+provision-load HOST="mario":
+    ssh {{HOST}} 'set -eu; \
+      if command -v k6 >/dev/null 2>&1 && k6 version | grep -q "v{{k6_version}}"; then \
+        echo "k6 v{{k6_version}} already installed"; exit 0; fi; \
+      tmp=$(mktemp -d); trap "rm -rf $tmp" EXIT; \
+      url="https://github.com/grafana/k6/releases/download/v{{k6_version}}/k6-v{{k6_version}}-linux-amd64.tar.gz"; \
+      curl -fsSL "$url" -o "$tmp/k6.tar.gz"; \
+      tar zxf "$tmp/k6.tar.gz" -C "$tmp" --strip-components=1; \
+      sudo install -m 0755 "$tmp/k6" /usr/local/bin/k6; \
+      k6 version'
+
+[group("load")]
+[doc("Generate load. Needs an open dev-login window and a seeded run. \
+Usage: just stress::run --run-id RUN --profile stress --rate 20 --mix sprint=25")]
+run *ARGS:
+    {{harness}} run {{ARGS}}
+
 # ----- The dev-login window --------------------------------------------
 
 [group("window")]

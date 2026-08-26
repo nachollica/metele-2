@@ -8,15 +8,24 @@ which rows cleanup will delete — so it is tested closely.
 
 from __future__ import annotations
 
+import json
+from typing import Any
+
 import pytest
 
 from flowfic_stress.config import (
+    DEFAULT_MIX,
+    JOURNEYS,
+    PROFILES,
     USER_PREFIX,
     Cohort,
+    RunConfig,
     Target,
     new_run_id,
     parse_cohort,
     parse_cohorts,
+    parse_mix,
+    profile_stages,
     run_like_pattern,
     total_stories,
     total_users,
@@ -145,3 +154,115 @@ class TestTarget:
 
     def test_browser_override_is_dropped_in_cdn_mode(self) -> None:
         assert Target(via_cdn=True).chromium_resolver_args() == []
+
+
+# ---- Journey mix -------------------------------------------------------
+
+
+class TestParseMix:
+    def test_defaults_when_nothing_passed(self) -> None:
+        assert parse_mix([]) == DEFAULT_MIX
+
+    def test_overrides_only_the_named_journey(self) -> None:
+        mix = parse_mix(["sprint=25"])
+        assert mix["sprint"] == 25
+        assert mix["anon"] == DEFAULT_MIX["anon"]
+
+    def test_accepts_several_overrides(self) -> None:
+        mix = parse_mix(["anon=10", "finish=40"])
+        assert mix["anon"] == 10
+        assert mix["finish"] == 40
+
+    def test_allows_silencing_one_journey(self) -> None:
+        assert parse_mix(["sprint=0"])["sprint"] == 0
+
+    def test_rejects_an_unknown_journey(self) -> None:
+        with pytest.raises(ValueError, match="Unknown journey"):
+            parse_mix(["browsing=10"])
+
+    @pytest.mark.parametrize("raw", ["sprint", "sprint=x", "sprint=-1"])
+    def test_rejects_malformed_weights(self, raw: str) -> None:
+        with pytest.raises(ValueError):
+            parse_mix([raw])
+
+    def test_rejects_an_all_zero_mix(self) -> None:
+        # Otherwise the run would start, report success, and generate nothing.
+        with pytest.raises(ValueError, match="no load"):
+            parse_mix([f"{name}=0" for name in DEFAULT_MIX])
+
+    def test_every_journey_has_a_default_weight(self) -> None:
+        # A journey k6 can execute but the mix never names would be dead code
+        # in the scenario builder.
+        assert set(DEFAULT_MIX) == set(JOURNEYS)
+
+
+# ---- Profiles ----------------------------------------------------------
+
+
+class TestProfiles:
+    def test_every_profile_has_stages(self) -> None:
+        for name in PROFILES:
+            assert profile_stages(name)
+
+    def test_unknown_profile_names_the_known_ones(self) -> None:
+        with pytest.raises(ValueError, match="Known:"):
+            profile_stages("gentle")
+
+    def test_smoke_is_the_lightest_peak(self) -> None:
+        # Smoke exists to prove the chain works against production without
+        # being a load event; it must never be the heaviest thing on offer.
+        peak = max(mult for _, mult in profile_stages("smoke"))
+        others = [max(m for _, m in profile_stages(n)) for n in PROFILES if n != "smoke"]
+        assert peak < min(others)
+
+    @pytest.mark.parametrize("name", sorted(PROFILES))
+    def test_stages_are_duration_and_multiplier_pairs(self, name: str) -> None:
+        for duration, multiplier in profile_stages(name):
+            assert isinstance(duration, str) and duration[-1] in "smh"
+            assert multiplier >= 0
+
+
+# ---- The k6 handoff ----------------------------------------------------
+
+
+class TestK6Env:
+    def _payload(self, **kwargs: object) -> dict[str, Any]:
+        config = RunConfig(run_id="20260826-2200", **kwargs)  # type: ignore[arg-type]
+        payload: dict[str, Any] = json.loads(config.k6_env(dev_token="secret-token", user_count=42))
+        return payload
+
+    def test_carries_everything_k6_needs(self) -> None:
+        payload = self._payload()
+        assert set(payload) == {
+            "runId",
+            "baseUrl",
+            "hosts",
+            "lang",
+            "rate",
+            "stages",
+            "mix",
+            "devToken",
+            "userCount",
+        }
+
+    def test_resolves_the_profile_into_stages(self) -> None:
+        # k6 receives concrete stages, never a profile name — the scenario
+        # files parse no flags of their own.
+        assert self._payload(profile="stress")["stages"] == [
+            list(stage) for stage in profile_stages("stress")
+        ]
+
+    def test_routes_to_the_configured_origin(self) -> None:
+        payload = self._payload(target=Target(ip="10.0.0.28"))
+        assert payload["hosts"] == {"flowfic.app:443": "10.0.0.28:443"}
+        assert payload["baseUrl"] == "https://flowfic.app"
+
+    def test_cdn_mode_sends_no_host_override(self) -> None:
+        assert self._payload(target=Target(via_cdn=True))["hosts"] == {}
+
+    def test_passes_the_population_size_through(self) -> None:
+        # k6 derives usernames from runId plus this count, so it has to match
+        # what seeding actually created or VUs authenticate as missing rows.
+        payload = self._payload()
+        assert payload["userCount"] == 42
+        assert payload["runId"] == "20260826-2200"
