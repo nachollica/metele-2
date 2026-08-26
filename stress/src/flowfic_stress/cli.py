@@ -165,6 +165,11 @@ def cmd_status(args: argparse.Namespace) -> int:
     print(f"database      {info.db_dialect}")
     print(f"word pools    {info.word_pools or 'NONE LOADED'}")
     print(f"workers seen  {len(workers)} distinct pids {sorted(workers)}")
+    if len(workers) < 2:
+        # Not a fault. These probes are sequential, and Caddy reuses one
+        # upstream keep-alive connection for them, which pins them to whichever
+        # worker accepted it. Concurrent traffic does reach the others.
+        print("              (sequential probes ride one upstream connection)")
     if not info.pools_loaded:
         print("\nWARNING: no word pools resident — /words/* would return empty results.")
     return 0

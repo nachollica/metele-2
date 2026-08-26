@@ -126,12 +126,16 @@ def _metric(summary: dict[str, Any], name: str) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
 
-def endpoint_rows(summary: dict[str, Any]) -> list[tuple[str, int, float, float, float]]:
+def endpoint_rows(summary: dict[str, Any]) -> list[tuple[str, float, float, float, float]]:
     """
     Per-endpoint latency, keyed off the `name` tag each request carries.
 
-    k6's exported summary groups sub-metrics by tag, so this reads whatever the
-    journeys tagged rather than a list maintained here.
+    Reads whatever the journeys tagged rather than a list maintained here. Note
+    there is deliberately no request count: k6's summary export carries only the
+    aggregates on a trend sub-metric, never an observation count, so a count
+    column here could only ever be a fabricated zero.
+
+    Sorted worst p95 first — the point of the table is to name the slow call.
     """
     rows = []
     for key, value in summary.get("metrics", {}).items():
@@ -143,7 +147,7 @@ def endpoint_rows(summary: dict[str, Any]) -> list[tuple[str, int, float, float,
         rows.append(
             (
                 name,
-                int(value.get("count", 0) or 0),
+                float(value.get("avg", 0) or 0),
                 float(value.get("med", 0) or 0),
                 float(value.get("p(95)", 0) or 0),
                 float(value.get("max", 0) or 0),
@@ -259,10 +263,10 @@ def render(summary: dict[str, Any], csv_text: str, config: dict[str, Any]) -> st
     add("")
     rows = endpoint_rows(summary)
     if rows:
-        add("| endpoint | requests | median | p95 | max |")
+        add("| endpoint | avg | median | p95 | max |")
         add("|---|--:|--:|--:|--:|")
-        for name, count, med, p95, mx in rows:
-            add(f"| `{name}` | {count} | {med:.0f}ms | {p95:.0f}ms | {mx:.0f}ms |")
+        for name, avg, med, p95, mx in rows:
+            add(f"| `{name}` | {avg:.0f}ms | {med:.0f}ms | {p95:.0f}ms | {mx:.0f}ms |")
         add("")
     add(
         "_Latency is reported, not enforced: this run's thresholds are "

@@ -81,6 +81,28 @@ export function buildScenarios(cfg) {
   return scenarios
 }
 
+// Every endpoint the journeys tag. Listed here because k6 only *computes* a
+// tagged sub-metric when a threshold names it — without an entry per endpoint,
+// the exported summary carries totals only and the report cannot say which call
+// was slow.
+const TAGGED_ENDPOINTS = [
+  'index.html',
+  'chunk',
+  'match-map',
+  'inspiration',
+  'ping',
+  'auth/me',
+  'stats/overview',
+  'stats/achievements',
+  'stats/challenges',
+  'words/related',
+  'words/random',
+  'stories/list',
+  'stories/count',
+  'stories/detail',
+  'stories/create',
+]
+
 // Availability only, by choice: this hardware has no established latency
 // baseline, so a p95 target would be a guess that either never fires or fires
 // constantly. Errors and timeouts are unambiguous, and on a 954MB box falling
@@ -92,6 +114,13 @@ export function buildThresholds(cfg) {
   }
   for (const name of Object.keys(cfg.mix)) {
     thresholds[`http_req_failed{journey:${name}}`] = ['rate<0.02']
+  }
+  // `max>=0` holds for any observation, so these enforce nothing — they exist
+  // purely to make k6 materialise the per-endpoint breakdown. Putting a real
+  // latency bound here would quietly turn this into a latency gate, which is
+  // exactly what the availability-only choice above rules out.
+  for (const endpoint of TAGGED_ENDPOINTS) {
+    thresholds[`http_req_duration{name:${endpoint}}`] = ['max>=0']
   }
   return thresholds
 }

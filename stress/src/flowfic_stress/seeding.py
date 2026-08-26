@@ -101,6 +101,10 @@ with Session(engine) as session:
                     updated_at=now,
                 )
             )
+            # Commit the user before its stories rather than letting one flush
+            # order both: stories carry a foreign key to users.id, and batching
+            # the two together has the insert reach the database first.
+            session.commit()
             users_created += 1
 
             for _ in range(cohort["stories"]):

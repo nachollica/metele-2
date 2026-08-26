@@ -155,9 +155,9 @@ class TestEndpointRows:
         summary = {
             "metrics": {
                 "http_req_duration": {"med": 10, "p(95)": 20, "max": 30},
-                "http_req_duration{name:ping}": {"count": 5, "med": 5, "p(95)": 9, "max": 12},
+                "http_req_duration{name:ping}": {"avg": 6, "med": 5, "p(95)": 9, "max": 12},
                 "http_req_duration{name:match-map}": {
-                    "count": 3,
+                    "avg": 400,
                     "med": 300,
                     "p(95)": 800,
                     "max": 1200,
@@ -168,6 +168,17 @@ class TestEndpointRows:
         rows = endpoint_rows(summary)
         assert [r[0] for r in rows] == ["match-map", "ping"]
         assert rows[0][3] == 800
+
+    def test_reads_only_aggregates_k6_actually_exports(self) -> None:
+        # Trend sub-metrics in --summary-export carry avg/med/percentiles and
+        # no observation count, so the row must not invent one.
+        summary = {
+            "metrics": {
+                "http_req_duration{name:ping}": {"avg": 6, "med": 5, "p(95)": 9, "max": 12},
+            }
+        }
+        (name, avg, med, p95, mx) = endpoint_rows(summary)[0]
+        assert (name, avg, med, p95, mx) == ("ping", 6, 5, 9, 12)
 
     def test_ignores_untagged_and_unrelated_metrics(self) -> None:
         assert endpoint_rows({"metrics": {"vus": {"value": 3}}}) == []
