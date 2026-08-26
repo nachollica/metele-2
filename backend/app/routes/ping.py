@@ -3,13 +3,16 @@ Health / metadata endpoints.
 
 ``GET /ping`` is an unauthenticated liveness probe that also carries a little
 non-sensitive metadata (version, environment, whether the dev-user backdoor is
-enabled). The frontend reads it to decide whether the backend is reachable and
-whether to show the dev-login shortcut.
+enabled, plus which worker answered and what it has loaded). The frontend reads
+it to decide whether the backend is reachable and whether to show the dev-login
+shortcut; ops tooling reads it to confirm what a deployed process actually is
+before pointing load at it.
 
 ``GET /ping/db`` is an authenticated ops check that confirms the database
 answers a trivial query; it never exposes the connection string.
 """
 
+import os
 import time
 from datetime import UTC, datetime
 from typing import Literal
@@ -20,8 +23,10 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
 from app import __version__
+from app.db import engine
 from app.dependencies import CurrentUser, DbSession, SettingsDep
 from app.settings import Environment
+from app.word_engine import loaded_pool_sizes
 
 # Process start time, captured once at import.
 _UTC_STARTED_AT = datetime.now(tz=UTC).isoformat()
@@ -33,13 +38,33 @@ router = APIRouter(
 
 
 class PingResponse(BaseModel):
-    """Public liveness payload."""
+    """
+    Public liveness payload.
+
+    Every field is constant for the life of the worker process, which is what
+    lets the response carry a cache header honestly. Anything that changes per
+    request — an uptime counter, a request tally — belongs on an authenticated
+    ops route instead; ``utcStartedAt`` already yields uptime by subtraction
+    without making the body vary.
+    """
 
     status: Literal["ok"] = "ok"
     version: str
     environment: Environment
     devUserEnabled: bool  # noqa: N815
     utcStartedAt: str  # noqa: N815
+    # OS pid of the worker that answered. Constant per process, and across a
+    # burst of calls it reveals how many workers are live and whether load is
+    # actually spreading across them.
+    pid: int
+    # Database backend in use ("postgresql" / "sqlite"), never the URL. Read off
+    # the engine rather than a session, so this stays a pure liveness probe with
+    # no database round-trip; `GET /ping/db` is the route that actually asks.
+    dbDialect: str  # noqa: N815
+    # Words resident per language in *this* worker. An empty object means the
+    # artifacts never loaded — the failure that otherwise only shows up as
+    # silently empty word pools mid-game.
+    wordPools: dict[str, int]  # noqa: N815
 
 
 class PingDbResponse(BaseModel):
@@ -72,6 +97,9 @@ def ping(
         environment=settings.environment,
         devUserEnabled=settings.dev_user_enabled,
         utcStartedAt=_UTC_STARTED_AT,
+        pid=os.getpid(),
+        dbDialect=engine.dialect.name,
+        wordPools=loaded_pool_sizes(),
     )
 
 

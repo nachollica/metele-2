@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+
 
 def test_ping_reports_metadata(client, settings):
     res = client.get("/ping")
@@ -19,6 +21,40 @@ def test_ping_reports_metadata(client, settings):
 def test_ping_sets_cache_header(client):
     res = client.get("/ping")
     assert "max-age" in res.headers.get("cache-control", "")
+
+
+def test_ping_reports_worker_identity_and_backend(client):
+    res = client.get("/ping")
+    body = res.json()
+    assert body["pid"] == os.getpid()
+    assert body["dbDialect"] == "sqlite"  # the suite runs on SQLite
+
+
+def test_ping_payload_is_constant_across_calls(client):
+    # The response carries a cache header, which is only honest if the body
+    # never varies between requests to the same worker. A field that ticks
+    # (uptime, a counter) would silently make that header a lie.
+    first = client.get("/ping").json()
+    second = client.get("/ping").json()
+    assert first == second
+
+
+def test_ping_reports_loaded_word_pools(client, monkeypatch):
+    # The route imports the helper by name, so patch it where it is looked up.
+    monkeypatch.setattr(
+        "app.routes.ping.loaded_pool_sizes",
+        lambda: {"en": 34682, "es": 42653},
+    )
+    body = client.get("/ping").json()
+    assert body["wordPools"] == {"en": 34682, "es": 42653}
+
+
+def test_ping_reports_empty_word_pools_when_nothing_loaded(client):
+    # The suite points WORD_DATA_DIR at a nonexistent directory and the
+    # lifespan skips preloading under ENVIRONMENT=testing, so no pool is
+    # resident. That must surface as `{}` rather than as a healthy-looking
+    # payload — it is the signal that a worker's artifacts failed to load.
+    assert client.get("/ping").json()["wordPools"] == {}
 
 
 def test_ping_dev_user_flag_reflects_settings(client, settings, monkeypatch):

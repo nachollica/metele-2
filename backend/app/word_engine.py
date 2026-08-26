@@ -253,6 +253,28 @@ def ensure_ready(languages: tuple[Language, ...] = LANGUAGES) -> None:
         _load_pool(language)
 
 
+def loaded_pool_sizes() -> dict[str, int]:
+    """
+    Word count per language for the pools **already resident in this process**.
+
+    Deliberately reads the memoised cache instead of calling
+    :func:`_load_pool`: a language absent from the cache is simply omitted,
+    never loaded on demand. ``/ping`` reports this, and an unauthenticated
+    probe must not be able to trigger a multi-hundred-megabyte artifact load —
+    on a small host that would fault the matrices in from swap.
+
+    An empty mapping therefore means "nothing preloaded yet", which is itself
+    the signal worth having: a worker whose artifacts failed to load answers
+    ``{}`` rather than looking healthy.
+    """
+    cfg = get_config()
+    return {
+        language.value: len(pool.words)
+        for (data_dir, language), pool in _pool_cache.items()
+        if data_dir == cfg.data_dir
+    }
+
+
 def is_common(word: str, language: Language, min_zipf: float = DEFAULT_MIN_ZIPF) -> bool:
     """
     Whether ``word`` is in the language's pool and clears ``min_zipf``.

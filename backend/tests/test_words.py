@@ -6,12 +6,14 @@ import pytest
 
 from app.word_engine import (
     Language,
+    ensure_ready,
     expand_related,
     is_common,
+    loaded_pool_sizes,
     parse_accept_language,
     random_words,
 )
-from tests.word_fixtures import reconfigure, write_pool
+from tests.word_fixtures import DEFAULT_EN, DEFAULT_ES, reconfigure, write_pool
 
 # ---- parse_accept_language ---------------------------------------------
 
@@ -234,3 +236,47 @@ class TestRandomWordsRoute:
         body = r.json()
         assert set(body.keys()) == {"language", "words"}
         assert len(body["words"]) <= 8
+
+
+# ---- loaded_pool_sizes -------------------------------------------------
+
+
+class TestLoadedPoolSizes:
+    """
+    The reporting helper behind ``/ping``'s ``wordPools``.
+
+    Its whole point is that it observes without loading: ``/ping`` is
+    unauthenticated, and on a small host a forced load would fault a
+    multi-hundred-megabyte matrix in from swap on demand.
+    """
+
+    def test_reports_nothing_before_anything_is_loaded(self, word_data_dir) -> None:
+        # The autouse fixture configures a data dir but `configure` drops the
+        # cache, so no pool is resident until something asks for one.
+        assert loaded_pool_sizes() == {}
+
+    def test_does_not_load_a_pool_on_its_own(self, word_data_dir) -> None:
+        loaded_pool_sizes()
+        # Still empty: reporting must never be the thing that populates.
+        assert loaded_pool_sizes() == {}
+
+    def test_reports_word_counts_once_preloaded(self, word_data_dir) -> None:
+        ensure_ready()
+        assert loaded_pool_sizes() == {
+            Language.EN.value: len(DEFAULT_EN),
+            Language.ES.value: len(DEFAULT_ES),
+        }
+
+    def test_reports_only_pools_for_the_active_data_dir(self, tmp_path) -> None:
+        # A reconfigure to a different dir must not report the previous dir's
+        # pools as if they belonged to the live config.
+        first = str(tmp_path / "first")
+        write_pool(first, Language.EN, ["alpha", "beta"])
+        reconfigure(first)
+        ensure_ready(languages=(Language.EN,))
+        assert loaded_pool_sizes() == {Language.EN.value: 2}
+
+        second = str(tmp_path / "second")
+        write_pool(second, Language.EN, ["gamma"])
+        reconfigure(second)
+        assert loaded_pool_sizes() == {}
