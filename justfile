@@ -123,12 +123,22 @@ deploy-backend:
     rm flowfic-api.tar.gz
 
 [group("deploy")]
-[doc("Build the frontend static assets and replace the remote out/ directory.")]
+[doc("Build the frontend static assets and refresh the remote out/ directory in \
+place. Caddy bind-mounts out/, so the directory's identity must survive a \
+deploy — see the rsync note below.")]
 deploy-frontend:
     just frontend::build
-    tar -C frontend -zcf out.tar.gz out
+    # COPYFILE_DISABLE stops macOS tar from emitting AppleDouble `._*` sidecars,
+    # which would otherwise be served out of /static alongside the real files;
+    # --no-xattrs drops the macOS-only attributes GNU tar warns about on unpack.
+    COPYFILE_DISABLE=1 tar -C frontend --exclude='._*' --no-xattrs -zcf out.tar.gz out
     scp out.tar.gz {{deploy_host}}:{{deploy_path}}/
-    ssh {{deploy_host}} 'cd {{deploy_path}} && rm -rf out && tar zxf out.tar.gz'
+    # `rm -rf out` here would unlink the very inode Caddy bind-mounted at start,
+    # leaving the container serving a deleted directory — every path 404s until
+    # someone recreates it, with the new files sitting untouched on the host.
+    # Unpack beside it and rsync --delete into the existing out/ instead, so the
+    # directory is emptied and refilled without ever losing its identity.
+    ssh {{deploy_host}} 'cd {{deploy_path}} && rm -rf out.new && mkdir -p out.new out && tar zxf out.tar.gz -C out.new && rsync -a --delete out.new/out/ out/ && rm -rf out.new out.tar.gz'
     rm out.tar.gz
 
 [group("deploy")]
