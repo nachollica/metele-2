@@ -44,13 +44,7 @@ POOL_VERSION = 1
 DEFAULT_MIN_ZIPF = 2.5
 # npz array keys — must match backend `_load_pool`.
 NPZ_WORDS = "words"
-# int8-quantized, L2-normalised vectors. NPZ_SCALE is the per-language float that
-# recovers the true value: component ≈ int8_value / scale. A unit vector's
-# components are always in [-1, 1], so scale is derived from the matrix's actual
-# max absolute component (never a fixed 127) to use the full int8 range —
-# see `pool.py`'s `build_pool` for the derivation.
 NPZ_VECTORS = "vectors"
-NPZ_SCALE = "scale"
 NPZ_ZIPF = "zipf"
 
 # ---- match-map artifact (consumed by the frontend) ---------------------

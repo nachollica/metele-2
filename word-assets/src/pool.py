@@ -21,7 +21,6 @@ from wordfreq import available_languages, top_n_list, zipf_frequency
 from contract import (
     DEFAULT_MIN_ZIPF,
     LANGUAGES,
-    NPZ_SCALE,
     NPZ_VECTORS,
     NPZ_WORDS,
     NPZ_ZIPF,
@@ -118,44 +117,14 @@ def read_fasttext_vectors(path: str, wanted: set[str], dim: int) -> dict[str, np
     return found
 
 
-def quantize_matrix(matrix: np.ndarray) -> tuple[np.ndarray, float]:
-    """
-    Quantize an L2-normalised (N, dim) float matrix to int8 plus a scale factor.
-
-    ``127 / max|component|`` spreads the real value range across the full
-    signed int8 range with zero clipping: unit-norm guarantees every component
-    is in [-1, 1], so this scale can only ever be >= 127 (never smaller, so
-    never causing a value to fall outside [-127, 127] before the round). A
-    fixed scale of 127 would also never clip, but would waste most of the
-    range — real fastText components run far below 1 in practice (~0.5 max
-    observed on the real es pool), so the adaptive scale roughly doubles the
-    effective resolution over a fixed one. Pure and side-effect free so it is
-    unit-testable without a fastText source or the wordfreq/simplemma deps the
-    rest of this module needs.
-    """
-    max_abs = float(np.abs(matrix).max()) if matrix.size else 1.0
-    scale = 127.0 / max_abs if max_abs > 0 else 1.0
-    quantized = np.clip(np.round(matrix * scale), -127, 127).astype(np.int8)
-    return quantized, scale
-
-
 def build_pool(lang: str, fasttext_path: str, *, vocab_size: int, dim: int) -> int:
     """
     Build and persist the language's pool. Returns the number of pooled words.
 
     Intersects the clean candidate words with those fastText has a vector for,
     L2-normalises, and writes ``backend/data/word_pool/{lang}.vN.npz`` (words,
-    int8-quantized vectors + a scale factor, float16 zipf).
-
-    int8 rather than float16: the backend keeps this matrix resident in RAM for
-    the life of the process (one copy per worker), and int8 is a quarter the size
-    of the float32 the backend used to widen float16 into — the single largest
-    fixed memory cost in the API container. A unit-norm vector's components are
-    always in [-1, 1], so quantizing against the matrix's own max absolute
-    component (rather than a fixed 127) uses the full int8 range without ever
-    clipping. Verified against the real es pool: top-10 nearest-neighbour overlap
-    against the float32 original averages 9.9/10, and the game's relatedness is
-    already deliberately loose (a seed only nudges the pool).
+    float16 vectors, float16 zipf). float16 keeps the artifact small; the
+    backend loads it as float16 too — see ``_load_pool`` in ``word_engine.py``.
     """
     if lang not in LANGUAGES:
         raise ValueError(f"unsupported language {lang!r}")
@@ -178,14 +147,12 @@ def build_pool(lang: str, fasttext_path: str, *, vocab_size: int, dim: int) -> i
         zipfs.append(here)
 
     matrix = np.asarray(rows, dtype=np.float32) if rows else np.zeros((0, dim), dtype=np.float32)
-    quantized, scale = quantize_matrix(matrix)
 
     path = pool_path(lang)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     arrays = {
         NPZ_WORDS: np.asarray(words, dtype=object),
-        NPZ_VECTORS: quantized,
-        NPZ_SCALE: np.float32(scale),
+        NPZ_VECTORS: matrix.astype(np.float16),
         NPZ_ZIPF: np.asarray(zipfs, dtype=np.float16),
     }
     np.savez(path, **arrays)  # type: ignore[arg-type]  # numpy stub mistypes **kwds
