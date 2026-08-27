@@ -17,48 +17,37 @@ This project is a web browser game about writing stories with speed. The game co
 - The `@components/ui/` directory holds the app's own Radix UI + Tailwind primitives (originally scaffolded with the shadcn CLI, now hand-maintained); only the handful the app actually imports are kept, adapt them when the design calls for it. Pull in a fresh one with `npx shadcn@latest add <name>` (config in `frontend/components.json`) rather than hand-rolling a Radix wrapper from scratch.
 - Ignore the `@.misc/` directory. Never browse or edit files there.
 
-## Commit messages
+## Branching and commit messages
 
-Commit subjects start with one or more scope tags in square brackets, followed
-by a short, plain description of the change:
+Work happens on a feature branch and lands on `main` as **one squashed commit**. The two stages have deliberately different standards.
 
-```text
-[scope] short description
-[scope-a, scope-b] short description when the change spans areas
-```
+### While working on a feature branch
 
-Conventions:
+Branch off `main` for anything beyond a trivial edit, then commit small and often as the work progresses. Those commits are scratch: they exist so the work is recoverable and reviewable step by step, and they are never the history anyone reads later. A short one-line subject is enough — no format is enforced, no body is expected, and there is no need to agonise over the wording.
 
-- No `feat`/`fix`/`chore`/etc. prefix. The wording already carries it: a fix
-  reads like "fix …", a feature like "add … to …", docs like "update …". A bare
-  verb after the tag is fine too, e.g. `[backend] refactor the word engine`.
-- Prefer a single line. Add a body only when the change genuinely needs the
-  context — a subtle rationale, a load-bearing decision, or several distinct
-  threads — never to restate the diff.
-- Do not add a `Co-Authored-By` trailer.
+`/do-plan` runs this way by default: it commits as it goes through the plan, and every one of those commits is a branch commit in this sense.
 
-Scope tags — pick whichever best describe the change, combine with commas, and
-introduce new ones as new areas appear:
+### When the feature lands on `main`
 
-- `backend` — the FastAPI service
-- `frontend` — the Next.js game app
-- `word-assets` — the build-time word/data tooling
-- `admin` — the admin SPA
-- `auth` — authentication (Auth0, login/account)
-- `words` — the runtime related/random/match word logic
-- `quotes` — the quote-of-the-day feature
-- `inspiration` — the film-grab inspiration image feature
-- `infra` — deployment and config (docker-compose, the prod Caddyfile, CI, root tooling)
-- `docs` — READMEs and other docs, when that is the main change
-
-Examples:
+Squash the whole branch into a single commit, the way a "Squash and merge" would. That one commit carries the full message, because it is the only record of the work that survives:
 
 ```text
-[frontend] show a branded splash while the game chunk loads
-[backend, frontend] move word matching to the client via a prebuilt match map
-[word-assets, quotes] add quote-of-the-day curation and verification tooling
-[infra] cache generated public/ data assets with a short must-revalidate policy
+Short title in one line, like a pull request title
+
+- The first meaningful change
+- The second meaningful change, and why it was done this way when the reason is not obvious
+- Anything load-bearing a future reader would otherwise have to rediscover
 ```
+
+Conventions for that message:
+
+- **The title is one line, sentence case, no prefix and no tags.** No `feat:`/`fix:`/`chore:`, and no `[scope]` brackets. The wording already carries the kind of change: a fix reads like "Fix …", a feature like "Add … to …", a refactor like "Extract …". Start with a capital letter and use ordinary spelling.
+- **The body is a bullet list.** One bullet per meaningful change, in plain English, describing what changed rather than restating the diff file by file. Include the reason when a decision is subtle or was arrived at the hard way; skip the reason when the change speaks for itself.
+- A commit small enough to need no detail may be a bare title with no body.
+- **No signature and no trailers.** Do not add `Co-Authored-By` or any generated-by line.
+- Pass the message with `git commit -F <file>` rather than inlining it, so apostrophes and quoting survive.
+
+This project's `main` history has been rewritten to follow this standard: every commit on it is a squashed feature, so `git log` reads as a list of the changes that shipped.
 
 ## Design decisions
 
