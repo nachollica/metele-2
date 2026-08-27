@@ -36,7 +36,7 @@ services:
     platform: linux/amd64
     container_name: flowfic-api
     restart: unless-stopped
-    command: ["--workers", "2", "--proxy-headers", "--forwarded-allow-ips", "*"]
+    command: ["--workers", "1", "--proxy-headers", "--forwarded-allow-ips", "*"]
     environment:
       ENVIRONMENT: production
       FRONTEND_ORIGIN: https://flowfic.app
