@@ -167,12 +167,21 @@ _state_lock = threading.Lock()
 
 @dataclass(frozen=True)
 class PoolData:
-    """A language's loaded pool: aligned words, normalised vectors, and zipf."""
+    """
+    A language's loaded pool: aligned words, quantized vectors, and zipf.
+
+    ``matrix`` stays int8 in RAM rather than being widened to float32 — a
+    quarter the size, which matters because this is held resident for the life
+    of the worker process. ``scale`` recovers the true value: component ≈
+    int8_value / scale. See :func:`_cosine_similarities` for how the matmul
+    stays correct (and its transient memory bounded) against a quantized matrix.
+    """
 
     words: list[str]
-    matrix: np.ndarray  # (N, dim) float32, L2-normalised
+    matrix: np.ndarray  # (N, dim) int8, L2-normalised before quantization
     index: dict[str, int]  # casefolded word -> row
     zipf: np.ndarray  # (N,) float32
+    scale: float
 
 
 _pool_cache: dict[tuple[str, Language], PoolData] = {}
@@ -203,7 +212,7 @@ def get_config() -> WordConfig:
 # Filename version for the baked pool. Must match POOL_VERSION in the word-assets
 # tool (the writer). Bump both when the .npz format changes so a stale artifact
 # is regenerated rather than silently reused.
-_POOL_VERSION = 1
+_POOL_VERSION = 2
 
 
 def _pool_path(data_dir: str, language: Language) -> str:
@@ -225,7 +234,7 @@ def _load_pool(language: Language) -> PoolData:
         # Don't cache the miss: an artifact appearing later (e.g. a test writing
         # one, or a build finishing) should be picked up without a reconfigure.
         return PoolData(
-            [], np.zeros((0, 0), dtype=np.float32), {}, np.zeros((0,), dtype=np.float32)
+            [], np.zeros((0, 0), dtype=np.int8), {}, np.zeros((0,), dtype=np.float32), 1.0
         )
 
     with _state_lock:
@@ -234,10 +243,14 @@ def _load_pool(language: Language) -> PoolData:
             return cached
         data = np.load(path, allow_pickle=True)
         words = [str(w) for w in data["words"]]
-        matrix = np.ascontiguousarray(data["vectors"], dtype=np.float32)
+        # Stays int8 — do NOT widen to float32 here. That single cast used to be
+        # the API container's largest fixed memory cost (~93MB across both
+        # languages per worker, doubled again by the two uvicorn workers).
+        matrix = np.ascontiguousarray(data["vectors"], dtype=np.int8)
         zipf = np.ascontiguousarray(data["zipf"], dtype=np.float32)
+        scale = float(data["scale"])
         index = {word.casefold(): row for row, word in enumerate(words)}
-        pool = PoolData(words, matrix, index, zipf)
+        pool = PoolData(words, matrix, index, zipf, scale)
         _pool_cache[key] = pool
         return pool
 
@@ -346,6 +359,42 @@ def _random_fill(
     return random.sample(candidates, count)
 
 
+# Rows processed per matmul chunk in `_cosine_similarities`. numpy's `@` between
+# an int8 array and a float32 one silently upcasts the WHOLE int8 side to
+# float32 to perform the multiply — verified empirically, not assumed — so an
+# unchunked call would transiently recreate the exact float32-sized array this
+# module exists to avoid holding resident. Chunking bounds that transient to
+# CHUNK_ROWS * dim * 4 bytes (a few MB) regardless of pool size. The call is
+# rare (once per session start, never per keystroke), so the bound only needs
+# to be small, not zero.
+_SIMILARITY_CHUNK_ROWS = 8000
+
+
+def _cosine_similarities(pool: PoolData, seed_rows: list[int]) -> np.ndarray:
+    """
+    Cosine similarity between every pool word and each seed, as (N, k) float32.
+
+    ``pool.matrix`` stays int8 the whole time; only the few seed rows are
+    dequantized (cheap — k rows, not N). The algebra: a stored component is
+    ``q ≈ true * scale``, so for int8 chunk ``Q`` and true-scale seed matrix
+    ``S``, ``Q @ S.T == (true_chunk * scale) @ S.T == scale * (true_chunk @
+    S.T)``. Dividing the accumulated result by ``scale`` once at the end is
+    equivalent to dequantizing the pool and far cheaper than doing it per row.
+    """
+    import numpy as np
+
+    seed_true = pool.matrix[seed_rows].astype(np.float32) / pool.scale  # (k, dim), tiny
+    n_rows = pool.matrix.shape[0]
+    sims = np.empty((n_rows, len(seed_rows)), dtype=np.float32)
+    for start in range(0, n_rows, _SIMILARITY_CHUNK_ROWS):
+        end = min(start + _SIMILARITY_CHUNK_ROWS, n_rows)
+        # This cast is where the transient upcast happens — bounded to one
+        # chunk's worth (dim * CHUNK_ROWS * 4 bytes) rather than the whole pool.
+        sims[start:end] = pool.matrix[start:end].astype(np.float32) @ seed_true.T
+    sims /= pool.scale
+    return sims
+
+
 def expand_related(
     words: list[str],
     language: Language,
@@ -378,8 +427,7 @@ def expand_related(
 
         themed: list[str] = []
         if seed_rows:
-            seed_vecs = pool.matrix[seed_rows]  # (k, dim)
-            sims = pool.matrix @ seed_vecs.T  # (N, k)
+            sims = _cosine_similarities(pool, seed_rows)  # (N, k)
             per_seed_lists = [
                 _seed_neighbours(
                     sims[:, si],

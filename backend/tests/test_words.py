@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import numpy as np
 import pytest
 
+from app import word_engine
 from app.word_engine import (
     Language,
     ensure_ready,
@@ -128,6 +130,82 @@ class TestExpandRelated:
         self._install(word_data_dir)
         assert expand_related(["   "], self.ES, limit=5, min_zipf=0.0) == []
         assert expand_related(["alpha"], self.ES, limit=0, min_zipf=0.0) == []
+
+
+# ---- int8 quantization + the chunked matmul -----------------------------
+#
+# expand_related's ranking tests above already exercise this path end-to-end
+# (write_pool quantizes, _load_pool reads int8 back, _cosine_similarities does
+# the chunked dequantized matmul), so a broken round-trip would already show up
+# as a wrong nearest-neighbour there. These tests target what that coverage
+# cannot see: the actual cosine *values* (not just their ranking), the RAM
+# dtype contract that is the entire point of this change, and the chunk
+# boundary itself — every existing fixture pool is smaller than one chunk, so
+# only a multi-chunk pool can catch an off-by-one at the boundary.
+
+
+class TestCosineSimilarities:
+    ES = Language.ES
+
+    def test_matches_true_cosine_within_int8_precision(self, word_data_dir: str) -> None:
+        # Two orthogonal-ish unit vectors with a known true cosine similarity.
+        vectors = [[1.0, 0.0], [0.6, 0.8]]  # true cosine(v0, v1) = 0.6
+        write_pool(word_data_dir, self.ES, ["a", "b"], vectors=vectors)
+        reconfigure(word_data_dir)
+        pool = word_engine._load_pool(self.ES)
+        sims = word_engine._cosine_similarities(pool, seed_rows=[0])
+        assert sims.shape == (2, 1)
+        # Worst-case rounding error per component is half a quantization step
+        # (1/scale); here max|component| is 1.0 so scale == 127, and a dot
+        # product of 2 components can be off by up to 2 * 1/(2*127) ≈ 0.0079.
+        tol = 2 / (2 * pool.scale) + 1e-6
+        assert sims[0, 0] == pytest.approx(1.0, abs=tol)  # self-similarity
+        assert sims[1, 0] == pytest.approx(0.6, abs=tol)
+
+    def test_pool_matrix_stays_int8_in_ram(self, word_data_dir: str) -> None:
+        # The whole point of this change: the resident matrix must never be
+        # widened to float32 (a 4x memory cost held for the life of the worker).
+        # A future edit that reintroduces the old upcast would pass every
+        # ranking test above while quietly reverting the memory fix — this
+        # assertion is what would actually catch that.
+        write_pool(word_data_dir, self.ES, ["a", "b"], vectors=[[1.0, 0.0], [0.0, 1.0]])
+        reconfigure(word_data_dir)
+        pool = word_engine._load_pool(self.ES)
+        assert pool.matrix.dtype == np.int8
+
+    def test_chunk_boundary_matches_a_single_pass(
+        self, word_data_dir: str, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Force multiple chunks over a pool that would otherwise fit in one, and
+        # confirm the chunked result is identical to computing it in a single
+        # pass — an off-by-one at the boundary would silently corrupt one row's
+        # similarities rather than raising, so this compares actual values.
+        rng = np.random.default_rng(0)
+        n = 23
+        raw = rng.standard_normal((n, 5)).astype(np.float32)
+        raw /= np.linalg.norm(raw, axis=1, keepdims=True)
+        write_pool(word_data_dir, self.ES, [f"w{i}" for i in range(n)], vectors=raw.tolist())
+        reconfigure(word_data_dir)
+        pool = word_engine._load_pool(self.ES)
+
+        monkeypatch.setattr(word_engine, "_SIMILARITY_CHUNK_ROWS", n)
+        single_pass = word_engine._cosine_similarities(pool, seed_rows=[0, 3])
+        monkeypatch.setattr(word_engine, "_SIMILARITY_CHUNK_ROWS", 7)  # 23 / 7 -> 4 chunks
+        chunked = word_engine._cosine_similarities(pool, seed_rows=[0, 3])
+
+        # Not exact equality: summing in a different chunk grouping changes
+        # float32 rounding at the ULP level (observed ~6e-8, float32 epsilon
+        # scale) — that is expected non-associativity, not a chunking bug.
+        np.testing.assert_allclose(single_pass, chunked, rtol=1e-5, atol=1e-6)
+
+    def test_empty_pool_uses_a_safe_default_scale(self) -> None:
+        # `_load_pool` returns this PoolData for a missing artifact, never one
+        # written by `write_pool` — scale must not be 0 (a real divide-by-zero)
+        # even though nothing ever indexes into the empty matrix.
+        reconfigure("/nonexistent-flowfic-word-data")
+        pool = word_engine._load_pool(self.ES)
+        assert pool.matrix.shape == (0, 0)
+        assert pool.scale > 0
 
 
 # ---- random_words ------------------------------------------------------
