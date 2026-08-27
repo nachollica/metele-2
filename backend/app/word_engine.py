@@ -212,7 +212,7 @@ def get_config() -> WordConfig:
 # Filename version for the baked pool. Must match POOL_VERSION in the word-assets
 # tool (the writer). Bump both when the .npz format changes so a stale artifact
 # is regenerated rather than silently reused.
-_POOL_VERSION = 2
+_POOL_VERSION = 1
 
 
 def _pool_path(data_dir: str, language: Language) -> str:

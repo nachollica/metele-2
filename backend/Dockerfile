@@ -77,7 +77,7 @@ COPY --from=builder ${VENV_PATH} ${VENV_PATH}
 # image without them (fail loudly rather than shipping degraded word features).
 COPY --chown=flowfic:flowfic app ${APP_ROOT}/app
 COPY --chown=flowfic:flowfic data ${APP_ROOT}/data
-RUN test -f data/word_pool/en.v2.npz && test -f data/word_pool/es.v2.npz \
+RUN test -f data/word_pool/en.v1.npz && test -f data/word_pool/es.v1.npz \
     || (echo "ERROR: missing data/word_pool/*.npz — run 'just word-assets::vectors' first" >&2; exit 1)
 
 # Writable data dir for the SQLite file in local/dev runs.

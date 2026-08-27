@@ -38,7 +38,7 @@ LANGUAGES: tuple[str, ...] = ("en", "es")
 
 # ---- word_pool artifact (consumed by the backend runtime) --------------
 
-POOL_VERSION = 2
+POOL_VERSION = 1
 # Minimum wordfreq zipf a word must clear to enter the pool (backend's
 # is_common uses the same default value).
 DEFAULT_MIN_ZIPF = 2.5
