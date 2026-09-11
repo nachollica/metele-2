@@ -53,6 +53,7 @@ This project's `main` history has been rewritten to follow this standard: every 
 
 - The game is entirely client-side rendered and served as pure static assets (Next.js static export). The backend is consulted only at the edges — auth, persistence, and the word helpers below — at session start, never per keystroke.
 - It supports i18n. Two languages available for now: "en" and "es" (default). There are no per-language routes: the app is a single route, the locale is detected client-side from the browser and can be switched with the top-bar language selector (persisted per user in localStorage). When working on the UI make sure to add/edit any necessary entries in the translation files at `@frontend/lib/i18n/`.
+- **No toasts.** The game never uses toast/snackbar notifications, and no toast library is installed — do not add one. Transient popups that float over the writing surface and vanish on a timer are wrong for an app whose whole premise is not breaking the player's attention, and a message that disappears on its own is a message a player mid-sprint will miss. Feedback belongs in one of three places instead: inline beside the thing it concerns (the game area's save-failure alert), in a modal when it needs a decision (the quit and results dialogs), or as the screen the action lands on (a saved story opening on its own detail screen). Announcements that carry no UI go through the existing live regions (`screen-announcer.tsx`, the HUD's pause region), not a visible popup.
 
 ## Words (related, random, matching)
 
