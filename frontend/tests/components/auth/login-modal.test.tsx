@@ -89,3 +89,116 @@ describe("LoginModal", () => {
     ).not.toBeInTheDocument()
   })
 })
+
+// Opened to keep a story rather than to log in: the header is overridden and a
+// secondary way out appears, behind a confirmation.
+describe("LoginModal opened to save a story", () => {
+  beforeEach(() => {
+    loginWithProvider.mockReset().mockResolvedValue(undefined)
+  })
+
+  it("uses the supplied header instead of the generic sign-in copy", () => {
+    renderWithLocale(
+      <LoginModal
+        open
+        onOpenChange={() => {}}
+        title="Sign in to save this story"
+        description="Nowhere to keep it yet."
+      />,
+    )
+    expect(
+      screen.getByRole("heading", { name: /sign in to save this story/i }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole("heading", { name: /sign in to flowfic/i })).not.toBeInTheDocument()
+  })
+
+  it("shows no way out when there is nothing to discard", () => {
+    renderWithLocale(<LoginModal open onOpenChange={() => {}} />)
+    expect(screen.queryByRole("button", { name: /return to home page/i })).not.toBeInTheDocument()
+  })
+
+  it("asks for confirmation before discarding, and announces the new step", async () => {
+    const onDiscard = vi.fn()
+    renderWithLocale(
+      <LoginModal
+        open
+        onOpenChange={() => {}}
+        onDiscard={onDiscard}
+        discardLabel="Return to home page"
+      />,
+    )
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole("button", { name: /return to home page/i }))
+
+    // The dialog renames itself, so the confirmation reaches assistive tech
+    // rather than silently changing what the buttons do.
+    expect(screen.getByRole("heading", { name: /lose this story\?/i })).toBeInTheDocument()
+    expect(onDiscard).not.toHaveBeenCalled()
+    // The sign-in options are out of the way while the question is up.
+    expect(
+      screen.queryByRole("button", { name: /continue with google/i }),
+    ).not.toBeInTheDocument()
+  })
+
+  it("discards only from the confirm button", async () => {
+    const onDiscard = vi.fn()
+    renderWithLocale(
+      <LoginModal open onOpenChange={() => {}} onDiscard={onDiscard} discardLabel="Leave" />,
+    )
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole("button", { name: /leave/i }))
+    await user.click(screen.getByRole("button", { name: /discard the story/i }))
+
+    expect(onDiscard).toHaveBeenCalledTimes(1)
+  })
+
+  it("backs out of the confirmation without discarding", async () => {
+    const onDiscard = vi.fn()
+    renderWithLocale(
+      <LoginModal open onOpenChange={() => {}} onDiscard={onDiscard} discardLabel="Leave" />,
+    )
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole("button", { name: /leave/i }))
+    await user.click(screen.getByRole("button", { name: /keep my story/i }))
+
+    expect(onDiscard).not.toHaveBeenCalled()
+    expect(screen.getByRole("button", { name: /continue with google/i })).toBeInTheDocument()
+  })
+
+  it("Escape during the confirmation backs out one level, not two", async () => {
+    const onOpenChange = vi.fn()
+    const onDiscard = vi.fn()
+    renderWithLocale(
+      <LoginModal open onOpenChange={onOpenChange} onDiscard={onDiscard} discardLabel="Leave" />,
+    )
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole("button", { name: /leave/i }))
+    await user.keyboard("{Escape}")
+
+    // Back on the sign-in step, with the modal still open and the story intact.
+    expect(screen.getByRole("button", { name: /continue with google/i })).toBeInTheDocument()
+    expect(onOpenChange).not.toHaveBeenCalled()
+    expect(onDiscard).not.toHaveBeenCalled()
+  })
+
+  it("runs onBeforeLogin before handing over to the redirect", async () => {
+    const calls: string[] = []
+    loginWithProvider.mockImplementation(async () => {
+      calls.push("login")
+    })
+    renderWithLocale(
+      <LoginModal open onOpenChange={() => {}} onBeforeLogin={() => calls.push("before")} />,
+    )
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole("button", { name: /continue with google/i }))
+
+    // The document is about to be replaced; anything not written down by now
+    // is gone.
+    expect(calls).toEqual(["before", "login"])
+  })
+})

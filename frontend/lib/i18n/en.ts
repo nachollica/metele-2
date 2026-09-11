@@ -253,6 +253,37 @@ export const en = {
     emailInvalid: "Enter a valid email address.",
   },
 
+  // Keeping a finished story that was written without an account. Separate
+  // from `auth` because these strings are about the story, not about signing
+  // in — signing in is only the means.
+  saveStory: {
+    title: "Sign in to save this story",
+    description:
+      "You wrote this without an account, so there is nowhere to keep it yet. Sign in and it is saved to your stories right away.",
+    // The secondary way out. Its wording names the destination, because the
+    // player reached this modal from three different places.
+    leaveHome: "Return to home page",
+    leaveNewStory: "Start a new story anyway",
+    leaveAway: "Leave without saving",
+    // Second step: the confirmation IS the warning, so it carries the whole
+    // message rather than repeating a caption from the step before it.
+    confirmTitle: "Lose this story?",
+    confirmDescription:
+      "It will be deleted and there is no way to get it back. Signing in is the only way to keep it.",
+    confirmDiscard: "Discard the story",
+    confirmCancel: "Keep my story",
+    // Offered after a sign-in that had nothing to do with this story, so it
+    // names what it found instead of assuming the player remembers.
+    recoverTitle: "You have an unsaved story",
+    recoverDescription:
+      "This was written before you signed in and was never saved. Do you want to keep it?",
+    recoverMeta: "{title} — {words} words, {date}",
+    recoverSave: "Save it to my stories",
+    recoverSaving: "Saving…",
+    recoverDiscard: "Discard it",
+    recoverFailed: "Couldn't save it. Check your connection and try again.",
+  },
+
   nav: {
     label: "Main navigation",
     home: "Home",

@@ -16,9 +16,16 @@ import {
 import { cn } from "@/lib/utils"
 
 import { useAuth } from "@/lib/auth"
+import { LoginModal } from "@/components/auth/login-modal"
 import { useBackendStatus } from "@/lib/backend"
 import { useTranslations } from "@/lib/i18n"
 import { useInspiration } from "@/lib/flowfic/inspiration"
+import {
+  clearPendingStory,
+  markPendingStoryIntent,
+  readPendingStory,
+  type PendingStory,
+} from "@/lib/flowfic/pending-story"
 import { useGameEngine } from "@/lib/flowfic/use-game-engine"
 import { useStories } from "@/lib/flowfic/use-stories"
 import type { Story } from "@/lib/flowfic/stories-api"
@@ -36,9 +43,22 @@ import { InspirationPane } from "./inspiration-panel"
 import { type ShowcaseFace } from "./landing-showcase"
 import { type GridMode } from "./preset-grid"
 import { ResultsModal } from "./results-modal"
+import { SaveFailureAlert } from "./save-failure-alert"
+import { RecoverStoryModal } from "./recover-story-modal"
 import { WelcomeModal } from "./welcome-modal"
 
 const WELCOME_STORAGE_KEY = "flowfic.welcome.dismissed"
+
+/**
+ * What the player asked for when they were stopped and offered a sign-in. The
+ * prompt never blocks navigation — the request goes through and the modal
+ * opens over the result — except for `newSprint`, which cannot start with its
+ * timers running behind a dialog.
+ */
+type PendingExit =
+  | { kind: "save" }
+  | { kind: "newSprint" }
+  | { kind: "navigated" }
 
 export function Dashboard() {
   const t = useTranslations()
@@ -75,6 +95,10 @@ export function Dashboard() {
   // Quit confirmation. Opening it pauses the sprint; cancelling leaves it
   // paused, since the player can't interact with the editor while it is up.
   const [quitConfirmOpen, setQuitConfirmOpen] = useState(false)
+  // Set while an anonymous player is being offered a sign-in to keep the story
+  // they just finished. Holds what they were trying to do, so discarding can
+  // carry on with it.
+  const [pendingExit, setPendingExit] = useState<PendingExit | null>(null)
   // Whether the in-game inspiration pane is expanded (desktop only).
   const [inspirationOpen, setInspirationOpen] = useState(true)
   const { state: inspirationState, clear: clearInspiration } = useInspiration()
@@ -137,10 +161,30 @@ export function Dashboard() {
     setScreen(next)
   }, [])
 
+  // True when a finished story is about to be dropped for want of an account.
+  // Checked in event handlers only, so reading it off a ref is enough.
+  const needsSignInToSave = useCallback(
+    () => authStatus === "anonymous" && engine.hasUnsavedStory(),
+    [authStatus, engine],
+  )
+
   // Save any just-finished story before leaving the game area.
+  //
+  // An anonymous player is stopped here instead, but the navigation they asked
+  // for still goes through: leaving the engine in `ended` would keep the game
+  // layout on screen (`inGame` below) while the URL already pointed elsewhere.
+  // Nothing is lost by resetting — the draft lives in localStorage, not in
+  // engine state.
   const leaveGame = useCallback(() => {
-    if (engine.gameState === "ended") engine.finishAndReset()
-  }, [engine])
+    if (engine.gameState !== "ended") return
+    if (needsSignInToSave()) {
+      engine.persistPendingStory()
+      engine.resetSession()
+      setPendingExit({ kind: "navigated" })
+      return
+    }
+    engine.finishAndReset()
+  }, [engine, needsSignInToSave])
 
   // Sync the screen when the user presses Back/Forward. Mid-game, Back quits
   // the session and stays in-app rather than tearing the tree down or leaving
@@ -159,6 +203,56 @@ export function Dashboard() {
     window.addEventListener("popstate", handler)
     return () => window.removeEventListener("popstate", handler)
   }, [])
+
+  // ---- Rescue a story left behind by a sign-in ---------------------------
+  // Signing in is a full-page redirect, so the story that prompted it only
+  // exists in localStorage by the time we get here. One effect covers both
+  // login paths: the Auth0 round trip (which reboots the app) and the dev-user
+  // backdoor (which authenticates in place without one).
+  //
+  // Only an intent-flagged draft saves itself. A draft the player never asked
+  // us to keep is offered by `RecoverStoryModal` instead, so signing in for
+  // some unrelated reason days later cannot resurrect forgotten work.
+  const restorePendingRef = useRef(engine.restorePendingStory)
+  useEffect(() => {
+    restorePendingRef.current = engine.restorePendingStory
+  })
+  const restoredRef = useRef(false)
+  const [recoverPending, setRecoverPending] = useState<PendingStory | null>(null)
+  useEffect(() => {
+    // Fires exactly once, the first time auth settles — which is always before
+    // a sprint could have finished, since the shortest one runs five minutes.
+    // Re-running this whenever the session returns to `idle` is what made a
+    // just-saved story reappear as a recovery prompt: `finishAndReset` sets
+    // idle synchronously while the request that clears the draft is still in
+    // flight, so the effect read a draft that was about to be deleted.
+    if (authStatus === "loading" || restoredRef.current) return
+    restoredRef.current = true
+    if (authStatus !== "authenticated") return
+    // A sprint already under way means auth was unusually slow; leave the
+    // draft alone rather than opening a dialog over a running clock.
+    if (engine.gameState !== "idle") return
+    const pending = readPendingStory()
+    if (pending === null) return
+    if (!pending.intent) {
+      setRecoverPending(pending)
+      return
+    }
+    void restorePendingRef.current().then((story) => {
+      // Land on the story itself: the strongest possible statement that
+      // nothing was lost, and it needs no surface of its own.
+      if (story !== null) navigate({ name: "story", id: story.id })
+    })
+  }, [authStatus, engine.gameState, navigate])
+
+  // The offered draft, accepted. Same landing as the automatic path.
+  async function saveRecoveredStory(): Promise<boolean> {
+    const story = await engine.restorePendingStory()
+    if (story === null) return false
+    setRecoverPending(null)
+    navigate({ name: "story", id: story.id })
+    return true
+  }
 
   // ---- Reset navigation on logout ----------------------------------------
   const prevAuthRef = useRef(authStatus)
@@ -198,16 +292,46 @@ export function Dashboard() {
   // that circle selected carries the pick into the game, starting from any other
   // face drops it. So the player asks for an inspiration by looking at one, and
   // the pane never appears beside a session they didn't want it for.
-  function startWriting() {
+  function beginSprint() {
     if (showcaseFace !== "inspiration") clearInspiration()
     engine.saveCurrentStoryIfNeeded()
     engine.startGame(engine.settings)
   }
 
+  function startWriting() {
+    // The one exit that has to block: a sprint cannot begin with its timers
+    // running behind a modal. This is also the path that produced the reported
+    // bug, where the previous story's save failure surfaced over a brand-new,
+    // empty sprint.
+    if (needsSignInToSave()) {
+      engine.persistPendingStory()
+      setPendingExit({ kind: "newSprint" })
+      return
+    }
+    beginSprint()
+  }
+
   // Final checkout of a finished sprint: save, wipe, back to home.
   function finishStory() {
+    if (needsSignInToSave()) {
+      // Stay on the ended screen behind the modal — the player asked to keep
+      // the story, not to leave it.
+      engine.persistPendingStory()
+      setPendingExit({ kind: "save" })
+      return
+    }
     engine.finishAndReset()
     navigate({ name: "landing" })
+  }
+
+  // The player confirmed they are willing to lose it. Drop the draft, then
+  // carry on with whatever they were doing when they were stopped.
+  function discardAndContinue() {
+    const exit = pendingExit
+    setPendingExit(null)
+    engine.discardAndReset()
+    if (exit?.kind === "save") navigate({ name: "landing" })
+    else if (exit?.kind === "newSprint") beginSprint()
   }
 
   // The advanced-settings face of the home panel is URL-backed (/new), so it
@@ -327,6 +451,15 @@ export function Dashboard() {
               <ContentColumn
                 className={cn("min-w-0 gap-4 overflow-hidden", paneShown && "flex-1")}
               >
+                {/* Raised by a save that actually failed, in whichever
+                    layout is up when it resolves. */}
+                {engine.failedSave !== null ? (
+                  <SaveFailureAlert
+                    retrying={engine.retryingSave}
+                    onRetry={engine.retryFailedSave}
+                    onDismiss={engine.dismissFailedSave}
+                  />
+                ) : null}
                 {loading ? (
                   <LoadingSplash />
                 ) : (
@@ -382,6 +515,15 @@ export function Dashboard() {
                (one child each) and the sixth with a different gap entirely. */
             <div className="h-full min-h-0 overflow-y-auto">
               <ContentColumn className="gap-6">
+                {/* Raised by a save that actually failed, in whichever
+                    layout is up when it resolves. */}
+                {engine.failedSave !== null ? (
+                  <SaveFailureAlert
+                    retrying={engine.retryingSave}
+                    onRetry={engine.retryFailedSave}
+                    onDismiss={engine.dismissFailedSave}
+                  />
+                ) : null}
                 <ScreenContent
                   screen={screen}
                 story={currentStory}
@@ -442,6 +584,44 @@ export function Dashboard() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Sign in to keep the story that was just finished without an account.
+          Dismissing it is harmless: the draft stays stored and the player is
+          left wherever they already were. */}
+      <LoginModal
+        open={pendingExit !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingExit(null)
+        }}
+        title={t.saveStory.title}
+        description={t.saveStory.description}
+        onBeforeLogin={markPendingStoryIntent}
+        onDiscard={discardAndContinue}
+        discardLabel={
+          pendingExit?.kind === "save"
+            ? t.saveStory.leaveHome
+            : pendingExit?.kind === "newSprint"
+              ? t.saveStory.leaveNewStory
+              : t.saveStory.leaveAway
+        }
+      />
+
+      {/* A story finished anonymously that the player never asked us to keep.
+          Offered rather than saved, so an unrelated sign-in cannot resurrect
+          work they had already moved on from. */}
+      <RecoverStoryModal
+        pending={recoverPending}
+        onSave={saveRecoveredStory}
+        onDiscard={() => {
+          clearPendingStory()
+          setRecoverPending(null)
+        }}
+        onOpenChange={(open) => {
+          // Dismissed without answering: leave the draft alone so it is still
+          // there next time rather than silently thrown away.
+          if (!open) setRecoverPending(null)
+        }}
+      />
 
       <WelcomeModal open={welcomeOpen && authStatus !== "loading"} onContinue={dismissWelcome} />
       <ResultsModal

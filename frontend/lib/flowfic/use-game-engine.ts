@@ -26,7 +26,12 @@ import {
   fetchRelatedWords,
   parseCategoriesInput,
 } from "@/lib/flowfic/words-api"
-import { createStory, type CreateStoryInput } from "@/lib/flowfic/stories-api"
+import { createStory, type CreateStoryInput, type Story } from "@/lib/flowfic/stories-api"
+import {
+  clearPendingStory,
+  readPendingStory,
+  writePendingStory,
+} from "@/lib/flowfic/pending-story"
 import {
   DEFAULT_SETTINGS,
   type EndReason,
@@ -230,6 +235,26 @@ export function useGameEngine() {
     }, UI_TICK_MS)
   }, [])
 
+  // The wire payload for a finished story. Shared by the live save and by the
+  // draft written to localStorage, so the thing recovered after a sign-in is
+  // byte-for-byte the thing that would have been saved in the first place.
+  const buildStoryPayload = useCallback(
+    (snapshot: GameResult, finalText: string): CreateStoryInput => ({
+      title: storyTitleRef.current.trim() || null,
+      text: finalText,
+      lang: locale,
+      settings: settingsRef.current,
+      stats: {
+        reason: snapshot.reason,
+        durationMs: snapshot.durationMs,
+        characters: snapshot.characters,
+        words: snapshot.words,
+        requiredWordsUsed: snapshot.requiredWordsUsed,
+      },
+    }),
+    [locale],
+  )
+
   const endGame = useCallback(
     (reason: EndReason) => {
       // Manual quit before timers ever started: nothing to score, back to idle.
@@ -255,72 +280,114 @@ export function useGameEngine() {
       setNow(Date.now())
       setGameState("ended")
       setResultsModalOpen(true)
-      setResult({
+      const finalResult: GameResult = {
         reason,
         durationMs,
         characters: finalText.length,
         words: wordCount,
         requiredWordsUsed: usedWordsRef.current.size,
         text: finalText,
-      })
+      }
+      setResult(finalResult)
       unsavedStoryRef.current = trimmed.length > 0
+
+      // Stash the finished story before anything else can lose it. Signing in
+      // is a full-page redirect, and every exit from here (save, a new sprint,
+      // Back) used to drop the text on the floor for an anonymous player. The
+      // title is still empty at this point; each intercepted exit rewrites the
+      // draft with whatever the player typed into the title field.
+      if (unsavedStoryRef.current) {
+        writePendingStory(buildStoryPayload(finalResult, finalText))
+      }
     },
-    [armed, clearAllTimers],
+    [armed, buildStoryPayload, clearAllTimers],
   )
 
   const closeResultsModal = useCallback(() => {
     setResultsModalOpen(false)
   }, [])
 
+  // "unauthenticated" is kept distinct from a null Story on purpose: one means
+  // there is nobody to save for (and the caller should prompt a sign-in), the
+  // other means the request was made and failed (and Retry can help). Collapsing
+  // them into one boolean is what showed an anonymous player a network error
+  // beside a Retry button that could never succeed.
   const persistStory = useCallback(
-    async (payload: CreateStoryInput): Promise<boolean> => {
+    async (payload: CreateStoryInput): Promise<Story | null | "unauthenticated"> => {
       const token = await getAccessToken()
-      if (token === null) return false
-      const created = await createStory(token, payload)
-      return created !== null
+      if (token === null) return "unauthenticated"
+      return await createStory(token, payload)
     },
     [getAccessToken],
   )
 
+  /** The payload for whatever is on screen now, or null if there is nothing. */
+  const currentPayload = useCallback((): CreateStoryInput | null => {
+    const snapshot = result
+    const finalText = textRef.current
+    if (snapshot === null || finalText.trim().length === 0) return null
+    return buildStoryPayload(snapshot, finalText)
+  }, [buildStoryPayload, result])
+
+  /**
+   * Refresh the stored draft from the current state. Called on the way out of
+   * every intercepted exit, which is what captures a title typed into the
+   * epilogue — `endGame` can only ever store an untitled draft.
+   */
+  const persistPendingStory = useCallback(() => {
+    const payload = currentPayload()
+    if (payload !== null) writePendingStory(payload)
+  }, [currentPayload])
+
   const saveCurrentStoryIfNeeded = useCallback(() => {
     if (!unsavedStoryRef.current) return
     unsavedStoryRef.current = false
-    const snapshot = result
-    const finalText = textRef.current
-    if (snapshot === null || finalText.trim().length === 0) return
-    const payload: CreateStoryInput = {
-      title: storyTitleRef.current.trim() || null,
-      text: finalText,
-      lang: locale,
-      settings: settingsRef.current,
-      stats: {
-        reason: snapshot.reason,
-        durationMs: snapshot.durationMs,
-        characters: snapshot.characters,
-        words: snapshot.words,
-        requiredWordsUsed: snapshot.requiredWordsUsed,
-      },
-    }
-    void persistStory(payload).then((ok) => {
-      if (ok) {
-        setStoriesRefreshKey((k) => k + 1)
-      } else {
-        setFailedSave(payload)
+    const payload = currentPayload()
+    if (payload === null) return
+    void persistStory(payload).then((outcome) => {
+      if (outcome === "unauthenticated") {
+        // Nothing to save to. Keep the draft (with its title) so a later
+        // sign-in can still rescue it, and stay silent — the exit that got
+        // here is responsible for prompting.
+        writePendingStory(payload)
+        return
       }
+      if (outcome === null) {
+        setFailedSave(payload)
+        return
+      }
+      clearPendingStory()
+      setStoriesRefreshKey((k) => k + 1)
     })
-  }, [persistStory, locale, result])
+  }, [currentPayload, persistStory])
 
   const retryFailedSave = useCallback(() => {
     if (failedSave === null) return
     setRetryingSave(true)
-    void persistStory(failedSave).then((ok) => {
+    void persistStory(failedSave).then((outcome) => {
       setRetryingSave(false)
-      if (ok) {
-        setFailedSave(null)
-        setStoriesRefreshKey((k) => k + 1)
-      }
+      if (outcome === null || outcome === "unauthenticated") return
+      setFailedSave(null)
+      clearPendingStory()
+      setStoriesRefreshKey((k) => k + 1)
     })
   }, [failedSave, persistStory])
+
+  /**
+   * Post the draft left behind by an earlier session and clear it. Returns the
+   * created story so the caller can open it; null if there is nothing stored,
+   * no token, or the request failed. Deliberately does not navigate — the
+   * dashboard decides where a recovered story lands.
+   */
+  const restorePendingStory = useCallback(async (): Promise<Story | null> => {
+    const pending = readPendingStory()
+    if (pending === null) return null
+    const outcome = await persistStory(pending.payload)
+    if (outcome === null || outcome === "unauthenticated") return null
+    clearPendingStory()
+    setStoriesRefreshKey((k) => k + 1)
+    return outcome
+  }, [persistStory])
 
   const dismissFailedSave = useCallback(() => setFailedSave(null), [])
 
@@ -350,6 +417,22 @@ export function useGameEngine() {
     resetSession()
     clearInspiration()
   }, [resetSession, saveCurrentStoryIfNeeded])
+
+  /**
+   * The other way out of a finished sprint: the player was told the story would
+   * be lost and confirmed it. Drops the draft as well as the session, so a
+   * later sign-in doesn't resurrect something they explicitly threw away.
+   */
+  const discardAndReset = useCallback(() => {
+    unsavedStoryRef.current = false
+    clearPendingStory()
+    resetSession()
+    clearInspiration()
+  }, [resetSession])
+
+  /** Whether a finished story is still waiting to be saved. Read in event
+   *  handlers, so a ref is enough and avoids a render per keystroke. */
+  const hasUnsavedStory = useCallback(() => unsavedStoryRef.current, [])
 
   // ---- Required word lifecycle ------------------------------------------
   // Each arm-* helper takes an explicit duration and records the wall-clock
@@ -805,6 +888,10 @@ export function useGameEngine() {
     saveCurrentStoryIfNeeded,
     resetSession,
     finishAndReset,
+    discardAndReset,
+    hasUnsavedStory,
+    persistPendingStory,
+    restorePendingStory,
     retryFailedSave,
     dismissFailedSave,
   }

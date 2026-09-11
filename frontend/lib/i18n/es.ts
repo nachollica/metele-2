@@ -258,6 +258,38 @@ export const es = {
     emailInvalid: "Ingresa un correo válido.",
   },
 
+  // Conservar una historia terminada que se escribió sin cuenta. Va aparte de
+  // `auth` porque estas cadenas hablan de la historia, no de iniciar sesión:
+  // iniciar sesión es solo el medio.
+  saveStory: {
+    title: "Inicia sesión para guardar esta historia",
+    description:
+      "Escribiste esto sin una cuenta, así que todavía no hay dónde guardarlo. Inicia sesión y se guardará en tus historias al instante.",
+    // La salida secundaria. Nombra el destino porque a este modal se llega
+    // desde tres sitios distintos.
+    leaveHome: "Volver a la página de inicio",
+    leaveNewStory: "Empezar otra historia de todos modos",
+    leaveAway: "Salir sin guardar",
+    // Segundo paso: la confirmación ES el aviso, así que lleva el mensaje
+    // completo en lugar de repetir una nota del paso anterior.
+    confirmTitle: "¿Perder esta historia?",
+    confirmDescription:
+      "Se borrará y no habrá forma de recuperarla. Iniciar sesión es la única manera de conservarla.",
+    confirmDiscard: "Descartar la historia",
+    confirmCancel: "Conservar mi historia",
+    // Se ofrece tras un inicio de sesión que no tenía nada que ver con esta
+    // historia, así que nombra lo que encontró en vez de dar por hecho que la
+    // persona se acuerda.
+    recoverTitle: "Tienes una historia sin guardar",
+    recoverDescription:
+      "Se escribió antes de que iniciaras sesión y nunca se guardó. ¿Quieres conservarla?",
+    recoverMeta: "{title} — {words} palabras, {date}",
+    recoverSave: "Guardarla en mis historias",
+    recoverSaving: "Guardando…",
+    recoverDiscard: "Descartarla",
+    recoverFailed: "No se pudo guardar. Revisa tu conexión e inténtalo de nuevo.",
+  },
+
   nav: {
     label: "Navegación principal",
     home: "Inicio",

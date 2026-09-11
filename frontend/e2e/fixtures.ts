@@ -75,6 +75,72 @@ export async function seedDevSession(
   )
 }
 
+// A complete `GameSettings` snapshot, for seeding a draft that has to survive
+// the same strict validation the real API applies on create.
+const DEFAULT_STORY_SETTINGS = {
+  idleTimerEnabled: true,
+  mainTimerSeconds: 15,
+  globalTimerSeconds: 600,
+  requiredWordIntervalEnabled: false,
+  requiredWordIntervalSeconds: 30,
+  requiredWordUseTimerEnabled: false,
+  requiredWordUseTimerSeconds: 10,
+  soundEnabled: false,
+  soundMode: "bell",
+  wordSource: "free",
+  wordSourceSeeds: "",
+} as const
+
+// Key the frontend stores an unsaved finished story under, mirroring
+// `lib/flowfic/pending-story.ts`. Duplicated here on purpose: if the key moves,
+// these specs should fail rather than silently stop covering the recovery path.
+export const PENDING_STORY_KEY = "flowfic:pending-story"
+
+// Plant a finished-but-unsaved story, as if an earlier visit had left one
+// behind. `intent` is the difference between the two recovery paths: true means
+// the player clicked a provider in the "sign in to save this story" modal and
+// the draft saves itself; false means they never asked, so it is offered.
+// Must be called BEFORE `page.goto`.
+export async function seedPendingStory(
+  page: Page,
+  options: { text?: string; title?: string | null; intent?: boolean; savedAt?: number } = {},
+): Promise<void> {
+  const record = {
+    savedAt: options.savedAt ?? Date.now(),
+    intent: options.intent ?? false,
+    payload: {
+      title: options.title ?? null,
+      text: options.text ?? "A story written before anyone was watching. ",
+      lang: "en",
+      settings: DEFAULT_STORY_SETTINGS,
+      stats: {
+        reason: "manual",
+        durationMs: 60_000,
+        characters: 44,
+        words: 8,
+        requiredWordsUsed: 0,
+      },
+    },
+  }
+  await page.addInitScript(
+    (args) => {
+      const a = args as { key: string; value: string }
+      window.localStorage.setItem(a.key, a.value)
+    },
+    { key: PENDING_STORY_KEY, value: JSON.stringify(record) },
+  )
+}
+
+// Read whatever draft is currently stored (null when there is none). Lets a
+// spec assert that discarding really deleted it rather than just closing a
+// dialog over it.
+export async function readStoredDraft(page: Page): Promise<unknown | null> {
+  return await page.evaluate((key) => {
+    const raw = window.localStorage.getItem(key as string)
+    return raw === null ? null : JSON.parse(raw)
+  }, PENDING_STORY_KEY)
+}
+
 // Handle returned by `mockBackend` so a test can assert on what the frontend
 // sent and control what subsequent reads return.
 export type BackendMock = {

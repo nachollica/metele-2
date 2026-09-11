@@ -20,11 +20,25 @@ import {
   type AuthProviderId,
 } from "@/lib/auth"
 
+import { DiscardStoryStep } from "@/components/flowfic/discard-story-step"
+
 import { GoogleIcon } from "./provider-icons"
 
 type Props = {
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** Overrides for the header when the modal is opened for a specific reason
+   *  (keeping a finished story) rather than as a plain "log in". */
+  title?: string
+  description?: string
+  /** When set, the modal also offers a way out that abandons whatever the
+   *  sign-in was for, behind a confirmation step. The label names the
+   *  destination, since this modal is reachable from several places. */
+  onDiscard?: () => void
+  discardLabel?: string
+  /** Runs just before a provider redirect. The page is about to be replaced,
+   *  so this is the last moment anything can be written down. */
+  onBeforeLogin?: () => void
 }
 
 const PROVIDER_ICONS: Record<AuthProviderId, React.ComponentType<{ className?: string }>> = {
@@ -34,13 +48,32 @@ const PROVIDER_ICONS: Record<AuthProviderId, React.ComponentType<{ className?: s
 // Social-login only. The dev-user backdoor used to live here as a collapsible
 // row, but it now sits beside the header's "Log in" button (see
 // DevLoginButton) so this modal stays identical across environments.
-export function LoginModal({ open, onOpenChange }: Props) {
+export function LoginModal({
+  open,
+  onOpenChange,
+  title,
+  description,
+  onDiscard,
+  discardLabel,
+  onBeforeLogin,
+}: Props) {
   const t = useTranslations()
   const { loginWithProvider } = useAuth()
   const [pending, setPending] = useState<AuthProviderId | null>(null)
+  // Two steps in one dialog rather than a stacked AlertDialog — see
+  // `DiscardStoryStep` for why.
+  const [confirmingDiscard, setConfirmingDiscard] = useState(false)
+
+  // Every close resets the step, so reopening never lands mid-confirmation.
+  function handleOpenChange(next: boolean) {
+    if (!next) setConfirmingDiscard(false)
+    onOpenChange(next)
+  }
 
   async function handleProvider(provider: AuthProviderId) {
     setPending(provider)
+    // Last call before the document is replaced by the Auth0 redirect.
+    onBeforeLogin?.()
     try {
       await loginWithProvider(provider)
     } catch {
@@ -49,17 +82,53 @@ export function LoginModal({ open, onOpenChange }: Props) {
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        // Escape or an overlay click during the confirmation backs out one
+        // level instead of two: cancelling a confirmation should not also
+        // dismiss the thing that raised it.
+        if (!next && confirmingDiscard) {
+          setConfirmingDiscard(false)
+          return
+        }
+        handleOpenChange(next)
+      }}
+    >
       <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-2xl">{t.auth.title}</DialogTitle>
-          <DialogDescription>{t.auth.description}</DialogDescription>
-        </DialogHeader>
+        {confirmingDiscard && onDiscard !== undefined ? (
+          <DiscardStoryStep
+            onCancel={() => setConfirmingDiscard(false)}
+            onConfirm={() => {
+              setConfirmingDiscard(false)
+              onDiscard()
+            }}
+          />
+        ) : (
+          <>
+            <DialogHeader>
+              <DialogTitle className="text-2xl">{title ?? t.auth.title}</DialogTitle>
+              <DialogDescription>{description ?? t.auth.description}</DialogDescription>
+            </DialogHeader>
 
-        <div className="flex flex-col gap-4">
-          <DividerWithLabel>{t.auth.providersDivider}</DividerWithLabel>
-          <SocialProviderButtons t={t} pending={pending} onProvider={handleProvider} />
-        </div>
+            <div className="flex flex-col gap-4">
+              <DividerWithLabel>{t.auth.providersDivider}</DividerWithLabel>
+              <SocialProviderButtons t={t} pending={pending} onProvider={handleProvider} />
+              {onDiscard !== undefined ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground self-center"
+                  onClick={() => setConfirmingDiscard(true)}
+                  disabled={pending !== null}
+                >
+                  {discardLabel ?? t.saveStory.leaveAway}
+                </Button>
+              ) : null}
+            </div>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   )

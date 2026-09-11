@@ -4,9 +4,6 @@
 // epilogue. Split out of `dashboard.tsx`, which holds the app shell: the shell
 // decides WHICH of the two layouts is up, this decides what fills the game one.
 
-import { AlertTriangle } from "lucide-react"
-
-import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useTranslations } from "@/lib/i18n"
@@ -42,36 +39,6 @@ export function GameArea({
   const t = useTranslations()
   return (
     <>
-      {engine.failedSave !== null ? (
-        <div
-          role="alert"
-          className="border-destructive/40 bg-destructive/10 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border p-3 text-sm"
-        >
-          <AlertTriangle className="text-destructive size-4 shrink-0" aria-hidden />
-          <span className="text-destructive flex-1">{t.game.saveFailed}</span>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={engine.retryFailedSave}
-              disabled={engine.retryingSave}
-            >
-              {engine.retryingSave ? t.game.saveRetrying : t.game.saveRetry}
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={engine.dismissFailedSave}
-              disabled={engine.retryingSave}
-            >
-              {t.game.saveDismiss}
-            </Button>
-          </div>
-        </div>
-      ) : null}
-
       <GameHud
         idleSecondsLeft={engine.idleSecondsLeft}
         idleSecondsTotal={engine.settings.mainTimerSeconds}
