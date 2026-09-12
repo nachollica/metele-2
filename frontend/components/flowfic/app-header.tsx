@@ -4,6 +4,8 @@ import { ArrowLeft } from "lucide-react"
 
 import { DevLoginButton } from "@/components/auth/dev-login-button"
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
+import { SCREEN_TITLE } from "@/lib/text-styles"
 import { useTranslations } from "@/lib/i18n"
 import type { AuthContextValue } from "@/lib/auth"
 
@@ -107,7 +109,7 @@ export function AppHeader({
             pushing them off the bar on a narrow screen — it truncates
             visually, and assistive tech still reads the whole heading. */}
         {title !== null ? (
-          <h1 className="min-w-0 truncate text-base font-bold sm:text-lg">{title}</h1>
+          <h1 className={cn(SCREEN_TITLE, "min-w-0 truncate")}>{title}</h1>
         ) : null}
       </div>
 

@@ -16,6 +16,7 @@ import {
   type TooltipProps,
 } from "recharts"
 
+import { cn } from "@/lib/utils"
 import { useLocale } from "@/lib/i18n"
 import { formatCount, type ChartPoint } from "@/lib/flowfic/gamification"
 
@@ -25,6 +26,9 @@ type Props = {
   wordsLabel: string
   /** Accessible caption describing what the chart shows. */
   caption: string
+  /** Take the parent's height instead of the default fixed one — the landing's
+   *  timeline card splits a fixed pane, so its plot has to shrink with it. */
+  fill?: boolean
 }
 
 type Row = { label: string; words: number; iso: string }
@@ -38,7 +42,7 @@ function weekdayLabel(iso: string, locale: string): string {
   }).format(date)
 }
 
-export function WeeklyChart({ data, wordsLabel, caption }: Props) {
+export function WeeklyChart({ data, wordsLabel, caption, fill = false }: Props) {
   const locale = useLocale()
   const rows: Row[] = data.map((p) => ({
     label: weekdayLabel(p.date, locale),
@@ -47,70 +51,91 @@ export function WeeklyChart({ data, wordsLabel, caption }: Props) {
   }))
 
   return (
-    <figure className="m-0">
-      <div className="h-40 w-full" aria-hidden="true">
+    <figure className={cn("m-0", fill && "flex min-h-0 flex-1 flex-col")}>
+      {/* Its own near-black panel, in BOTH themes, so the plot reads as a plot
+          instead of dissolving into the card it shares with the week's figures.
+          Everything drawn inside therefore uses the fixed `--plot-*` ink rather
+          than the theme's `--border` / `--muted-foreground`, which flip while
+          this surface does not. The brand green — not `--primary` — because the
+          line is a drawn accent and the deeper button green goes muddy here. */}
+      <div
+        className={cn(
+          "bg-plot w-full overflow-hidden rounded-lg px-1 py-2",
+          fill ? "min-h-0 flex-1" : "h-40",
+        )}
+        aria-hidden="true"
+      >
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={rows} margin={{ top: 8, right: 8, bottom: 0, left: 8 }}>
             <defs>
               <linearGradient id="weeklyWordsFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.22} />
-                <stop offset="100%" stopColor="var(--primary)" stopOpacity={0} />
+                <stop offset="0%" stopColor="var(--brand-green)" stopOpacity={0.3} />
+                <stop offset="100%" stopColor="var(--brand-green)" stopOpacity={0} />
               </linearGradient>
             </defs>
             <CartesianGrid
               vertical={false}
-              stroke="var(--border)"
+              stroke="var(--plot-grid)"
               strokeDasharray="0"
             />
             <XAxis
               dataKey="label"
               tickLine={false}
               axisLine={false}
-              tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+              tick={{ fill: "var(--plot-ink)", fontSize: 11 }}
               dy={4}
             />
-            <YAxis hide domain={[0, (max: number) => Math.max(10, max)]} />
+            {/* Headroom over the best day, so its peak is a peak rather than a
+                line clipped flat against the top edge. Invisible while the panel
+                was transparent; obvious once it got a border. */}
+            <YAxis hide domain={[0, (max: number) => Math.max(10, Math.ceil(max * 1.15))]} />
             <Tooltip
-              cursor={{ stroke: "var(--border)", strokeWidth: 1 }}
+              cursor={{ stroke: "var(--plot-grid)", strokeWidth: 1 }}
               content={<ChartTooltip wordsLabel={wordsLabel} />}
             />
             <Area
               type="monotone"
               dataKey="words"
-              stroke="var(--primary)"
+              stroke="var(--brand-green)"
               strokeWidth={2}
               fill="url(#weeklyWordsFill)"
               dot={false}
-              activeDot={{ r: 4, fill: "var(--primary)", stroke: "var(--card)", strokeWidth: 2 }}
+              activeDot={{ r: 4, fill: "var(--brand-green)", stroke: "var(--plot)", strokeWidth: 2 }}
               isAnimationActive={false}
             />
           </AreaChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Accessible, non-visual equivalent of the plot. */}
+      {/* Accessible, non-visual equivalent of the plot. The table is WRAPPED in
+          the `sr-only` box rather than wearing the class itself: a table box
+          grows to its own min-content width whatever width is set on it, so the
+          hidden table escaped the 1px clip and gave the page a horizontal
+          scrollbar at phone width. Clipping it from a plain div holds. */}
       <figcaption className="sr-only">{caption}</figcaption>
-      <table className="sr-only">
-        <caption>{caption}</caption>
-        <thead>
-          <tr>
-            {rows.map((r) => (
-              <th key={r.iso} scope="col">
-                {r.label}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            {rows.map((r) => (
-              <td key={r.iso}>
-                {r.words} {wordsLabel}
-              </td>
-            ))}
-          </tr>
-        </tbody>
-      </table>
+      <div className="sr-only">
+        <table>
+          <caption>{caption}</caption>
+          <thead>
+            <tr>
+              {rows.map((r) => (
+                <th key={r.iso} scope="col">
+                  {r.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              {rows.map((r) => (
+                <td key={r.iso}>
+                  {r.words} {wordsLabel}
+                </td>
+              ))}
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </figure>
   )
 }

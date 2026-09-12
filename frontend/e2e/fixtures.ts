@@ -1,4 +1,4 @@
-import { type Page } from "@playwright/test"
+import { expect, type Page } from "@playwright/test"
 
 // Shared helpers for the e2e suite. These deliberately avoid any real network
 // or real Auth0: the backend is stubbed at the route layer (`mockBackend`) and
@@ -12,6 +12,11 @@ import { type Page } from "@playwright/test"
 const WELCOME_DISMISSED_KEY = "flowfic.welcome.dismissed"
 const DEV_TOKEN_KEY = "flowfic.dev.token"
 const DEV_USER_KEY = "flowfic.dev.user"
+
+// What the required-word panel shows between words: a decorative waiting mark,
+// deliberately not a sentence. Named here so the specs assert on "the panel is
+// waiting" rather than on a string that turned out to be four specs wide.
+export const AWAITING_WORD = "•••"
 
 export const DEV_TOKEN = "e2e-dev-token"
 
@@ -42,6 +47,14 @@ export async function dismissWelcomeBeforeLoad(page: Page): Promise<void> {
   await page.addInitScript((key) => {
     window.localStorage.setItem(key as string, "1")
   }, WELCOME_DISMISSED_KEY)
+}
+
+// Select the landing showcase's "Recent stories" face. The showcase opens on
+// the inspiration face, so anything that asserts on the stories list — or uses
+// its "Show all" link to reach /stories — has to switch to it first.
+export async function openRecentStories(page: Page): Promise<void> {
+  await page.getByRole("button", { name: "Recent stories" }).click()
+  await expect(page.getByRole("heading", { name: "Recent stories" })).toBeVisible()
 }
 
 // Seed a dev-user session into localStorage so the app boots authenticated
@@ -185,12 +198,17 @@ export async function mockBackend(
     }
 
     if (path === "/stories" && method === "GET") {
+      // Honour limit/offset like the real endpoint, so the "Load more" path on
+      // My stories is exercisable rather than always arriving complete.
+      const params = new URL(request.url()).searchParams
+      const limit = Number(params.get("limit") ?? handle.stories.length)
+      const offset = Number(params.get("offset") ?? 0)
       await route.fulfill({
         json: {
-          items: handle.stories,
+          items: handle.stories.slice(offset, offset + limit),
           total: handle.stories.length,
-          limit: 50,
-          offset: 0,
+          limit,
+          offset,
         },
       })
       return

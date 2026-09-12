@@ -22,7 +22,7 @@ type Props = {
 // Dev-only shortcut that logs in as a pre-seeded dev user through the backend
 // backdoor. It deliberately lives next to the real "Log in" button rather than
 // inside the social-login modal, so that modal stays identical across
-// environments. Visibility is decided by the caller (AuthButton) based on the
+// environments. Visibility is decided by the caller (AppHeader) based on the
 // backend's /ping devUserEnabled flag — the backend also refuses the endpoint
 // in production, so this stays dev-only end to end.
 export function DevLoginButton({ disabled = false }: Props) {
@@ -48,8 +48,8 @@ export function DevLoginButton({ disabled = false }: Props) {
       setPending(false)
       return
     }
-    // Success: auth flips to authenticated and AuthButton swaps this whole row
-    // for the avatar dropdown. Just tidy up the local popover state.
+    // Success: auth flips to authenticated, the header drops this whole row and
+    // AccountMenu shows the avatar. Just tidy up the local popover state.
     setPending(false)
     setUsername("")
     setOpen(false)

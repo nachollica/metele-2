@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button"
 import { useTranslations } from "@/lib/i18n"
 import { formatDurationMs } from "@/lib/flowfic/format"
 import type { GameResult } from "@/lib/flowfic/types"
+import { MICRO } from "@/lib/text-styles"
 
 type Props = {
   open: boolean
@@ -77,7 +78,7 @@ function reasonText(
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-muted/40 flex flex-col gap-1 rounded-md border p-3">
-      <span className="text-muted-foreground text-xs">{label}</span>
+      <span className={MICRO}>{label}</span>
       <span className="font-mono text-lg font-semibold tabular-nums">{value}</span>
     </div>
   )

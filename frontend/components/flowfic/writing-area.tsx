@@ -5,6 +5,7 @@ import { type ChangeEvent, type Ref } from "react"
 import { cn } from "@/lib/utils"
 import { useTranslations } from "@/lib/i18n"
 import type { MatchedRange } from "@/lib/flowfic/types"
+import { panelVariants } from "./dashboard-widgets"
 
 type Props = {
   ref?: Ref<HTMLTextAreaElement>
@@ -14,7 +15,6 @@ type Props = {
   // word-completion check). Currently unused by this component because the
   // visual highlight is disabled; if it comes back, this prop feeds it.
   matches: MatchedRange[]
-  disabled?: boolean
   readOnly?: boolean
   /** Paused mid-sprint: the story stays fully legible, just greyed out and
    *  read-only so it is obvious nothing can be typed until it resumes. */
@@ -41,7 +41,6 @@ export function WritingArea({
   value,
   onChange,
   matches: _matches,
-  disabled,
   readOnly,
   paused = false,
 }: Props) {
@@ -50,7 +49,8 @@ export function WritingArea({
   return (
     <div
       className={cn(
-        "bg-card focus-within:ring-ring/40 relative h-full w-full overflow-hidden rounded-lg border shadow-sm transition-shadow focus-within:ring-4",
+        panelVariants({ padding: "none" }),
+        "focus-within:ring-ring/40 relative h-full w-full overflow-hidden transition-shadow focus-within:ring-4",
         paused && "bg-muted",
       )}
     >
@@ -58,7 +58,6 @@ export function WritingArea({
         ref={ref}
         value={value}
         onChange={onChange}
-        disabled={disabled}
         readOnly={readOnly || paused}
         spellCheck={false}
         autoFocus={!readOnly}
@@ -69,7 +68,10 @@ export function WritingArea({
           "selection:bg-highlight/25",
           paused && "text-muted-foreground cursor-default",
         )}
-        aria-label={t.game.placeholder}
+        /* The archive viewer shows a finished story, so it is named after what
+           it holds. Only the live editor is named after the prompt to write —
+           there the placeholder IS the instruction. */
+        aria-label={readOnly ? t.game.storyTextLabel : t.game.placeholder}
       />
     </div>
   )

@@ -25,6 +25,21 @@ test("first visit shows the welcome modal, which dismisses to the landing dashbo
   await expect(skip).toBeHidden()
 })
 
+test("the session dial reads as a dropdown, not just a clock face", async ({ page }) => {
+  await dismissWelcomeBeforeLoad(page)
+  await page.goto("/")
+
+  // The chevron is the only hint that the numbers open a menu, and it was once
+  // hidden to keep the clock face clean — which left the duration picker
+  // undiscoverable. Asserted here rather than in the unit suite because jsdom
+  // loads no Tailwind, so only a real browser can say whether it is visible.
+  const dial = page.getByRole("combobox", { name: /session length/i })
+  await expect(dial.locator("svg")).toBeVisible()
+
+  await dial.click()
+  await expect(page.getByRole("option", { name: "25 minutes" })).toBeVisible()
+})
+
 test("start -> type -> quit shows the results modal with session stats", async ({
   page,
 }) => {

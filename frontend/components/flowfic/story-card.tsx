@@ -27,8 +27,9 @@ import { useLocale, useTranslations } from "@/lib/i18n"
 import { formatStoryDate } from "@/lib/flowfic/format"
 import { deriveTitle, formatCount, storyVisual } from "@/lib/flowfic/gamification"
 import type { Story } from "@/lib/flowfic/stories-api"
+import { FIELD_LABEL, HINT, ITEM_TITLE, MICRO } from "@/lib/text-styles"
 
-import { IconChip } from "./dashboard-widgets"
+import { IconChip, panelVariants } from "./dashboard-widgets"
 
 function readNumber(obj: Record<string, unknown>, key: string): number {
   const v = obj[key]
@@ -113,7 +114,8 @@ export function StoryCard({ story, onSelect, onDelete, onUpdateTitle, fill = fal
   return (
     <div
       className={cn(
-        "group bg-card relative flex gap-4 overflow-hidden rounded-2xl border p-4 shadow-sm transition hover:shadow-md",
+        panelVariants({ padding: "sm" }),
+        "group relative flex gap-4 overflow-hidden transition hover:shadow-md",
         fill && "h-full",
       )}
     >
@@ -130,27 +132,31 @@ export function StoryCard({ story, onSelect, onDelete, onUpdateTitle, fill = fal
               maxLength={200}
               placeholder={title}
               aria-label={t.sidebar.renameStoryLabel}
-              className="h-8 text-sm font-semibold"
+              className={cn("h-8", FIELD_LABEL)}
               disabled={renameBusy}
             />
-            <button
+            {/* Cancel then Save: the mode grid's copy of this pair and every
+                confirmation dialog put the affirmative on the right. */}
+            <Button
               type="button"
-              onClick={() => void submitRename()}
-              aria-label={t.sidebar.renameSave}
-              disabled={renameBusy}
-              className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex size-7 shrink-0 items-center justify-center rounded-md disabled:opacity-50"
-            >
-              <Check className="size-4" aria-hidden />
-            </button>
-            <button
-              type="button"
+              variant="ghost"
+              size="icon-xs"
               onClick={() => setRenaming(false)}
               aria-label={t.sidebar.renameCancel}
               disabled={renameBusy}
-              className="hover:bg-accent text-muted-foreground inline-flex size-7 shrink-0 items-center justify-center rounded-md"
+              className="text-muted-foreground"
             >
               <X className="size-4" aria-hidden />
-            </button>
+            </Button>
+            <Button
+              type="button"
+              size="icon-xs"
+              onClick={() => void submitRename()}
+              aria-label={t.sidebar.renameSave}
+              disabled={renameBusy}
+            >
+              <Check className="size-4" aria-hidden />
+            </Button>
           </div>
         ) : (
           <button
@@ -162,18 +168,19 @@ export function StoryCard({ story, onSelect, onDelete, onUpdateTitle, fill = fal
             )}
             aria-label={`${title} — ${meta}`}
           >
-            <div className="truncate pr-8 text-sm font-bold">{title}</div>
+            <div className={cn(ITEM_TITLE, "truncate pr-8")}>{title}</div>
             {/* Filling a fixed row leaves less vertical room than a naturally
                 sized card, so the preview drops to a single line there. */}
             <p
               className={cn(
-                "text-muted-foreground mt-1 text-sm leading-relaxed",
+                HINT,
+                "mt-1 leading-relaxed",
                 fill ? "line-clamp-1" : "line-clamp-2",
               )}
             >
               {story.text}
             </p>
-            <div className="text-muted-foreground mt-2 text-xs">{meta}</div>
+            <div className={cn(MICRO, "mt-2")}>{meta}</div>
           </button>
         )}
       </div>
@@ -241,7 +248,7 @@ export function StoryCard({ story, onSelect, onDelete, onUpdateTitle, fill = fal
                 void handleConfirm()
               }}
               disabled={busy}
-              className="bg-destructive hover:bg-destructive/90 text-white"
+              variant="destructive"
             >
               {t.sidebar.deleteStoryConfirm}
             </AlertDialogAction>

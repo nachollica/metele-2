@@ -88,6 +88,18 @@ describe("SessionLauncher", () => {
     expect(screen.getByRole("heading", { name: "Game modes" })).toBeInTheDocument()
   })
 
+  it("keeps the dial's readout looking like a dropdown", () => {
+    authState.current = makeAuth()
+    renderWithLocale(<Harness />)
+    const trigger = screen.getByRole("combobox", { name: /session length/i })
+    // The chevron is the only hint that the numbers open a menu; it was once
+    // hidden to keep the clock face clean, which left the picker
+    // undiscoverable. Whether it is actually *visible* is asserted in
+    // `e2e/anonymous-game.spec.ts`, where real CSS applies — jsdom loads no
+    // Tailwind, so here we can only say it was rendered.
+    expect(trigger.querySelector("svg")).not.toBeNull()
+  })
+
   it("re-dials the session length without un-highlighting the selected mode", async () => {
     authState.current = makeAuth()
     const onChange = vi.fn()
@@ -176,6 +188,31 @@ describe("SessionLauncher", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Default modes" }))
     expect(screen.getByRole("button", { name: /classic/i })).toBeInTheDocument()
+  })
+
+  it("exposes a custom mode card and its edit/delete actions as sibling buttons", async () => {
+    // The card used to be a `role="button"` div wrapping the two chips, which
+    // hid them from screen readers that refuse to descend into a button.
+    authState.current = makeAuth({
+      user: {
+        ...baseUser,
+        customPresets: [
+          { id: "c1", name: "Night sprint", settings: DEFAULT_SETTINGS },
+        ],
+      },
+    })
+    renderWithLocale(<Harness />)
+
+    await userEvent.click(screen.getByRole("button", { name: "Custom modes" }))
+
+    const card = screen.getByRole("button", { name: /night sprint/i })
+    const edit = screen.getByRole("button", { name: /rename/i })
+    const remove = screen.getByRole("button", { name: /delete/i })
+
+    expect(card).toHaveAttribute("aria-pressed")
+    // None of the three may contain another: that is the bug being fixed.
+    expect(card).not.toContainElement(edit)
+    expect(card).not.toContainElement(remove)
   })
 
   it("prompts anonymous users to sign in for custom modes", async () => {

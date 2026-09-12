@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { Geist, Lora } from "next/font/google"
+import { Geist } from "next/font/google"
 import "./globals.css"
 
 import { DEFAULT_LOCALE } from "@/lib/i18n/config"
@@ -13,11 +13,6 @@ import { BfcacheGuard } from "@/components/bfcache-guard"
 const geist = Geist({
   subsets: ["latin"],
   variable: "--font-geist",
-})
-
-const lora = Lora({
-  subsets: ["latin"],
-  variable: "--font-lora",
 })
 
 export const metadata: Metadata = {
@@ -44,7 +39,7 @@ export default function RootLayout({
   return (
     <html
       lang={DEFAULT_LOCALE}
-      className={`${geist.variable} ${lora.variable} bg-background`}
+      className={`${geist.variable} bg-background`}
       suppressHydrationWarning
     >
       <body className="font-sans antialiased">

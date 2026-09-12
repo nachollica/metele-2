@@ -10,11 +10,16 @@
    * brand hues; the semantic tokens below alias them so components never
    * hardcode a color. Kept as internal aliases (not exposed as Tailwind
    * utilities) — reach for the semantic token that matches the intent.
-   *   green  #23a161  paper / "Flow" wordmark → primary actions
+   *   green  #23a161  paper / "Flow" wordmark → focus rings, drawn accents
    *   coral  #f9744c  ribbon / "fic" wordmark → hover & selected accents
    *   yellow #fdc43d  pencil                  → warm highlight
    *   ink    #384843  pencil tip              → deep neutral                */
   --brand-green: oklch(0.628 0.143 155);
+  /* Same hue, darkened until white text on it clears WCAG AA (4.85:1 — the
+     logo green only reaches 3.17:1, which fails for the 14px button label).
+     Filled primary surfaces use this; the logo green stays the identity
+     colour for rings, the dial, and anything drawn rather than labelled. */
+  --brand-green-deep: oklch(0.52 0.143 155);
   --brand-coral: oklch(0.71 0.172 37);
   --brand-yellow: oklch(0.85 0.156 84);
   --brand-ink: oklch(0.386 0.022 174);
@@ -25,7 +30,7 @@
   --card-foreground: oklch(0.205 0.02 50);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.205 0.02 50);
-  --primary: var(--brand-green);
+  --primary: var(--brand-green-deep);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.96 0.01 80);
   --secondary-foreground: oklch(0.205 0.02 50);
@@ -37,19 +42,29 @@
   --accent: oklch(0.89 0.08 37);
   --accent-foreground: oklch(0.34 0.09 37);
   --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.985 0 0);
   --border: oklch(0.9 0.01 80);
   --input: oklch(0.92 0.01 80);
-  /* Focus rings echo the primary brand green. */
+  /* Focus rings wear the logo green, not `--primary`: a ring carries no text,
+     so it keeps the identity colour that filled buttons had to give up. */
   --ring: var(--brand-green);
   /* Selected/active emphasis: full-strength coral for borders & rings. */
   --highlight: var(--brand-coral);
-  --highlight-foreground: oklch(0.985 0 0);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
+  /* ── Plot panel ───────────────────────────────────────────────────
+   * The words chart sits on its own panel, at the extreme opposite end of
+   * the neutral scale from its surroundings, so it reads as a plot rather
+   * than as more of the card around it — pure white here (light mode's
+   * `--card` is already 100% white; this matches it exactly), near-black
+   * in `.dark` below. Ink and grid are per-theme for the same reason
+   * `--card`'s own foreground is: a value tuned for a white surface goes
+   * illegible on a black one and vice versa.                            */
+  --plot: oklch(1 0 0);
+  --plot-ink: oklch(0.42 0 0);
+  --plot-grid: oklch(0.85 0 0);
   --radius: 0.625rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
@@ -71,7 +86,7 @@
      panels instead of blending into the page behind their scrim. */
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: var(--brand-green);
+  --primary: var(--brand-green-deep);
   --primary-foreground: oklch(0.985 0 0);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
@@ -83,8 +98,13 @@
      `bg-accent` fills still work with the near-white foreground below. */
   --accent: oklch(0.36 0.11 37);
   --accent-foreground: oklch(0.95 0.02 37);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
+  /* Bright on a near-black page, unlike the light theme's mid red. `--destructive`
+     is read as TEXT far more often than as a fill (every `role="alert"` body, the
+     urgent countdown), and the dark plate this used to hold scored 1.97:1 against
+     `--background` — a real AA failure. At this value the text clears 5.18:1, and
+     the destructive button still gets its plate by compositing `bg-destructive/60`
+     over the page (white on it: 5.40:1). */
+  --destructive: oklch(0.637 0.237 25.331);
   --border: oklch(0.269 0 0);
   --input: oklch(0.269 0 0);
   --ring: var(--brand-green);
@@ -102,19 +122,25 @@
   --sidebar-border: oklch(0.269 0 0);
   --sidebar-ring: oklch(0.439 0 0);
   --highlight: var(--brand-coral);
-  --highlight-foreground: oklch(0.985 0 0);
+  /* The dark end of the same extreme-neutral idea (see the `:root` comment
+     above `--plot`). Ink/grid keep the light-mode values' role reversed. */
+  --plot: oklch(0.16 0 0);
+  --plot-ink: oklch(0.78 0 0);
+  --plot-grid: oklch(0.33 0 0);
 }
 
 @theme inline {
   /* ── Main UI font ─────────────────────────────────────────────────
-   * Uncomment ONE of the lines below and comment the others to switch
-   * the display font across the entire app.                          */
+   * Swapping the display font across the entire app is a matter of
+   * mounting another `next/font` in `app/layout.tsx` and pointing this
+   * at its variable.                                                  */
   --font-sans: var(--font-geist), 'Geist Fallback', system-ui, sans-serif;
-  /* --font-sans: var(--font-lora), 'Lora Fallback', Georgia, serif; */
-  /* --font-sans: 'Inter', system-ui, sans-serif; */
-  /* --font-sans: 'Outfit', system-ui, sans-serif; */
 
-  /* Serif alias — kept for backward compat; points to the same font */
+  /* Serif alias, and today a deliberate no-op: it resolves to the sans
+     stack, so the handful of `font-serif` call sites (the editor, the
+     inspiration quote, the welcome modal) render in Geist like everything
+     else. They mark where a real serif WOULD go — point this at a serif
+     webfont and those sites pick it up on their own. */
   --font-serif: var(--font-sans);
   --font-mono: 'Geist Mono', 'Geist Mono Fallback', ui-monospace, monospace;
   --color-background: var(--background);
@@ -132,7 +158,6 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -141,6 +166,7 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --color-plot: var(--plot);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -154,7 +180,6 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-highlight: var(--highlight);
-  --color-highlight-foreground: var(--highlight-foreground);
 }
 
 @layer base {
@@ -221,5 +246,32 @@
   .overflow-y-scroll,
   .overflow-x-scroll {
     overscroll-behavior: contain;
+  }
+
+  /* Motion is decorative everywhere in this app: spinners, the required word's
+     zoom-in as each new one fires, the dialogs' scale-in, the timer bars' width
+     tween. None of it carries meaning that the static frame does not, so a
+     player who asks for less motion can have all of it collapsed rather than
+     each component remembering a `motion-reduce:` variant of its own.
+
+     Not `animation: none`: a spinner with no animation is a frozen graphic that
+     reads as a hang. A very long duration keeps it running imperceptibly while
+     removing the vestibular trigger, which is what the WCAG technique asks for.
+     `!important` because these compete with Tailwind utilities and the
+     `data-[state=*]` animations tw-animate-css attaches to the Radix primitives. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+    /* The one exception: a spinner still has to look like it is spinning. */
+    .animate-spin {
+      animation-duration: 1.5s !important;
+      animation-iteration-count: infinite !important;
+    }
   }
 }

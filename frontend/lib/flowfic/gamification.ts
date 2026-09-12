@@ -149,6 +149,19 @@ export const TONE_CHIP: Record<Tone, string> = {
   indigo: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400",
 }
 
+/** The same palette as text, for the places that colour a word or a figure
+ *  rather than a chip or a bar — a week-on-week gain, a "completed" line. Third
+ *  copies of `green`'s pair were written out by hand before this existed. */
+export const TONE_TEXT: Record<Tone, string> = {
+  amber: "text-amber-600 dark:text-amber-400",
+  orange: "text-orange-600 dark:text-orange-400",
+  red: "text-red-600 dark:text-red-400",
+  green: "text-emerald-600 dark:text-emerald-400",
+  violet: "text-violet-600 dark:text-violet-400",
+  blue: "text-blue-600 dark:text-blue-400",
+  indigo: "text-indigo-600 dark:text-indigo-400",
+}
+
 export const TONE_BAR: Record<Tone, string> = {
   amber: "bg-amber-500",
   orange: "bg-orange-500",
@@ -291,11 +304,24 @@ export function formatHoursMinutes(ms: number): string {
   return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
 }
 
-/** Signed, rounded percentage delta (`+12%`), or null when there's no baseline. */
+/**
+ * Signed, rounded percentage delta (`+12%`), or null when there is nothing worth
+ * saying.
+ *
+ * Three cases produce no delta. `null` in means the backend had no baseline to
+ * compare against (last week was zero — see `_pct_delta` in gamification.py), so
+ * any percentage would be a division by nothing. A delta that rounds to zero
+ * means "same as last week": rendering `+0%` next to an up arrow claims progress
+ * that did not happen, and the absent indicator says "unchanged" better than a
+ * zero does. And exactly `-100%` means the week went to nothing — the figure
+ * beside it is already `0`, so the percentage adds no information and only
+ * lands a red mark on the worst week someone could be having.
+ */
 export function formatDelta(pct: number | null): string | null {
   if (pct === null) return null
   const rounded = Math.round(pct)
-  return `${rounded >= 0 ? "+" : ""}${rounded}%`
+  if (rounded === 0 || rounded === -100) return null
+  return `${rounded > 0 ? "+" : ""}${rounded}%`
 }
 
 /** Whether a delta should read as positive (green) vs negative (muted/red). */

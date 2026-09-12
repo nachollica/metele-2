@@ -51,6 +51,30 @@ describe("StatTile", () => {
     expect(screen.getByText("words")).toBeInTheDocument()
     expect(screen.getByText("+12%")).toBeInTheDocument()
   })
+
+  it("hides the direction triangle from screen readers, which already hear the sign", () => {
+    render(<StatTile value="3,250" label="words" delta="+12%" deltaPositive />)
+    expect(screen.getByText("▲")).toHaveAttribute("aria-hidden", "true")
+  })
+
+  it("holds the delta line open when there is no delta, invisibly to assistive tech", () => {
+    // A row of tiles must not jog up and down as weeks go by, so the slot is
+    // reserved whenever the caller passes `delta` at all — but the filler is
+    // decorative and must add nothing to the accessible name.
+    const { container } = render(<StatTile value="0" label="words" delta={null} />)
+    const filler = container.querySelector("[aria-hidden='true']")
+    expect(filler).not.toBeNull()
+    expect(filler?.textContent?.trim()).toBe("")
+    // `\s` does not match U+00A0, which is exactly what the filler renders.
+    expect(container.textContent?.replace(/[\s\u00a0]/g, "")).toBe("0words")
+  })
+
+  it("reserves nothing for a tile that can never have a delta", () => {
+    // The level and the streak omit the prop entirely; an empty line above them
+    // would be padding with no reason to exist.
+    const { container } = render(<StatTile value="7" label="Level" />)
+    expect(container.querySelector("[aria-hidden='true']")).toBeNull()
+  })
 })
 
 describe("ChallengeItem", () => {

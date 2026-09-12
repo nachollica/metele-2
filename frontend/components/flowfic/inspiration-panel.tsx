@@ -8,12 +8,13 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react"
-import { Loader2, Wand2 } from "lucide-react"
+import { Wand2 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { useLocale, useTranslations } from "@/lib/i18n"
 import { quoteBlocks, quoteTitle, type Quote } from "@/lib/flowfic/quotes"
 import { useInspiration, type InspirationState } from "@/lib/flowfic/inspiration"
+import { Spinner, panelVariants } from "./dashboard-widgets"
 
 // How fast the wheel zooms. Multiplicative per wheel delta so it feels even
 // across the range.
@@ -113,7 +114,7 @@ function FadeInImage({ src, alt, className }: { src: string; alt: string; classN
 /**
  * A quote rendered as the inspiration itself: large, centred, with the serif
  * quote mark that used to head the quote-of-the-day card. Fills whatever box it
- * is given (the home card's 4:3 frame, or the in-game pane).
+ * is given (the home showcase's 3:2 pane, or the in-game one).
  *
  * `scrollable` is off by default and stays off on the home card: an
  * `overflow-y-auto` pane there swallows the wheel, because the app-wide
@@ -161,53 +162,39 @@ export function InspirationQuote({
 }
 
 /**
- * The home screen's inspiration card: a full-width 4:3 frame that starts as an
- * invitation (magic wand + legend) and, on click, reveals a random film still or
- * quote — a 50/50 coin flip between the two pools. Clicking again re-rolls, so
- * the whole card is one big button; there is no title, credit link, or separate
- * refresh control by design.
+ * The current inspiration, rendered inert to fill whatever box it is given (the
+ * home showcase's 3:2 pane). Deliberately NOT a button: the picker is the
+ * circular selector above it, so a click in here must mean nothing — which is
+ * also what leaves a quote's text selectable.
+ *
+ * There is no "nothing picked yet" face: selecting the inspiration circle fills
+ * an empty store straight away, so `unset` is a frame or two on the way to a
+ * pick and reads as the spinner. Only `unavailable` — both pools failed to load
+ * — is a resting state worth wording.
  */
-export function InspirationCard({ className }: { className?: string }) {
+export function InspirationDisplay({ className }: { className?: string }) {
   const t = useTranslations()
-  const { state, pick } = useInspiration()
-
-  const label =
-    state.status === "unset" || state.status === "unavailable"
-      ? t.dashboard.inspirationPrompt
-      : t.dashboard.inspirationAnother
+  const { state } = useInspiration()
 
   return (
-    <button
-      type="button"
-      onClick={pick}
-      aria-label={label}
-      className={cn(
-        "bg-card text-card-foreground group relative aspect-[4/3] w-full overflow-hidden rounded-2xl border shadow-sm transition-colors",
-        "hover:border-primary/40 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
-        className,
-      )}
-    >
+    <div className={cn("relative size-full overflow-hidden", className)}>
       <CrossFade contentKey={inspirationKey(state)}>
         {state.status === "image" ? (
-          <FadeInImage src={state.image.img} alt="" />
+          <FadeInImage src={state.image.img} alt={t.dashboard.inspirationAlt} />
         ) : state.status === "quote" ? (
           <InspirationQuote quote={state.quote} />
-        ) : state.status === "picking" ? (
-          <span role="status" className="flex size-full items-center justify-center">
-            <Loader2 className="text-primary size-8 animate-spin" aria-hidden />
+        ) : state.status === "unavailable" ? (
+          <span className="text-muted-foreground flex size-full flex-col items-center justify-center gap-3">
+            <Wand2 className="text-primary size-10" aria-hidden />
+            <span className="text-sm font-medium">{t.dashboard.inspirationUnavailable}</span>
           </span>
         ) : (
-          <span className="text-muted-foreground group-hover:text-foreground flex size-full flex-col items-center justify-center gap-3 transition-colors">
-            <Wand2 className="text-primary size-10" aria-hidden />
-            <span className="text-sm font-medium">
-              {state.status === "unavailable"
-                ? t.dashboard.inspirationUnavailable
-                : t.dashboard.inspirationPrompt}
-            </span>
+          <span role="status" className="flex size-full items-center justify-center">
+            <Spinner />
           </span>
         )}
       </CrossFade>
-    </button>
+    </div>
   )
 }
 
@@ -235,7 +222,8 @@ export function InspirationPane({ className }: { className?: string }) {
     return (
       <div
         className={cn(
-          "bg-card text-card-foreground h-full w-full overflow-hidden rounded-2xl border shadow-sm",
+          panelVariants({ padding: "none" }),
+          "h-full w-full overflow-hidden",
           className,
         )}
       >
@@ -251,7 +239,7 @@ export function InspirationPane({ className }: { className?: string }) {
 /**
  * Inspiration image for the split game pane, zoomable and pannable.
  *
- * Unlike the home card (a fixed 4:3 cover-crop), this pane shows the still at
+ * Unlike the home showcase (a fixed 3:2 cover-crop), this pane shows the still at
  * its ORIGINAL proportions: `object-contain` fits the whole frame inside the
  * viewport, so at rest it fits the width and is centered vertically (min zoom =
  * fully visible, reaching the left/right edges) whatever the source ratio. The

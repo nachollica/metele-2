@@ -12,6 +12,7 @@ import {
 
 import { cn } from "@/lib/utils"
 import { useTranslations } from "@/lib/i18n"
+import { FIELD_LABEL } from "@/lib/text-styles"
 import {
   PRESETS,
   SESSION_MINUTES,
@@ -111,7 +112,7 @@ export function SessionLauncher({
           and stretch the whole canvas past its aspect ratio. Capped on phones,
           where there is no canvas to take a height from. */}
       <div className="order-1 col-span-2 flex min-h-0 flex-col items-center gap-2 md:order-none md:col-span-1 md:col-start-1 md:row-span-2 md:row-start-1">
-        <h2 className="text-muted-foreground shrink-0 text-center text-sm font-semibold">
+        <h2 className={cn(FIELD_LABEL, "text-muted-foreground shrink-0 text-center")}>
           {t.settings.selectDuration}
         </h2>
         {/* Phone: a fixed width, with the square deriving the height. Desktop:
@@ -130,10 +131,14 @@ export function SessionLauncher({
             <SelectTrigger
               aria-label={t.settings.sessionLengthLabel}
               className={cn(
-                "text-primary hover:text-primary/80 h-auto! w-auto cursor-pointer border-0 bg-transparent p-0 font-mono text-3xl font-extrabold tabular-nums shadow-none transition-colors sm:text-4xl",
+                "text-primary hover:text-primary/80 h-auto! w-auto cursor-pointer gap-1.5 border-0 bg-transparent p-0 font-mono text-3xl font-extrabold tabular-nums shadow-none transition-colors sm:text-4xl",
                 "focus-visible:ring-0 dark:bg-transparent dark:hover:bg-transparent",
-                // The trigger's built-in chevron would crowd the clock face.
-                "[&>svg]:hidden",
+                // The trigger's chevron is the only hint that the numbers are a
+                // menu, so it stays — scaled up from the default `size-4`,
+                // which is lost beside a `text-4xl` readout. Centring the pair
+                // leaves the digits marginally left of the ring's axis; that is
+                // the cost of the affordance, and it reads as a dropdown.
+                "[&>svg]:size-6 [&>svg]:opacity-70",
               )}
             >
               {formatRingTime(minutes * 60)}
@@ -153,7 +158,7 @@ export function SessionLauncher({
           the grid whichever face it shows — flipping to the custom modes is
           still picking a game mode. */}
       <div className="order-3 col-span-2 flex min-h-0 flex-col gap-2 md:order-none md:col-start-2 md:row-span-2 md:row-start-1">
-        <h2 className="text-muted-foreground shrink-0 text-center text-sm font-semibold">
+        <h2 className={cn(FIELD_LABEL, "text-muted-foreground shrink-0 text-center")}>
           {t.settings.presetsLabel}
         </h2>
         <PresetGrid

@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test"
 
-import { mockBackend, seedDevSession } from "./fixtures"
+import { mockBackend, openRecentStories, seedDevSession } from "./fixtures"
 
 // The save-story journey, exercised as a signed-in user via the dev-user
 // backdoor (a pure-localStorage session — no Auth0). The backend is stubbed so
@@ -43,9 +43,11 @@ test("a finished session is saved to the backend and shows in My stories", async
   expect(posted.lang).toBe("en")
   expect(posted.stats).toMatchObject({ reason: "manual", words: 7 })
 
-  // Saving returns to the landing dashboard; open the full My-stories screen
-  // from its "Show all" link. The post-save refetch surfaces the story there,
-  // under the name the player gave it rather than one derived from the text.
+  // Saving returns to the landing dashboard; switch the showcase to the stories
+  // face and open the full My-stories screen from its "Show all" link. The
+  // post-save refetch surfaces the story there, under the name the player gave
+  // it rather than one derived from the text.
+  await openRecentStories(page)
   await page.getByRole("button", { name: "Show all: My stories" }).click()
   await expect(page.getByText("The Keeper's Count", { exact: true })).toBeVisible()
 })
@@ -72,6 +74,7 @@ test("a story saved without a title falls back to one derived from the text", as
   await expect.poll(() => backend.postedStories.length).toBe(1)
   expect(backend.postedStories[0].title).toBeNull()
 
+  await openRecentStories(page)
   await page.getByRole("button", { name: "Show all: My stories" }).click()
   await expect(
     page.getByText("Lighthouse keepers count the waves at", { exact: true }),

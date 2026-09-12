@@ -9,8 +9,10 @@ import type { Translations } from "./en"
 export const es = {
   app: {
     title: "Flowfic",
-    tagline: "Un juego de escritura. No pares las manos.",
     loading: "Cargando FLOWFIC…",
+    // Lo primero que recibe el foco: salta los controles de la barra superior,
+    // que si no se interponen entre el teclado y la pantalla.
+    skipToContent: "Saltar al contenido",
   },
 
   welcome: {
@@ -80,10 +82,7 @@ export const es = {
     soundBell: "Campana",
     soundSpeak: "Decir la palabra",
     loadingWords: "Cargando palabras…",
-    secondsSuffix: "s",
-    minutesSuffix: "m",
     start: "Empezar a escribir",
-    startShort: "Escribir",
     customModesLabel: "Modos personalizados",
     backToPresetsLabel: "Modos predeterminados",
     createPresetLabel: "Guardar configuración actual",
@@ -92,7 +91,6 @@ export const es = {
     customNameSave: "Guardar",
     customNameCancel: "Cancelar",
     customLimitReached: "Puedes tener como máximo {max} modos personalizados.",
-    customEmptySlot: "Hueco vacío",
     customSaveFailed: "No se pudo guardar el modo personalizado.",
     signInForCustomModes: "Inicia sesión para guardar modos personalizados.",
   },
@@ -114,19 +112,21 @@ export const es = {
 
   game: {
     requiredWordHeader: "Palabra requerida",
-    noRequiredWord: "Sigue escribiendo…",
     useWordIn: "Úsala en",
     idleEndsIn: "Inactividad en",
     sessionEndsIn: "Sesión termina en",
     characters: "caracteres",
     placeholder: "Empieza tu historia. No dejes de escribir…",
     pause: "Pausar",
-    // Los controles van en un bloque cuadrado pequeño, así que las etiquetas
-    // visibles se acortan; el nombre accesible lleva la palabra completa.
+    // Los controles de sesión son cuadros con solo icono, así que esto son
+    // nombres accesibles y no etiquetas visibles: caben completos.
     resume: "Continuar",
-    resumeShort: "Seguir",
+    // Se anuncia al congelar o reanudar la sesión. Se puede pausar sin que el
+    // botón llegue a tener el foco (el diálogo de salir también pausa), así que
+    // el estado hay que decirlo, no dejarlo en el nombre del botón.
+    pausedStatus: "Sesión en pausa. Los temporizadores están congelados.",
+    resumedStatus: "Sesión reanudada.",
     quit: "Salir de sesión",
-    quitShort: "Salir",
     quitConfirmTitle: "¿Salir de esta sesión?",
     quitConfirmDescription:
       "Tu sesión termina aquí y verás tus estadísticas. La historia seguirá siendo editable después.",
@@ -137,7 +137,15 @@ export const es = {
     titleLabel: "Título de la historia",
     inspirationShow: "Mostrar inspiración",
     inspirationHide: "Ocultar inspiración",
+    // El h1 de la sesión. Nunca se ve: el centro de la barra está vacío
+    // durante la sesión a propósito, así que esto existe para que la pantalla
+    // no se quede sin encabezado.
+    sprintHeading: "Sesión de escritura",
     viewingStory: "Viendo una historia anterior (solo lectura).",
+    // Nombra el visor de solo lectura. Sin esto el campo hereda el
+    // `placeholder` del editor, así que una historia guardada se anuncia como
+    // una invitación a empezar a escribirla.
+    storyTextLabel: "Texto de la historia",
     saveFailed: "No se pudo guardar tu última historia.",
     saveRetry: "Reintentar",
     saveRetrying: "Reintentando…",
@@ -154,7 +162,6 @@ export const es = {
     removePicture: "Quitar foto",
     pictureTooLarge: "Elige una imagen menor a 256 KB.",
     pictureReadFailed: "No se pudo leer ese archivo.",
-    storyCountLabel: "Historias escritas",
     save: "Guardar cambios",
     saving: "Guardando…",
     saved: "Guardado.",
@@ -191,13 +198,9 @@ export const es = {
 
   sidebar: {
     title: "Historias recientes",
-    subtitle: "Tus últimas sesiones de escritura",
     empty: "Aún no hay historias — termina una sesión para verla aquí.",
     signUpPrompt: "Inicia sesión para ver tus historias guardadas aquí.",
     error: "No se pudieron cargar las historias.",
-    toggle: "Abrir historias recientes",
-    toggleShort: "Historias",
-    durationLabel: "Duración de la sesión",
     rowMenuLabel: "Opciones de la historia",
     deleteStory: "Eliminar",
     deleteStoryConfirmTitle: "¿Eliminar esta historia?",
@@ -206,6 +209,12 @@ export const es = {
     deleteStoryConfirm: "Eliminar",
     deleteStoryCancel: "Cancelar",
     deleteStoryFailed: "No se pudo eliminar la historia.",
+    // Encabeza la lista de Mis historias. El tamaño de la biblioteca vive aquí,
+    // junto a las historias, y ya no en la pantalla de perfil.
+    storyCount: "{count} historias",
+    resultCount: "{count} coincidencias",
+    loadMore: "Cargar más",
+    loadingMore: "Cargando…",
     renameStory: "Renombrar",
     renameStoryLabel: "Título de la historia",
     renameSave: "Guardar título",
@@ -220,7 +229,6 @@ export const es = {
   },
 
   prefs: {
-    sectionLabel: "Preferencias",
     // El botón de la cabecera es solo icono, así que su nombre accesible debe
     // decir qué hace el clic en vez de nombrar el control.
     modeSwitchToDark: "Cambiar al modo oscuro",
@@ -229,8 +237,6 @@ export const es = {
   },
 
   auth: {
-    signedOut: "Iniciar sesión",
-    signedIn: "Cuenta",
     logIn: "Iniciar sesión",
     logOut: "Cerrar sesión",
     title: "Inicia sesión en Flowfic",
@@ -240,11 +246,8 @@ export const es = {
     google: "Google",
     finishingSignIn: "Terminando el inicio de sesión…",
     signInFailed: "Falló el inicio de sesión.",
-    signInFailedRetry: "Reintentar",
     backToGame: "Volver al juego",
-    welcomeBack: "Bienvenido de vuelta, {name}",
     accountMenuLabel: "Menú de cuenta",
-    profileEmail: "Correo",
     devUserLogin: "Inicio de sesión dev",
     devUsernameLabel: "Usuario de desarrollo",
     devUsernamePlaceholder: "usuario",
@@ -257,14 +260,15 @@ export const es = {
 
   nav: {
     label: "Navegación principal",
-    openMenu: "Abrir menú",
     home: "Inicio",
     stories: "Mis historias",
-    journey: "Mi viaje",
+    progress: "Mi progreso",
     challenges: "Desafíos",
     stats: "Estadísticas",
     achievements: "Logros",
     showAll: "Ver todo",
+    // Nombre accesible de la X en la esquina de un diálogo, común a todos.
+    closeDialog: "Cerrar",
     // Título en la cabecera de la pantalla de inicio: la única pantalla sin
     // título propio, nombrada por aquello para lo que sirve.
     createStory: "Crea una historia",
@@ -284,11 +288,9 @@ export const es = {
   },
 
   dashboard: {
-    subtitle: "¿List@ para entrar en flujo?",
     back: "Volver",
     level: "Nivel",
     signInHint: "Inicia sesión para guardar historias y seguir tu progreso.",
-    streakTitle: "Tu racha actual",
     daysInARow: "días seguidos",
     weeklySummary: "Resumen semanal",
     sessions: "sesiones",
@@ -297,22 +299,26 @@ export const es = {
     untitledStory: "Historia sin título",
     today: "Hoy",
     emptyStories: "Aún no hay historias — terminá una sesión para verla aquí.",
-    progressTitle: "Tu progreso",
-    thisWeek: "Esta semana",
+    // Título del gráfico de palabras por día. Nombrado por lo que será: los
+    // botones de semana/mes lo cambiarán junto al resumen que tiene al lado.
+    timeline: "Cronología",
     chartCaption: "Palabras escritas por día en los últimos 7 días.",
-    wordsWritten: "Palabras escritas",
-    writingTime: "Tiempo de escritura",
-    sessionsCompleted: "Sesiones completadas",
     minutes: "minutos",
-    quoteOfDay: "Cita del día",
     challengeOfDay: "Desafío del día",
     challengeOfDayHint: "Entra directo",
-    writeNow: "Escribir ahora",
     recentStories: "Historias recientes",
     inspirationAlt: "Imagen de inspiración",
     inspirationPrompt: "Haz clic aquí para inspirarte",
     inspirationAnother: "Muéstrame otra inspiración",
     inspirationUnavailable: "No hay inspiración disponible ahora mismo.",
+    // Los tres selectores circulares del inicio y el panel que rellenan. Van
+    // DENTRO de los círculos, así que tienen que ser cortas en ambos idiomas.
+    // El de inspiración es el único que además es una acción: una vez elegido,
+    // vuelve a tirar, y así lo dice.
+    showcaseLabel: "Elige qué mostrar",
+    showcasePaneLabel: "Mostrando: {name}",
+    inspirationTabCurrent: "Inspiración",
+    inspirationTabAnother: "Haz clic para otra",
   },
 
   achievements: {

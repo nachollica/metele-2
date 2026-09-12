@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { AlertTriangle, Loader2, Wand2 } from "lucide-react"
+import { Wand2 } from "lucide-react"
 
 import {
   AlertDialog,
@@ -13,37 +13,30 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 
 import { useAuth } from "@/lib/auth"
 import { useBackendStatus } from "@/lib/backend"
 import { useTranslations } from "@/lib/i18n"
 import { useInspiration } from "@/lib/flowfic/inspiration"
-import { deriveTitle } from "@/lib/flowfic/gamification"
 import { useGameEngine } from "@/lib/flowfic/use-game-engine"
 import { useStories } from "@/lib/flowfic/use-stories"
-import type { GameSettings } from "@/lib/flowfic/types"
 import type { Story } from "@/lib/flowfic/stories-api"
 
 import { type Section } from "./dashboard-nav"
 import { pathToScreen, screenToPath, type Screen } from "./navigation"
 import { screenHeader } from "./screen-header"
+import { ScreenAnnouncer } from "./screen-announcer"
 import { AppHeader } from "./app-header"
 import { ContentColumn } from "./dashboard-widgets"
+import { GameArea, LoadingSplash } from "./game-area"
+import { ScreenContent } from "./screen-content"
 import { GamificationProvider } from "./gamification-context"
-import { GameHud } from "./game-hud"
 import { InspirationPane } from "./inspiration-panel"
-import { JourneySection } from "./journey-section"
-import { LandingHome } from "./landing"
+import { type ShowcaseFace } from "./landing-showcase"
 import { type GridMode } from "./preset-grid"
-import { ProfilePanel } from "./profile-panel"
 import { ResultsModal } from "./results-modal"
-import { StoriesSection } from "./stories-section"
 import { WelcomeModal } from "./welcome-modal"
-import { WritingArea } from "./writing-area"
 
 const WELCOME_STORAGE_KEY = "flowfic.welcome.dismissed"
 
@@ -56,6 +49,10 @@ export function Dashboard() {
   const {
     stories,
     error: storiesError,
+    total: storiesTotal,
+    hasMore: storiesHasMore,
+    loadingMore: storiesLoadingMore,
+    loadMore: loadMoreStories,
     remove: removeStory,
     update: updateStoryTitle,
   } = useStories(engine.storiesRefreshKey)
@@ -71,12 +68,16 @@ export function Dashboard() {
   // Mode grid face, held here so flipping it survives the panel toggling and
   // a trip into a detail screen and back.
   const [gridMode, setGridMode] = useState<GridMode>("system")
+  // Showcase face, held here for the same reason. Inspiration is the default:
+  // it is the one face that reads the same signed in or out, and it is the
+  // app's own invitation rather than a sign-in prompt.
+  const [showcaseFace, setShowcaseFace] = useState<ShowcaseFace>("inspiration")
   // Quit confirmation. Opening it pauses the sprint; cancelling leaves it
   // paused, since the player can't interact with the editor while it is up.
   const [quitConfirmOpen, setQuitConfirmOpen] = useState(false)
   // Whether the in-game inspiration pane is expanded (desktop only).
   const [inspirationOpen, setInspirationOpen] = useState(true)
-  const { state: inspirationState } = useInspiration()
+  const { state: inspirationState, clear: clearInspiration } = useInspiration()
   const hasInspiration =
     inspirationState.status === "image" || inspirationState.status === "quote"
   // The pane is only up when there is something to put in it AND the player
@@ -192,7 +193,13 @@ export function Dashboard() {
 
   // "Start writing": start the sprint with the configured settings. Reached
   // from the launcher's Start button and its challenge card.
+  //
+  // The showcase decides whether the sprint gets an inspiration: starting with
+  // that circle selected carries the pick into the game, starting from any other
+  // face drops it. So the player asks for an inspiration by looking at one, and
+  // the pane never appears beside a session they didn't want it for.
   function startWriting() {
+    if (showcaseFace !== "inspiration") clearInspiration()
     engine.saveCurrentStoryIfNeeded()
     engine.startGame(engine.settings)
   }
@@ -239,15 +246,48 @@ export function Dashboard() {
   // Title + back arrow for the header. Mid-sprint the bar stays empty.
   const header = screenHeader(screen, t, { storyMissing })
   const headerBack = header.backTo === "stories" ? () => showSection("stories") : goHome
+  const screenTitle = splitLayout ? null : header.title
+
+  // Park focus on the content region after a screen change. Without this, the
+  // control that navigated is often gone — "Show all" unmounts with the section
+  // it opened — and focus falls back to <body>, so the next Tab restarts from
+  // the top of the page. Skipped on first paint (nothing was navigated to) and
+  // during a sprint, where the editor autofocuses itself.
+  const mainRef = useRef<HTMLElement | null>(null)
+  const focusedScreenRef = useRef<string | null>(null)
+  useEffect(() => {
+    const key = screen.name === "section" ? `section:${screen.section}` : screen.name
+    const isFirst = focusedScreenRef.current === null
+    const changed = focusedScreenRef.current !== key
+    focusedScreenRef.current = key
+    if (isFirst || !changed || splitLayout) return
+    mainRef.current?.focus()
+  }, [screen, splitLayout])
 
   return (
     <GamificationProvider refreshKey={engine.storiesRefreshKey}>
       <div className="bg-background text-foreground flex h-dvh flex-col">
+        <ScreenAnnouncer title={screenTitle} />
+        {/* Off-screen until focused, then a real button in the top-left. Has to
+            be the first focusable node in the tree, so it lives above the
+            header rather than inside it. */}
+        <a
+          href="#main"
+          onClick={(e) => {
+            // The href is for AT semantics; a fragment jump would push a
+            // history entry this SPA does not own, so move focus by hand.
+            e.preventDefault()
+            mainRef.current?.focus()
+          }}
+          className="bg-background text-foreground focus:ring-ring sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:not-sr-only focus:rounded-md focus:border focus:px-3 focus:py-2 focus:text-sm focus:font-semibold focus:ring-2 focus:outline-none"
+        >
+          {t.app.skipToContent}
+        </a>
         <AppHeader
           authStatus={authStatus}
           devUserEnabled={devUserEnabled}
           disabled={controlsDisabled}
-          title={splitLayout ? null : header.title}
+          title={screenTitle}
           onBack={header.backTo !== null ? headerBack : undefined}
           backLabel={header.backLabel}
           onGoHome={goHome}
@@ -255,7 +295,15 @@ export function Dashboard() {
           onOpenProfile={openProfile}
         />
 
-        <main className="min-h-0 flex-1">
+        {/* `tabIndex={-1}` so navigation can move focus here; it is never in the
+            Tab order itself, and `outline-none` keeps the focus ring off a
+            region the pointer user never asked to focus. */}
+        <main id="main" ref={mainRef} tabIndex={-1} className="min-h-0 flex-1 outline-none">
+          {/* The sprint suppresses the bar's title, which left the game screen
+              with no h1 at all — the one screen a player spends real time on.
+              Restored here for assistive tech only; on screen the HUD and the
+              editor say plainly enough what this is. */}
+          {splitLayout ? <h1 className="sr-only">{t.game.sprintHeading}</h1> : null}
           {splitLayout ? (
             // Two shapes, depending on whether the inspiration pane is up:
             //   shown  — writing column beside a 5/12 pane, as the split has
@@ -270,22 +318,21 @@ export function Dashboard() {
             <div className="flex h-full min-h-0">
               {paneShown ? null : <div className="hidden flex-1 md:block" aria-hidden />}
 
-              <div
-                className={cn(
-                  "flex min-w-0 flex-col gap-4 overflow-hidden p-4 sm:p-6",
-                  // Beside an open pane it takes whatever is left. Centred, it
-                  // claims the shared measure outright and the flex-1 gutters
-                  // split the remainder — it must NOT be flex-1 itself, or it
-                  // would just take a third of the row alongside them.
-                  paneShown ? "flex-1" : "w-full max-w-5xl",
-                )}
+              {/* The same `ContentColumn` the home screen uses, rather than a
+                  second spelling of its cap and padding — that is what makes a
+                  story read at one width wherever it appears. Beside an open
+                  pane it also takes whatever the pane leaves; centred, it must
+                  NOT be `flex-1`, or it would take a third of the row alongside
+                  the two gutters instead of claiming the measure outright. */}
+              <ContentColumn
+                className={cn("min-w-0 gap-4 overflow-hidden", paneShown && "flex-1")}
               >
                 {loading ? (
                   <LoadingSplash />
                 ) : (
                   <GameArea engine={engine} onQuit={requestQuit} onFinish={finishStory} />
                 )}
-              </div>
+              </ContentColumn>
 
               {/* The pane itself is the hide control: the pick is frozen for
                   the sprint, so a click can't mean "re-roll" the way it does on
@@ -328,9 +375,15 @@ export function Dashboard() {
               )}
             </div>
           ) : (
-            <div className="h-full min-h-0 overflow-y-auto p-4 sm:p-6">
-              <ScreenContent
-                screen={screen}
+            /* The app's only scroll container, and the one place that decides
+               what a screen IS: scroll pane + content column + gap. Each
+               `ScreenContent` case used to spell that wrapper itself, which is
+               how five of the six ended up with a `gap-5` that never applied
+               (one child each) and the sixth with a different gap entirely. */
+            <div className="h-full min-h-0 overflow-y-auto">
+              <ContentColumn className="gap-6">
+                <ScreenContent
+                  screen={screen}
                 story={currentStory}
                 storyMissing={storyMissing}
                 settings={engine.settings}
@@ -342,15 +395,22 @@ export function Dashboard() {
                 onToggleGridMode={() =>
                   setGridMode((m) => (m === "system" ? "custom" : "system"))
                 }
+                showcaseFace={showcaseFace}
+                onChangeShowcaseFace={setShowcaseFace}
                 stories={stories}
                 storiesError={storiesError}
+                storiesTotal={storiesTotal}
+                storiesHasMore={storiesHasMore}
+                storiesLoadingMore={storiesLoadingMore}
+                onLoadMoreStories={() => void loadMoreStories()}
                 onShowSection={showSection}
                 onViewStory={onViewStory}
                 onDeleteStory={removeStory}
                 onUpdateStoryTitle={updateStoryTitle}
-                onBackHome={goHome}
-                onBackToStories={() => showSection("stories")}
-              />
+                  onBackHome={goHome}
+                  onBackToStories={() => showSection("stories")}
+                />
+              </ContentColumn>
             </div>
           )}
         </main>
@@ -375,7 +435,7 @@ export function Dashboard() {
                 e.preventDefault()
                 confirmQuit()
               }}
-              className="bg-destructive text-white hover:bg-destructive/90"
+              variant="destructive"
             >
               {t.game.quitConfirm}
             </AlertDialogAction>
@@ -391,276 +451,4 @@ export function Dashboard() {
       />
     </GamificationProvider>
   )
-}
-
-// ---- Game area (left column while loading/playing/ended) -----------------
-
-function LoadingSplash() {
-  const t = useTranslations()
-  return (
-    <div role="status" aria-live="polite" className="flex flex-1 flex-col items-center justify-center gap-4">
-      <Loader2 className="text-primary size-10 animate-spin" aria-hidden />
-      <span className="text-muted-foreground text-sm">{t.settings.loadingWords}</span>
-    </div>
-  )
-}
-
-function GameArea({
-  engine,
-  onQuit,
-  onFinish,
-}: {
-  engine: ReturnType<typeof useGameEngine>
-  onQuit: () => void
-  onFinish: () => void
-}) {
-  const t = useTranslations()
-  return (
-    <>
-      {engine.failedSave !== null ? (
-        <div
-          role="alert"
-          className="border-destructive/40 bg-destructive/10 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border p-3 text-sm"
-        >
-          <AlertTriangle className="text-destructive size-4 shrink-0" aria-hidden />
-          <span className="text-destructive flex-1">{t.game.saveFailed}</span>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={engine.retryFailedSave}
-              disabled={engine.retryingSave}
-            >
-              {engine.retryingSave ? t.game.saveRetrying : t.game.saveRetry}
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              onClick={engine.dismissFailedSave}
-              disabled={engine.retryingSave}
-            >
-              {t.game.saveDismiss}
-            </Button>
-          </div>
-        </div>
-      ) : null}
-
-      <GameHud
-        idleSecondsLeft={engine.idleSecondsLeft}
-        idleSecondsTotal={engine.settings.mainTimerSeconds}
-        globalSecondsLeft={engine.globalSecondsLeft}
-        globalSecondsTotal={engine.settings.globalTimerSeconds}
-        requiredWordsEnabled={engine.settings.requiredWordIntervalEnabled}
-        requiredWord={engine.currentRequiredWord}
-        useWordIn={engine.useWordIn !== null ? Math.ceil(engine.useWordIn) : null}
-        useWordTotal={
-          engine.settings.requiredWordUseTimerEnabled ? engine.settings.requiredWordUseTimerSeconds : null
-        }
-        paused={engine.isPaused}
-        ended={engine.gameState === "ended"}
-        onPause={engine.pause}
-        onResume={engine.resume}
-        onQuit={onQuit}
-        onFinish={onFinish}
-      />
-      {/* Ended: the story is finished but still editable, so this is where it
-          gets named. Sits between the HUD and the text, pushing the editor down
-          — a shift the player never sees mid-flow, since the results modal is
-          over it when the state changes. */}
-      {engine.gameState === "ended" ? (
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="story-title" className="text-sm font-semibold">
-            {t.game.titleLabel}
-          </Label>
-          <Input
-            id="story-title"
-            type="text"
-            value={engine.storyTitle}
-            onChange={(e) => engine.setStoryTitle(e.target.value)}
-            maxLength={200}
-            placeholder={deriveTitle(engine.text, t.dashboard.untitledStory)}
-            className="text-base"
-          />
-        </div>
-      ) : null}
-
-      <div className="flex min-h-0 flex-1">
-        <WritingArea
-          ref={engine.textareaRef}
-          value={engine.text}
-          onChange={engine.handleChange}
-          matches={engine.matches}
-          paused={engine.isPaused}
-        />
-      </div>
-    </>
-  )
-}
-
-// ---- Non-split screens (landing / detail subsections / profile / story) --
-
-function ScreenContent({
-  screen,
-  story,
-  storyMissing,
-  settings,
-  onChangeSettings,
-  onStart,
-  settingsOpen,
-  onToggleSettings,
-  gridMode,
-  onToggleGridMode,
-  stories,
-  storiesError,
-  onShowSection,
-  onViewStory,
-  onDeleteStory,
-  onUpdateStoryTitle,
-  onBackHome,
-  onBackToStories,
-}: {
-  screen: Screen
-  /** The record behind a `story` screen, resolved by the parent (which shares
-   *  the verdict with the header). `null` while loading or when missing. */
-  story: Story | null
-  storyMissing: boolean
-  settings: GameSettings
-  onChangeSettings: (settings: GameSettings) => void
-  onStart: () => void
-  settingsOpen: boolean
-  onToggleSettings: () => void
-  gridMode: GridMode
-  onToggleGridMode: () => void
-  stories: Story[] | null
-  storiesError: boolean
-  onShowSection: (section: Section) => void
-  onViewStory: (story: Story) => void
-  onDeleteStory: (id: number) => Promise<boolean>
-  onUpdateStoryTitle: (id: number, title: string | null) => Promise<boolean>
-  onBackHome: () => void
-  onBackToStories: () => void
-}) {
-  const t = useTranslations()
-
-  switch (screen.name) {
-    // `landing` and `configuring` are the same screen; the latter just has the
-    // advanced-settings face of its panel open (and owns the /new URL).
-    case "landing":
-    case "configuring":
-      return (
-        <LandingHome
-          settings={settings}
-          onChangeSettings={onChangeSettings}
-          onStart={onStart}
-          settingsOpen={settingsOpen}
-          onToggleSettings={onToggleSettings}
-          gridMode={gridMode}
-          onToggleGridMode={onToggleGridMode}
-          onShowSection={onShowSection}
-          stories={stories}
-          storiesError={storiesError}
-          onViewStory={onViewStory}
-          onDeleteStory={onDeleteStory}
-          onUpdateStoryTitle={onUpdateStoryTitle}
-        />
-      )
-    case "section":
-      return (
-        <ContentColumn className="gap-5">
-          <SectionDetail
-            section={screen.section}
-            stories={stories}
-            storiesError={storiesError}
-            onNewStory={onBackHome}
-            onViewStory={onViewStory}
-            onDeleteStory={onDeleteStory}
-            onUpdateStoryTitle={onUpdateStoryTitle}
-          />
-        </ContentColumn>
-      )
-    case "profile":
-      return (
-        <ContentColumn className="gap-5">
-          <ProfilePanel />
-        </ContentColumn>
-      )
-    case "story":
-      // The title and the back arrow are in the header; here it is just the
-      // spinner, the not-found body, or the read-only story.
-      if (story === null && !storyMissing) {
-        return (
-          <ContentColumn className="gap-5">
-            <div role="status" aria-live="polite" className="flex justify-center py-16">
-              <Loader2 className="text-primary size-8 animate-spin" aria-hidden />
-            </div>
-          </ContentColumn>
-        )
-      }
-      if (story === null) return <NotFoundBody onBack={onBackToStories} label={t.nav.backToStories} />
-      return (
-        <ContentColumn className="gap-5">
-          <div className="h-[65vh]">
-            <WritingArea value={story.text} onChange={() => {}} matches={[]} readOnly />
-          </div>
-        </ContentColumn>
-      )
-    case "notfound":
-      return <NotFoundBody onBack={onBackHome} label={t.notFound.backHome} />
-    // `configuring` is rendered by the split layout, not here.
-    default:
-      return null
-  }
-}
-
-// Client-rendered not-found screen (no server 404 — the shell is served for
-// every app path). Reached for an unknown URL or a story id that doesn't
-// resolve; its title and back arrow are in the header, and this button shares
-// the arrow's destination, so both are labelled after where they lead.
-function NotFoundBody({ onBack, label }: { onBack: () => void; label: string }) {
-  const t = useTranslations()
-  return (
-    <ContentColumn className="gap-5">
-      <div className="flex flex-col items-start gap-4 py-8">
-        <p className="text-muted-foreground">{t.notFound.body}</p>
-        <Button type="button" variant="outline" onClick={onBack}>
-          {label}
-        </Button>
-      </div>
-    </ContentColumn>
-  )
-}
-
-function SectionDetail({
-  section,
-  stories,
-  storiesError,
-  onNewStory,
-  onViewStory,
-  onDeleteStory,
-  onUpdateStoryTitle,
-}: {
-  section: Section
-  stories: Story[] | null
-  storiesError: boolean
-  onNewStory: () => void
-  onViewStory: (story: Story) => void
-  onDeleteStory: (id: number) => Promise<boolean>
-  onUpdateStoryTitle: (id: number, title: string | null) => Promise<boolean>
-}) {
-  switch (section) {
-    case "stories":
-      return (
-        <StoriesSection
-          stories={stories}
-          error={storiesError}
-          onViewStory={onViewStory}
-          onDeleteStory={onDeleteStory}
-          onUpdateTitle={onUpdateStoryTitle}
-        />
-      )
-    case "journey":
-      return <JourneySection onNewStory={onNewStory} />
-  }
 }

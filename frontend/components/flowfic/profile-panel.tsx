@@ -7,7 +7,7 @@ import {
   useState,
   type ChangeEvent,
 } from "react"
-import { BookOpen, Loader2, Upload, User as UserIcon } from "lucide-react"
+import { Upload, User as UserIcon } from "lucide-react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -16,7 +16,10 @@ import { Label } from "@/components/ui/label"
 
 import { isValidEmail, useAuth } from "@/lib/auth"
 import { useTranslations } from "@/lib/i18n"
-import { fetchStoryCount, updateProfile } from "@/lib/flowfic/profile-api"
+import { updateProfile } from "@/lib/flowfic/profile-api"
+import { HINT } from "@/lib/text-styles"
+import { Spinner, panelVariants } from "./dashboard-widgets"
+import { cn } from "@/lib/utils"
 
 // Cap on the picture file size we'll accept, in bytes. Pictures end up as a
 // data: URL stored verbatim in the users table (`picture` column), so the
@@ -26,13 +29,7 @@ const MAX_PICTURE_BYTES = 256 * 1024
 
 type Status = "idle" | "saving" | "saved" | "error"
 
-type Props = {
-  /** Bumped after a successful PATCH so callers can refresh upstream caches
-   *  (e.g. nothing right now — but reserved for a future avatar refresh). */
-  onProfileUpdated?: () => void
-}
-
-export function ProfilePanel({ onProfileUpdated }: Props) {
+export function ProfilePanel() {
   const t = useTranslations()
   const { user, getAccessToken, applyLocalUser } = useAuth()
   const nameId = useId()
@@ -45,7 +42,6 @@ export function ProfilePanel({ onProfileUpdated }: Props) {
   const [name, setName] = useState(user?.name ?? "")
   const [email, setEmail] = useState(user?.email ?? "")
   const [picture, setPicture] = useState<string | null>(user?.avatarUrl ?? null)
-  const [storyCount, setStoryCount] = useState<number | null>(null)
   const [pictureError, setPictureError] = useState<string | null>(null)
   const [status, setStatus] = useState<Status>("idle")
 
@@ -57,20 +53,6 @@ export function ProfilePanel({ onProfileUpdated }: Props) {
     setEmail(user?.email ?? "")
     setPicture(user?.avatarUrl ?? null)
   }, [user])
-
-  // Pull the story count once the user is known.
-  useEffect(() => {
-    let cancelled = false
-    void (async () => {
-      const token = await getAccessToken()
-      if (token === null || cancelled) return
-      const c = await fetchStoryCount(token)
-      if (!cancelled) setStoryCount(c)
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [getAccessToken])
 
   function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -129,13 +111,12 @@ export function ProfilePanel({ onProfileUpdated }: Props) {
     }
     applyLocalUser(updated)
     setStatus("saved")
-    onProfileUpdated?.()
   }
 
   if (!user) {
     return (
       <section className="flex flex-1 items-center justify-center">
-        <Loader2 className="text-muted-foreground size-6 animate-spin" aria-hidden />
+        <Spinner />
       </section>
     )
   }
@@ -156,9 +137,9 @@ export function ProfilePanel({ onProfileUpdated }: Props) {
     // stays aligned with the other inner pages.
     <section
       aria-label={t.profile.title}
-      className="bg-card text-card-foreground flex w-full flex-col gap-6 rounded-lg border p-6 shadow-sm"
+      className={cn(panelVariants({ padding: "lg" }), "flex w-full flex-col gap-6")}
     >
-      <p className="text-muted-foreground text-sm">{t.profile.description}</p>
+      <p className={HINT}>{t.profile.description}</p>
 
       <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
         <Avatar className="size-24">
@@ -243,13 +224,9 @@ export function ProfilePanel({ onProfileUpdated }: Props) {
         </div>
       </div>
 
-      <div className="bg-muted/40 flex items-center gap-3 rounded-md border p-3 text-sm">
-        <BookOpen className="text-muted-foreground size-4" aria-hidden />
-        <span className="font-medium">{t.profile.storyCountLabel}</span>
-        <span className="text-muted-foreground ml-auto tabular-nums">
-          {storyCount === null ? "…" : storyCount}
-        </span>
-      </div>
+      {/* No story count here: it belongs to My stories, which is where the
+          library itself lives. This screen is about who you are, not how much
+          you have written. */}
 
       <div className="flex items-center justify-end gap-3">
         {status === "error" ? (
@@ -258,7 +235,7 @@ export function ProfilePanel({ onProfileUpdated }: Props) {
           </span>
         ) : null}
         {status === "saved" ? (
-          <span className="text-muted-foreground text-sm" role="status">
+          <span className={HINT} role="status">
             {t.profile.saved}
           </span>
         ) : null}
@@ -267,7 +244,7 @@ export function ProfilePanel({ onProfileUpdated }: Props) {
           disabled={status === "saving" || !hasChanges || !emailShapeValid}
         >
           {status === "saving" ? (
-            <Loader2 className="size-4 animate-spin" aria-hidden />
+            <Spinner size="inline" className="text-current" />
           ) : null}
           {t.profile.save}
         </Button>

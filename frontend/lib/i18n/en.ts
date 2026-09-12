@@ -5,8 +5,10 @@
 export const en = {
   app: {
     title: "Flowfic",
-    tagline: "A writing game. Keep your hands moving.",
     loading: "Loading FLOWFIC…",
+    // First focusable thing on the page: jumps past the top bar's eight-odd
+    // controls, which otherwise stand between a keyboard user and the screen.
+    skipToContent: "Skip to content",
   },
 
   welcome: {
@@ -75,10 +77,7 @@ export const en = {
     soundBell: "Bell",
     soundSpeak: "Speak the word",
     loadingWords: "Loading words…",
-    secondsSuffix: "s",
-    minutesSuffix: "m",
     start: "Start writing",
-    startShort: "Write",
     customModesLabel: "Custom modes",
     backToPresetsLabel: "Default modes",
     createPresetLabel: "Save current settings",
@@ -87,7 +86,6 @@ export const en = {
     customNameSave: "Save",
     customNameCancel: "Cancel",
     customLimitReached: "You can have at most {max} custom modes.",
-    customEmptySlot: "Empty slot",
     customSaveFailed: "Couldn't save your custom mode.",
     signInForCustomModes: "Sign in to save custom modes.",
   },
@@ -109,19 +107,21 @@ export const en = {
 
   game: {
     requiredWordHeader: "Required word",
-    noRequiredWord: "Keep writing…",
     useWordIn: "Use it in",
     idleEndsIn: "Idle timeout in",
     sessionEndsIn: "Session ends in",
     characters: "characters",
     placeholder: "Begin your story. Don't stop typing…",
     pause: "Pause",
-    // The controls sit in a small square block, so the visible labels are kept
-    // to roughly the width of "Quit"; the accessible names carry the full word.
+    // The session controls are icon-only squares, so these are accessible
+    // names rather than visible labels and can carry the full phrase.
     resume: "Resume",
-    resumeShort: "Play",
+    // Spoken when the sprint freezes or restarts. Pause is reachable without
+    // the toggle ever holding focus (the quit dialog pauses too), so the state
+    // needs saying outright rather than riding on the button's name.
+    pausedStatus: "Session paused. The timers are frozen.",
+    resumedStatus: "Session resumed.",
     quit: "Quit session",
-    quitShort: "Quit",
     quitConfirmTitle: "Quit this session?",
     quitConfirmDescription:
       "Your sprint ends here and you'll see your stats. The story stays editable afterwards.",
@@ -132,7 +132,15 @@ export const en = {
     titleLabel: "Story title",
     inspirationShow: "Show inspiration",
     inspirationHide: "Hide inspiration",
+    // The sprint's h1. Never rendered visibly — the top bar's centre is empty
+    // mid-session on purpose, so this exists to keep the screen from being
+    // headingless for assistive tech.
+    sprintHeading: "Writing sprint",
     viewingStory: "Viewing a previous story (read-only).",
+    // Names the read-only archive viewer. Without it the field inherits the
+    // editor's `placeholder`, so a saved story announces itself as an
+    // invitation to start typing one.
+    storyTextLabel: "Story text",
     saveFailed: "Couldn't save your last story.",
     saveRetry: "Retry",
     saveRetrying: "Retrying…",
@@ -149,7 +157,6 @@ export const en = {
     removePicture: "Remove picture",
     pictureTooLarge: "Pick an image smaller than 256 KB.",
     pictureReadFailed: "Couldn't read that file.",
-    storyCountLabel: "Stories written",
     save: "Save changes",
     saving: "Saving…",
     saved: "Saved.",
@@ -186,13 +193,9 @@ export const en = {
 
   sidebar: {
     title: "Recent stories",
-    subtitle: "Your latest writing sessions",
     empty: "No stories yet — finish a session to see it here.",
     signUpPrompt: "Sign in to see your saved stories here.",
     error: "Couldn't load stories.",
-    toggle: "Open recent stories",
-    toggleShort: "Stories",
-    durationLabel: "Session length",
     rowMenuLabel: "Story options",
     deleteStory: "Delete",
     deleteStoryConfirmTitle: "Delete this story?",
@@ -201,6 +204,12 @@ export const en = {
     deleteStoryConfirm: "Delete",
     deleteStoryCancel: "Cancel",
     deleteStoryFailed: "Couldn't delete that story.",
+    // Heads the My-stories list. The library's size lives here rather than on
+    // the profile screen, next to the stories themselves.
+    storyCount: "{count} stories",
+    resultCount: "{count} matching",
+    loadMore: "Load more",
+    loadingMore: "Loading…",
     renameStory: "Rename",
     renameStoryLabel: "Story title",
     renameSave: "Save title",
@@ -215,7 +224,6 @@ export const en = {
   },
 
   prefs: {
-    sectionLabel: "Preferences",
     // The header toggle is icon-only, so its accessible name has to say what a
     // click does rather than name the control.
     modeSwitchToDark: "Switch to dark mode",
@@ -224,8 +232,6 @@ export const en = {
   },
 
   auth: {
-    signedOut: "Sign in",
-    signedIn: "Account",
     logIn: "Log in",
     logOut: "Log out",
     title: "Sign in to Flowfic",
@@ -235,11 +241,8 @@ export const en = {
     google: "Google",
     finishingSignIn: "Finishing sign-in…",
     signInFailed: "Sign-in failed.",
-    signInFailedRetry: "Try again",
     backToGame: "Back to the game",
-    welcomeBack: "Welcome back, {name}",
     accountMenuLabel: "Account menu",
-    profileEmail: "Email",
     devUserLogin: "Dev user login",
     devUsernameLabel: "Dev username",
     devUsernamePlaceholder: "username",
@@ -252,14 +255,15 @@ export const en = {
 
   nav: {
     label: "Main navigation",
-    openMenu: "Open menu",
     home: "Home",
     stories: "My stories",
-    journey: "My Journey",
+    progress: "My Progress",
     challenges: "Challenges",
     stats: "Statistics",
     achievements: "Achievements",
     showAll: "Show all",
+    // Accessible name of the X in a dialog's corner, shared by every dialog.
+    closeDialog: "Close",
     // Header title of the landing screen — the one screen with no title of its
     // own, named after what it is for.
     createStory: "Create a story",
@@ -280,11 +284,9 @@ export const en = {
 
   // Home dashboard + shared gamification copy.
   dashboard: {
-    subtitle: "Ready to enter the flow?",
     back: "Back",
     level: "Level",
     signInHint: "Sign in to save stories and track your progress.",
-    streakTitle: "Your current streak",
     daysInARow: "days in a row",
     weeklySummary: "Weekly summary",
     sessions: "sessions",
@@ -293,22 +295,26 @@ export const en = {
     untitledStory: "Untitled story",
     today: "Today",
     emptyStories: "No stories yet — finish a sprint to see it here.",
-    progressTitle: "Your progress",
-    thisWeek: "This week",
+    // Heading of the words-per-day chart. Named for what it will become: the
+    // week/month range buttons will drive it and the summary beside it together.
+    timeline: "Timeline",
     chartCaption: "Words written per day over the last 7 days.",
-    wordsWritten: "Words written",
-    writingTime: "Writing time",
-    sessionsCompleted: "Sessions completed",
     minutes: "minutes",
-    quoteOfDay: "Quote of the day",
     challengeOfDay: "Challenge of the day",
     challengeOfDayHint: "Jump straight in",
-    writeNow: "Write now",
     recentStories: "Recent stories",
     inspirationAlt: "Inspiration image",
     inspirationPrompt: "Click here to get some inspiration",
     inspirationAnother: "Show me another inspiration",
     inspirationUnavailable: "No inspiration available right now.",
+    // The landing's three circular selectors and the pane they fill. These sit
+    // INSIDE the circles, so they have to stay short in both languages. The
+    // inspiration one is the only selector that is also an action: once
+    // selected it re-rolls, so it says so.
+    showcaseLabel: "Choose what to show",
+    showcasePaneLabel: "Showing: {name}",
+    inspirationTabCurrent: "Inspiration",
+    inspirationTabAnother: "Click for another",
   },
 
   achievements: {

@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test"
 
-import { mockBackend, seedDevSession } from "./fixtures"
+import { AWAITING_WORD, mockBackend, seedDevSession } from "./fixtures"
 
 // The required-word lifecycle: a word spawns, and typing it clears the panel.
 //
@@ -43,7 +43,7 @@ test("a required word spawns and is cleared by typing it", async ({ page }) => {
   await textarea.pressSequentially("a")
 
   const wordPanel = page.getByRole("complementary", { name: "Required word" })
-  await expect(wordPanel.getByText("Keep writing", { exact: false })).toBeVisible()
+  await expect(wordPanel.getByText(AWAITING_WORD)).toBeVisible()
 
   // Advance the virtual clock in 1s steps until the word appears, typing each
   // step to keep the idle timer from firing.
@@ -57,5 +57,5 @@ test("a required word spawns and is cleared by typing it", async ({ page }) => {
   // Typing the required word (followed by a delimiter) clears it.
   await textarea.pressSequentially(" banana ")
   await expect(wordPanel.getByText("banana")).toBeHidden()
-  await expect(wordPanel.getByText("Keep writing", { exact: false })).toBeVisible()
+  await expect(wordPanel.getByText(AWAITING_WORD)).toBeVisible()
 })

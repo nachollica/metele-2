@@ -39,6 +39,22 @@ describe("WritingArea", () => {
     expect(ta.value).toBe("ab")
   })
 
+  it("names the live editor after the prompt to write", () => {
+    renderWithLocale(<Harness />)
+    expect(
+      screen.getByRole("textbox", { name: "Begin your story. Don't stop typing…" }),
+    ).toBeInTheDocument()
+  })
+
+  it("names the read-only archive viewer after what it holds", () => {
+    // Inheriting the editor's placeholder made a saved story announce itself
+    // as an invitation to start typing one.
+    renderWithLocale(
+      <WritingArea value="Once upon a time" onChange={() => {}} matches={[]} readOnly />,
+    )
+    expect(screen.getByRole("textbox", { name: "Story text" })).toBeInTheDocument()
+  })
+
   // ---------------------------------------------------------------------
   // Tests for the disabled "append-only" / "no editing" feature. Re-enable
   // alongside the matching code in `writing-area.tsx` if the rule comes back.

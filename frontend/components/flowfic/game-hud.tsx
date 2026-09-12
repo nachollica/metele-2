@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useRef, useState } from "react"
 import { Check, Timer, Clock, Pause, Play, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -7,6 +8,7 @@ import { cn, clamp01 } from "@/lib/utils"
 import { useTranslations } from "@/lib/i18n"
 import { formatSeconds } from "@/lib/flowfic/format"
 import { RequiredWordPanel } from "./required-word-panel"
+import { panelVariants, ProgressMeter } from "./dashboard-widgets"
 
 type Props = {
   /** Seconds remaining before idle timeout fires, or null when it's disabled. */
@@ -87,10 +89,13 @@ export function GameHud({
   // takes the right half when the mechanic is on, otherwise the timers spread
   // across the full width.
   //
-  // Pause carries no banner of its own: a line of copy here would grow the
-  // card and shove everything below it. The state reads from the controls
-  // (Pause has become Play) plus the greyed timers and editor, and is
-  // announced through the toggle's own accessible name.
+  // Pause carries no visible banner of its own: a line of copy here would grow
+  // the card and shove everything below it. Sighted players read the state off
+  // the controls (Pause has become Play) plus the greyed timers and editor;
+  // everyone else gets it from `PauseAnnouncer` below, which speaks it outright
+  // rather than leaving it on the toggle's accessible name — that only reaches
+  // someone whose focus is already on the toggle, and the quit dialog pauses
+  // the sprint without it ever being focused.
   const timers = (
     <div className="flex items-center gap-3">
       <SessionControls
@@ -111,8 +116,9 @@ export function GameHud({
   return (
     <section
       aria-label={t.app.title}
-      className="bg-card text-card-foreground rounded-lg border p-4 shadow-sm"
+      className={panelVariants({ padding: "sm" })}
     >
+      <PauseAnnouncer paused={paused} />
       {requiredWordsEnabled ? (
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-4">
           {timers}
@@ -126,6 +132,32 @@ export function GameHud({
         timers
       )}
     </section>
+  )
+}
+
+/**
+ * Speaks the frozen/running state of the sprint.
+ *
+ * Silent on mount: a sprint always starts running, so the only thing worth
+ * announcing is the change.
+ */
+function PauseAnnouncer({ paused }: { paused: boolean }) {
+  const t = useTranslations()
+  const [message, setMessage] = useState("")
+  const previous = useRef<boolean | null>(null)
+
+  useEffect(() => {
+    const isFirst = previous.current === null
+    const changed = previous.current !== paused
+    previous.current = paused
+    if (isFirst || !changed) return
+    setMessage(paused ? t.game.pausedStatus : t.game.resumedStatus)
+  }, [paused, t])
+
+  return (
+    <div role="status" aria-live="polite" className="sr-only">
+      {message}
+    </div>
   )
 }
 
@@ -230,22 +262,16 @@ function TimerBar({
           {formatSeconds(seconds, t.units)}
         </span>
       </div>
-      <div
-        className="bg-muted h-1.5 w-full overflow-hidden rounded-full"
-        role="progressbar"
-        aria-label={label}
-        aria-valuenow={Math.max(0, Math.round(seconds))}
-        aria-valuemin={0}
-        aria-valuemax={Math.max(1, Math.round(total))}
-      >
-        <div
-          className={cn(
-            "h-full rounded-full transition-[width] duration-200 ease-linear",
-            urgent ? "bg-destructive" : "bg-primary",
-          )}
-          style={{ width: `${progress * 100}%` }}
-        />
-      </div>
+      {/* `valueText` because a countdown measured against its own start reads
+          as a bare percentage ("42 percent") — useless for a clock. It is the
+          same string the sighted player sees in the row above. */}
+      <ProgressMeter
+        value={progress}
+        tone={urgent ? "destructive" : "primary"}
+        label={label}
+        valueText={formatSeconds(seconds, t.units)}
+        speed="live"
+      />
     </div>
   )
 }

@@ -30,13 +30,24 @@ function renderHud(props: Partial<Props> = {}) {
 }
 
 describe("GameHud", () => {
-  it("renders the idle and session timer bars with correct aria-valuenow", () => {
-    renderHud({ idleSecondsLeft: 5, globalSecondsLeft: 45 })
-    const bars = screen.getAllByRole("progressbar")
-    expect(bars.length).toBeGreaterThanOrEqual(2)
-    const valueNows = bars.map((b) => b.getAttribute("aria-valuenow"))
-    expect(valueNows).toContain("5")
-    expect(valueNows).toContain("45")
+  it("renders both timer bars as a fraction of the time they started with", () => {
+    // A percentage, since it shares the app's one progress bar; the clock the
+    // player actually needs is on `aria-valuetext` (asserted further down).
+    renderHud({
+      idleSecondsLeft: 5,
+      idleSecondsTotal: 10,
+      globalSecondsLeft: 45,
+      globalSecondsTotal: 60,
+    })
+
+    expect(screen.getByRole("progressbar", { name: /idle timeout in/i })).toHaveAttribute(
+      "aria-valuenow",
+      "50",
+    )
+    expect(screen.getByRole("progressbar", { name: /session ends in/i })).toHaveAttribute(
+      "aria-valuenow",
+      "75",
+    )
   })
 
   it("hides the global timer bar when globalSecondsLeft is null", () => {
@@ -80,5 +91,41 @@ describe("GameHud", () => {
   it("renders the active required word", () => {
     renderHud({ requiredWord: "ghost" })
     expect(screen.getByText("ghost")).toBeInTheDocument()
+  })
+
+  it("spells the timer bars out as a clock, not a percentage", () => {
+    renderHud({ idleSecondsLeft: 5, globalSecondsLeft: 90 })
+
+    expect(screen.getByRole("progressbar", { name: /idle timeout in/i })).toHaveAttribute(
+      "aria-valuetext",
+      "5s",
+    )
+    expect(screen.getByRole("progressbar", { name: /session ends in/i })).toHaveAttribute(
+      "aria-valuetext",
+      "1m 30s",
+    )
+  })
+
+  it("announces the pause and the resume, but says nothing on mount", () => {
+    // A sprint always starts running, so the initial state is not news.
+    const { rerender } = renderHud()
+    expect(screen.getByRole("status")).toHaveTextContent("")
+
+    rerender(<GameHud {...baseProps} paused />)
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Session paused. The timers are frozen.",
+    )
+
+    rerender(<GameHud {...baseProps} paused={false} />)
+    expect(screen.getByRole("status")).toHaveTextContent("Session resumed.")
+  })
+
+  it("announces the pause in the active locale", () => {
+    const { rerender } = renderWithLocale(<GameHud {...baseProps} />, { locale: "es" })
+
+    rerender(<GameHud {...baseProps} paused />)
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Sesión en pausa. Los temporizadores están congelados.",
+    )
   })
 })

@@ -4,7 +4,6 @@ import { type ReactNode } from "react"
 import { Sparkles, Volume2 } from "lucide-react"
 
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import {
   Select,
   SelectContent,
@@ -33,9 +32,9 @@ type Props = {
 }
 
 /**
- * Advanced session settings, shown in the Home screen's swappable panel behind
- * the "More options" toggle. Purely controlled — the parent owns the settings
- * object and the surrounding scroll.
+ * Advanced session settings, shown on the Home screen behind the "More options"
+ * toggle. Purely controlled — the parent owns the settings object, and the
+ * panel is sized by its own content rather than fitted into a fixed box.
  *
  * The session length and the mode picker are NOT here: both live in the
  * launcher above (the dial and the mode grid), since they are the two choices
@@ -82,7 +81,6 @@ export function SettingsPanel({ settings, onChange }: Props) {
           control={
             <ValueSlider
               id="main-timer"
-              ariaLabel={t.settings.mainTimerLabel}
               value={settings.mainTimerSeconds}
               min={1}
               max={60}
@@ -152,10 +150,9 @@ export function SettingsPanel({ settings, onChange }: Props) {
           }
         />
 
-        {/* Required-word sub-settings. Always rendered so the panel keeps a
-            stable height (the home screen swaps it in and out of a fixed-size
-            container); the master toggle greys them out and disables their
-            controls instead of collapsing the rows away. */}
+        {/* Required-word sub-settings. Always rendered: the master toggle greys
+            them out and disables their controls rather than collapsing the rows
+            away, so flipping it never reflows what is under the pointer. */}
         <SettingRow
           id="word-interval"
           label={t.settings.requiredWordIntervalLabel}
@@ -164,7 +161,6 @@ export function SettingsPanel({ settings, onChange }: Props) {
           control={
             <ValueSlider
               id="word-interval"
-              ariaLabel={t.settings.requiredWordIntervalLabel}
               value={settings.requiredWordIntervalSeconds}
               min={5}
               max={120}
@@ -193,7 +189,6 @@ export function SettingsPanel({ settings, onChange }: Props) {
           control={
             <ValueSlider
               id="use-timer"
-              ariaLabel={t.settings.requiredWordUseTimerLabel}
               value={settings.requiredWordUseTimerSeconds}
               min={5}
               max={120}
@@ -298,9 +293,18 @@ function SettingRow({
           {toggle}
         </label>
         <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <Label htmlFor={id} className="text-foreground text-sm font-semibold">
+          {/* A span with an id, not a `<label for>`. Most rows control a Radix
+              Slider or Select, which render as spans/divs — not labelable
+              elements — so `htmlFor` associated nothing and clicking the text
+              did nothing either. The controls point back here with
+              `aria-labelledby`, which works for any element and keeps the
+              visible text as their accessible name. */}
+          <span
+            id={`${id}-label`}
+            className="text-foreground flex items-center gap-2 text-sm leading-none font-semibold"
+          >
             {label}
-          </Label>
+          </span>
           {description ? (
             <span className="text-muted-foreground hidden text-xs leading-snug sm:inline">
               {description}
@@ -320,7 +324,6 @@ function SettingRow({
 
 function ValueSlider({
   id,
-  ariaLabel,
   value,
   min,
   max,
@@ -328,11 +331,10 @@ function ValueSlider({
   onChange,
   format,
 }: {
+  /** The owning `SettingRow`'s id: the slider is named by that row's visible
+   *  label, so the name has one definition and cannot drift from what is on
+   *  screen. */
   id: string
-  /** Human-readable accessible name for the slider thumb (the role="slider"
-   *  element). Matches the row's visible label so screen readers and tests can
-   *  identify the control. */
-  ariaLabel: string
   value: number
   min: number
   max: number
@@ -351,14 +353,13 @@ function ValueSlider({
         {format(value)}
       </span>
       <Slider
-        id={id}
         min={min}
         max={max}
         step={1}
         disabled={disabled}
         value={[value]}
         onValueChange={(v) => onChange(v[0] ?? min)}
-        aria-label={ariaLabel}
+        aria-labelledby={`${id}-label`}
         className="flex-1 py-2"
       />
     </div>

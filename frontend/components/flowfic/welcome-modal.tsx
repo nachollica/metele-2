@@ -23,6 +23,7 @@ import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
 
 import { useTranslations } from "@/lib/i18n"
+import { HINT, MICRO } from "@/lib/text-styles"
 
 type Props = {
   open: boolean
@@ -114,7 +115,7 @@ export function WelcomeModal({ open, onContinue }: Props) {
             />
           )}
           <h3 className="font-serif text-2xl font-semibold">{current.title}</h3>
-          <p className="text-muted-foreground max-w-sm text-sm leading-relaxed">{current.body}</p>
+          <p className={cn(HINT, "max-w-sm leading-relaxed")}>{current.body}</p>
         </div>
 
         <div
@@ -133,7 +134,7 @@ export function WelcomeModal({ open, onContinue }: Props) {
             />
             <Label
               htmlFor="welcome-dont-show"
-              className="text-muted-foreground text-xs font-normal"
+              className={cn(MICRO, "font-normal")}
             >
               {t.welcome.dontShowAgain}
             </Label>

@@ -24,7 +24,7 @@ describe("screenHeader", () => {
       backTo: "home",
       backLabel: "Back to home",
     })
-    expect(screenHeader({ name: "section", section: "journey" }, t).title).toBe("My Journey")
+    expect(screenHeader({ name: "section", section: "progress" }, t).title).toBe("My Progress")
   })
 
   it("returns home from the profile", () => {

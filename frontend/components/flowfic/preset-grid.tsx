@@ -13,11 +13,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
 import { cn } from "@/lib/utils"
 import { useTranslations } from "@/lib/i18n"
 import { useAuth, MAX_CUSTOM_PRESETS, type CustomPreset } from "@/lib/auth"
+import { FIELD_LABEL } from "@/lib/text-styles"
 import {
   createCustomPreset,
   deleteCustomPreset,
@@ -32,6 +34,8 @@ import {
   type PresetId,
   type PresetSettings,
 } from "@/lib/flowfic/types"
+
+import { selectableCardVariants } from "./dashboard-widgets"
 
 export type GridMode = "system" | "custom"
 
@@ -274,7 +278,7 @@ export function PresetGrid({ settings, mode, onApply, onStartChallenge }: Props)
                 void confirmDelete()
               }}
               disabled={deleteBusy}
-              className="bg-destructive text-white hover:bg-destructive/90"
+              variant="destructive"
             >
               {t.profile.customPresetDelete}
             </AlertDialogAction>
@@ -367,11 +371,7 @@ export function PresetGrid({ settings, mode, onApply, onStartChallenge }: Props)
             onClick={() => startCreatingAt(i)}
             aria-label={t.settings.createPresetLabel}
             title={t.settings.createPresetTooltip}
-            className={cn(
-              CARD_SHAPE,
-              "border-border hover:bg-accent/20 focus-visible:ring-ring flex items-center justify-center rounded-xl border border-dashed p-3 text-center transition-colors",
-              "focus-visible:ring-2 focus-visible:outline-none",
-            )}
+            className={cn(CARD_SHAPE, selectableCardVariants({ state: "empty" }))}
           >
             <Plus className="text-muted-foreground size-7" strokeWidth={3} aria-hidden />
           </button>,
@@ -439,25 +439,29 @@ function InlineNameForm({
         className="h-8 text-sm"
         disabled={busy}
       />
+      {/* Cancel then Save, matching the order the confirmation dialogs use —
+          the story card's copy of this pair had them the other way round. */}
       <div className="flex justify-end gap-1">
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon-xs"
           onClick={onCancel}
           aria-label={cancelLabel}
-          className="hover:bg-accent text-muted-foreground inline-flex size-6 items-center justify-center rounded-md"
+          className="text-muted-foreground"
           disabled={busy}
         >
           <X className="size-3.5" aria-hidden />
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          size="icon-xs"
           onClick={onSubmit}
           aria-label={saveLabel}
-          className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex size-6 items-center justify-center rounded-md disabled:opacity-50"
           disabled={busy || value.trim().length === 0}
         >
           <Check className="size-3.5" aria-hidden />
-        </button>
+        </Button>
       </div>
     </div>
   )
@@ -481,15 +485,12 @@ function PresetButton({
       aria-pressed={active}
       className={cn(
         CARD_SHAPE,
-        "flex flex-col items-center justify-center overflow-hidden rounded-xl border p-3 text-center transition-colors",
-        "hover:bg-accent/20 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
-        active
-          ? "border-highlight bg-highlight/20 ring-highlight/30 ring-1"
-          : "border-border bg-card",
+        selectableCardVariants({ state: active ? "selected" : "idle" }),
+        "overflow-hidden",
       )}
     >
       <span className={CARD_TEXT}>
-        <span className="text-foreground line-clamp-1 w-full text-center text-sm font-semibold">
+        <span className={cn(FIELD_LABEL, "text-foreground line-clamp-1 w-full text-center")}>
           {title}
         </span>
         {subtitle ? (
@@ -526,7 +527,7 @@ function ChallengeCard({ onStart }: { onStart: () => void }) {
         aria-hidden
       />
       <span className={cn(CARD_TEXT, "relative")}>
-        <span className="flex items-center gap-1.5 text-sm font-semibold">
+        <span className={cn(FIELD_LABEL, "flex items-center gap-1.5")}>
           <Trophy className="size-4 shrink-0" aria-hidden />
           {t.dashboard.challengeOfDay}
         </span>
@@ -581,65 +582,55 @@ function CustomPresetCard({
     )
   }
 
-  function handleKey(e: KeyboardEvent<HTMLDivElement>) {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault()
-      onApply()
-    }
-  }
-
-  // Outer is a div (not a button) so the inner pencil/trash can be real
-  // buttons — nesting <button> inside <button> is invalid HTML. Outer
-  // surfaces role/tabindex so the apply-on-click behavior stays keyboard
-  // and screen-reader accessible.
+  // The card and its pencil/trash are SIBLINGS, not nested. An earlier shape
+  // made the card a `role="button"` div so the two chips could be real buttons
+  // inside it — but a role is exactly as nested as the tag would have been, and
+  // several screen readers refuse to expose controls inside a button, so the
+  // rename and delete actions simply vanished for them. Overlaying the chips on
+  // a positioned wrapper keeps all three as real buttons, which also hands back
+  // Enter/Space handling, `disabled`, and the pressed state for free.
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={onApply}
-      onKeyDown={handleKey}
-      aria-pressed={active}
-      className={cn(
-        CARD_SHAPE,
-        "group relative flex cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border p-3 text-center transition-colors",
-        "hover:bg-accent/20 focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none",
-        active
-          ? "border-highlight bg-highlight/20 ring-highlight/30 ring-1"
-          : "border-border bg-card",
-      )}
-    >
-      <span className={CARD_TEXT}>
-        <span className="text-foreground line-clamp-2 w-full text-center text-sm font-semibold">
-          {preset.name}
+    <div className={cn(CARD_SHAPE, "group relative")}>
+      <button
+        type="button"
+        onClick={onApply}
+        aria-pressed={active}
+        className={cn(
+          selectableCardVariants({ state: active ? "selected" : "idle" }),
+          "size-full cursor-pointer overflow-hidden",
+        )}
+      >
+        <span className={CARD_TEXT}>
+          <span className={cn(FIELD_LABEL, "text-foreground line-clamp-2 w-full text-center")}>
+            {preset.name}
+          </span>
         </span>
-      </span>
+      </button>
       {/* Action chips. Visible on hover/focus-within so the unhovered card
           stays clean. Keyboard users tab through them after the card. */}
       <div className="absolute top-1.5 right-1.5 flex gap-0.5 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
-        <button
+        <Button
           type="button"
-          onClick={(e) => {
-            e.stopPropagation()
-            onStartEdit()
-          }}
+          variant="ghost"
+          size="icon-xs"
+          onClick={onStartEdit}
           aria-label={t.profile.customPresetEdit}
           disabled={busy}
-          className="hover:bg-accent text-muted-foreground inline-flex size-6 items-center justify-center rounded-md"
+          className="text-muted-foreground"
         >
           <Pencil className="size-3.5" aria-hidden />
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
-          onClick={(e) => {
-            e.stopPropagation()
-            onDelete()
-          }}
+          variant="ghost"
+          size="icon-xs"
+          onClick={onDelete}
           aria-label={t.profile.customPresetDelete}
           disabled={busy}
-          className="hover:bg-destructive/10 text-destructive inline-flex size-6 items-center justify-center rounded-md"
+          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
         >
           <Trash2 className="size-3.5" aria-hidden />
-        </button>
+        </Button>
       </div>
     </div>
   )

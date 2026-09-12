@@ -13,6 +13,10 @@ import type { Translations } from "@/lib/i18n"
 import { SECTION_META } from "./dashboard-nav"
 import type { Screen } from "./navigation"
 
+// Suffix for `document.title`. Not localized on purpose — it is the product's
+// name, and `t.app.title` holds the same string in both locales.
+export const APP_NAME = "Flowfic"
+
 // Where the back arrow leads. `null` means the screen shows no arrow (the
 // landing is the root of the in-app tree).
 export type BackTarget = "home" | "stories" | null
