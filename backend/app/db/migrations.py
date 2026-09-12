@@ -41,6 +41,16 @@ _ADDITIVE_COLUMNS: tuple[tuple[str, str, dict[str, str]], ...] = (
             "postgresql": "ALTER TABLE stories ADD COLUMN title VARCHAR(200)",
         },
     ),
+    (
+        "stories",
+        "privacy",
+        {
+            "sqlite": "ALTER TABLE stories ADD COLUMN privacy VARCHAR NOT NULL DEFAULT 'private'",
+            "postgresql": (
+                "ALTER TABLE stories ADD COLUMN privacy VARCHAR NOT NULL DEFAULT 'private'"
+            ),
+        },
+    ),
 )
 
 

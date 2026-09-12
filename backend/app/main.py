@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app import __version__
 from app.db import engine, init_db
 from app.routes.auth import router as auth_router
+from app.routes.connections import router as connections_router
 from app.routes.ping import router as ping_router
 from app.routes.profile import router as profile_router
 from app.routes.stats import router as stats_router
@@ -86,6 +87,7 @@ def create_app() -> FastAPI:
     app.include_router(words_router)
     app.include_router(stories_router)
     app.include_router(stats_router)
+    app.include_router(connections_router)
 
     return app
 

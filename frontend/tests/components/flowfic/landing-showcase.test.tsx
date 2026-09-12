@@ -65,6 +65,7 @@ function story(id: number): Story {
     lang: "en",
     createdAt: new Date().toISOString(),
     userId: baseUser.id,
+    privacy: "private",
     settings: {},
     stats: { words: 10 },
   }
@@ -89,7 +90,7 @@ function Harness({
       storiesError={false}
       onViewStory={vi.fn()}
       onDeleteStory={vi.fn().mockResolvedValue(true)}
-      onUpdateStoryTitle={vi.fn().mockResolvedValue(true)}
+      onUpdateStory={vi.fn().mockResolvedValue(true)}
     />
   )
 }

@@ -18,7 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 import { useAuth } from "@/lib/auth"
 import { useLocale, useTranslations } from "@/lib/i18n"
-import type { Story } from "@/lib/flowfic/stories-api"
+import type { Story, StoryUpdatePatch } from "@/lib/flowfic/stories-api"
 import { formatCount } from "@/lib/flowfic/gamification"
 import { filterAndSortStories, type SortOrder } from "@/lib/flowfic/story-search"
 
@@ -39,7 +39,7 @@ type Props = {
   error: boolean
   onViewStory: (story: Story) => void
   onDeleteStory: (id: number) => Promise<boolean>
-  onUpdateTitle: (id: number, title: string | null) => Promise<boolean>
+  onUpdateStory: (id: number, patch: StoryUpdatePatch) => Promise<boolean>
   /** Render a trimmed card for the landing dashboard instead of the full screen. */
   preview?: boolean
   /** Drop the preview's own card chrome — the showcase pane already supplies it. */
@@ -68,7 +68,7 @@ export function StoriesSection({
   error,
   onViewStory,
   onDeleteStory,
-  onUpdateTitle,
+  onUpdateStory,
   preview = false,
   flush = false,
   onShowAll,
@@ -148,7 +148,7 @@ export function StoriesSection({
                   story={s}
                   onSelect={onViewStory}
                   onDelete={onDeleteStory}
-                  onUpdateTitle={onUpdateTitle}
+                  onUpdateStory={onUpdateStory}
                   fill
                 />
               </div>
@@ -285,7 +285,7 @@ export function StoriesSection({
               story={s}
               onSelect={onViewStory}
               onDelete={onDeleteStory}
-              onUpdateTitle={onUpdateTitle}
+              onUpdateStory={onUpdateStory}
             />
           ))}
         </div>

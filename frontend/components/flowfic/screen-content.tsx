@@ -10,15 +10,17 @@
 
 import { useTranslations } from "@/lib/i18n"
 import type { GameSettings } from "@/lib/flowfic/types"
-import type { Story } from "@/lib/flowfic/stories-api"
+import type { Story, StoryUpdatePatch } from "@/lib/flowfic/stories-api"
 
 import { Button } from "@/components/ui/button"
 import { type Section } from "./dashboard-nav"
 import { type Screen } from "./navigation"
 import { Spinner } from "./dashboard-widgets"
+import { ConnectScreen } from "./connect-screen"
 import { LandingHome } from "./landing"
 import { type ShowcaseFace } from "./landing-showcase"
 import { type GridMode } from "./preset-grid"
+import { ConnectionsPanel } from "./connections-panel"
 import { ProfilePanel } from "./profile-panel"
 import { ProgressSection } from "./progress-section"
 import { StoriesSection } from "./stories-section"
@@ -48,9 +50,10 @@ export function ScreenContent({
   onShowSection,
   onViewStory,
   onDeleteStory,
-  onUpdateStoryTitle,
+  onUpdateStory,
   onBackHome,
   onBackToStories,
+  onOpenProfile,
 }: {
   screen: Screen
   /** The record behind a `story` screen, resolved by the parent (which shares
@@ -75,9 +78,10 @@ export function ScreenContent({
   onShowSection: (section: Section) => void
   onViewStory: (story: Story) => void
   onDeleteStory: (id: number) => Promise<boolean>
-  onUpdateStoryTitle: (id: number, title: string | null) => Promise<boolean>
+  onUpdateStory: (id: number, patch: StoryUpdatePatch) => Promise<boolean>
   onBackHome: () => void
   onBackToStories: () => void
+  onOpenProfile: () => void
 }) {
   const t = useTranslations()
 
@@ -102,7 +106,7 @@ export function ScreenContent({
           storiesError={storiesError}
           onViewStory={onViewStory}
           onDeleteStory={onDeleteStory}
-          onUpdateStoryTitle={onUpdateStoryTitle}
+          onUpdateStory={onUpdateStory}
         />
       )
     case "section":
@@ -117,11 +121,16 @@ export function ScreenContent({
           onLoadMoreStories={onLoadMoreStories}
           onViewStory={onViewStory}
           onDeleteStory={onDeleteStory}
-          onUpdateStoryTitle={onUpdateStoryTitle}
+          onUpdateStory={onUpdateStory}
         />
       )
     case "profile":
-      return <ProfilePanel />
+      return (
+        <div className="flex flex-col gap-6">
+          <ProfilePanel />
+          <ConnectionsPanel />
+        </div>
+      )
     case "story":
       // The title and the back arrow are in the header; here it is just the
       // spinner, the not-found body, or the read-only story.
@@ -140,6 +149,10 @@ export function ScreenContent({
         <div className="h-[65vh] min-h-96">
           <WritingArea value={story.text} onChange={() => {}} matches={[]} readOnly />
         </div>
+      )
+    case "connect":
+      return (
+        <ConnectScreen token={screen.token} onBackHome={onBackHome} onOpenProfile={onOpenProfile} />
       )
     case "notfound":
       return <NotFoundBody onBack={onBackHome} label={t.notFound.backHome} />
@@ -172,7 +185,7 @@ function SectionDetail({
   onLoadMoreStories,
   onViewStory,
   onDeleteStory,
-  onUpdateStoryTitle,
+  onUpdateStory,
 }: {
   section: Section
   stories: Story[] | null
@@ -183,7 +196,7 @@ function SectionDetail({
   onLoadMoreStories: () => void
   onViewStory: (story: Story) => void
   onDeleteStory: (id: number) => Promise<boolean>
-  onUpdateStoryTitle: (id: number, title: string | null) => Promise<boolean>
+  onUpdateStory: (id: number, patch: StoryUpdatePatch) => Promise<boolean>
 }) {
   switch (section) {
     case "stories":
@@ -197,7 +210,7 @@ function SectionDetail({
           onLoadMore={onLoadMoreStories}
           onViewStory={onViewStory}
           onDeleteStory={onDeleteStory}
-          onUpdateTitle={onUpdateStoryTitle}
+          onUpdateStory={onUpdateStory}
         />
       )
     case "progress":

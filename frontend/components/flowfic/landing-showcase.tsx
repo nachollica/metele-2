@@ -6,7 +6,7 @@ import { ChartLine, NotebookPen, Wand2, type LucideIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useTranslations } from "@/lib/i18n"
 import { useInspiration } from "@/lib/flowfic/inspiration"
-import { type Story } from "@/lib/flowfic/stories-api"
+import { type Story, type StoryUpdatePatch } from "@/lib/flowfic/stories-api"
 
 import { type Section } from "./dashboard-nav"
 import { InspirationDisplay } from "./inspiration-panel"
@@ -64,7 +64,7 @@ type Props = {
   storiesError: boolean
   onViewStory: (story: Story) => void
   onDeleteStory: (id: number) => Promise<boolean>
-  onUpdateStoryTitle: (id: number, title: string | null) => Promise<boolean>
+  onUpdateStory: (id: number, patch: StoryUpdatePatch) => Promise<boolean>
 }
 
 /**
@@ -88,7 +88,7 @@ export function LandingShowcase({
   storiesError,
   onViewStory,
   onDeleteStory,
-  onUpdateStoryTitle,
+  onUpdateStory,
 }: Props) {
   const t = useTranslations()
   const { state, pick } = useInspiration()
@@ -184,7 +184,7 @@ export function LandingShowcase({
                 onShowAll={() => onShowSection("stories")}
                 onViewStory={onViewStory}
                 onDeleteStory={onDeleteStory}
-                onUpdateTitle={onUpdateStoryTitle}
+                onUpdateStory={onUpdateStory}
               />
             )}
           </div>

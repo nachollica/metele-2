@@ -23,15 +23,29 @@ describe("pathToScreen", () => {
     expect(pathToScreen("/stories/42")).toEqual({ name: "story", id: 42 })
   })
 
+  it("parses a connect invite token", () => {
+    expect(pathToScreen("/connect/aBc123_-XYZ")).toEqual({
+      name: "connect",
+      token: "aBc123_-XYZ",
+    })
+  })
+
   it("tolerates a trailing slash", () => {
     expect(pathToScreen("/stories/")).toEqual({ name: "section", section: "stories" })
     expect(pathToScreen("/stories/42/")).toEqual({ name: "story", id: 42 })
+    expect(pathToScreen("/connect/abc123/")).toEqual({ name: "connect", token: "abc123" })
   })
 
-  it("maps unknown paths (incl. non-numeric story ids) to not-found", () => {
+  it("maps unknown paths (incl. non-numeric story ids and a dotted invite token) to not-found", () => {
     expect(pathToScreen("/nope")).toEqual({ name: "notfound" })
     expect(pathToScreen("/stories/abc")).toEqual({ name: "notfound" })
     expect(pathToScreen("/stories/42/extra")).toEqual({ name: "notfound" })
+    // A token can never actually contain a dot (`secrets.token_urlsafe`
+    // output is URL-safe base64) — this just documents that the regex would
+    // reject one if it somehow did, rather than accidentally matching a
+    // dotted, non-app path.
+    expect(pathToScreen("/connect/abc.123")).toEqual({ name: "notfound" })
+    expect(pathToScreen("/connect/")).toEqual({ name: "notfound" })
   })
 })
 
@@ -43,6 +57,7 @@ describe("screenToPath", () => {
     expect(screenToPath({ name: "section", section: "stories" })).toBe("/stories")
     expect(screenToPath({ name: "section", section: "progress" })).toBe("/progress")
     expect(screenToPath({ name: "story", id: 7 })).toBe("/stories/7")
+    expect(screenToPath({ name: "connect", token: "abc123" })).toBe("/connect/abc123")
   })
 
   it("returns null for the pathless not-found screen", () => {
@@ -52,7 +67,15 @@ describe("screenToPath", () => {
 
 describe("round-trip", () => {
   it("path -> screen -> path is stable for addressable paths", () => {
-    for (const path of ["/", "/new", "/profile", "/stories", "/progress", "/stories/13"]) {
+    for (const path of [
+      "/",
+      "/new",
+      "/profile",
+      "/stories",
+      "/progress",
+      "/stories/13",
+      "/connect/abc123",
+    ]) {
       const screen = pathToScreen(path) as Screen
       expect(screenToPath(screen)).toBe(path)
     }

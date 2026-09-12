@@ -173,6 +173,67 @@ export const en = {
     customPresetRenameFailed: "Couldn't rename that custom mode.",
   },
 
+  // Profile screen's connections card: the caller's own invite link (create /
+  // regenerate / disable, plus copy) and the resulting connections list. There
+  // is no user search anywhere — a link generated here and shared out-of-band
+  // is the only way to connect with someone.
+  connections: {
+    title: "Connections",
+    description:
+      "Generate a link to connect with other players. Anyone who opens it can connect with you, so only share it with people you trust.",
+    inviteLabel: "Your invite link",
+    createInvite: "Create invite link",
+    creatingInvite: "Creating…",
+    regenerateInvite: "Regenerate",
+    regeneratingInvite: "Regenerating…",
+    createFailed: "Couldn't create the invite link.",
+    regenerateFailed: "Couldn't regenerate the invite link.",
+    copyLink: "Copy link",
+    linkCopied: "Copied.",
+    copyFailed: "Couldn't copy the link.",
+    disableInvite: "Disable",
+    disableConfirmTitle: "Disable your invite link?",
+    disableConfirmDescription:
+      "Anyone holding the current link will no longer be able to connect with you through it. You can create a new one anytime.",
+    disableConfirm: "Disable",
+    disableCancel: "Cancel",
+    disableFailed: "Couldn't disable the invite link.",
+    connectionsTitle: "Your connections",
+    connectionsCount: "{count} connections",
+    emptyConnections: "You have no connections yet. Share your invite link to connect with others.",
+    loadFailed: "Couldn't load your connections.",
+    removeConnection: "Remove",
+    removeConnectionConfirmTitle: "Remove this connection?",
+    removeConnectionConfirmDescription:
+      "You will no longer be connected to each other. This doesn't notify them.",
+    removeConnectionConfirm: "Remove",
+    removeConnectionCancel: "Cancel",
+    removeConnectionFailed: "Couldn't remove that connection.",
+  },
+
+  // The /connect/:token screen reached from someone else's invite link.
+  // Mirrors the anonymous-save sign-in bridge (see pending-story.ts): the
+  // token survives a full-page Auth0 redirect via pending-invite.ts, so a
+  // visitor without an account lands right back here after signing up.
+  connect: {
+    title: "Connect",
+    invitedBy: "{name} invited you to connect on Flowfic.",
+    signInTitle: "Connect on Flowfic",
+    signInDescription: "Sign in or create an account to connect with {name}.",
+    signInToConnect: "Sign in to connect",
+    connectWith: "Connect with {name}",
+    connecting: "Connecting…",
+    connectFailed: "Couldn't connect. Try again.",
+    retry: "Try again",
+    connectedWith: "You're now connected with {name}.",
+    goToConnections: "Go to your connections",
+    backHome: "Back to home",
+    invalidTitle: "This invite link isn't valid",
+    invalidBody: "It may have expired or been disabled. Ask whoever shared it for a new one.",
+    ownLinkTitle: "This is your own invite link",
+    ownLinkBody: "Share it with someone else to connect with them.",
+  },
+
   results: {
     title: "Session ended",
     reasonIdle: "You stopped typing for too long.",
@@ -221,6 +282,18 @@ export const en = {
     sortNewest: "Newest",
     sortOldest: "Oldest",
     noResults: "No stories match your search.",
+    // Privacy control on a story row: an icon button (named after the
+    // current level) opens a menu of the three levels, each with its own
+    // icon, label and one-line explanation.
+    privacyButtonLabel: "Visibility: {level}",
+    privacyMenuLabel: "Change visibility",
+    privacyPrivate: "Private",
+    privacyPrivateDescription: "Only you can see this story.",
+    privacyConnections: "Connections",
+    privacyConnectionsDescription: "Visible to your connections.",
+    privacyPublic: "Public",
+    privacyPublicDescription: "Visible to any signed-in player.",
+    privacyUpdateFailed: "Couldn't update the story's visibility.",
   },
 
   prefs: {

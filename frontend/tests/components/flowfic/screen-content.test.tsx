@@ -47,6 +47,22 @@ vi.mock("@/components/flowfic/gamification-context", () => ({
   GamificationProvider: ({ children }: { children: React.ReactNode }) => children,
 }))
 
+// ConnectionsPanel (rendered alongside ProfilePanel on the profile screen)
+// fetches its own data through this hook; the router's job is only to pick a
+// screen, so an inert, already-loaded value is enough.
+vi.mock("@/lib/flowfic/use-connections", () => ({
+  useConnections: () => ({
+    inviteToken: null,
+    inviteLoading: false,
+    inviteBusy: false,
+    connections: [],
+    error: false,
+    createOrRegenerate: vi.fn(),
+    revoke: vi.fn(),
+    remove: vi.fn(),
+  }),
+}))
+
 const STORY: Story = {
   id: 7,
   title: "A quiet road",
@@ -81,9 +97,10 @@ const baseProps: Props = {
   onShowSection: () => {},
   onViewStory: () => {},
   onDeleteStory: async () => true,
-  onUpdateStoryTitle: async () => true,
+  onUpdateStory: async () => true,
   onBackHome: () => {},
   onBackToStories: () => {},
+  onOpenProfile: () => {},
 }
 
 function renderScreen(props: Partial<Props> = {}) {
@@ -106,9 +123,10 @@ describe("ScreenContent", () => {
     expect(screen.getByText(/no stories yet/i)).toBeInTheDocument()
   })
 
-  it("renders the profile screen", () => {
+  it("renders the profile screen with its connections card", () => {
     renderScreen({ screen: { name: "profile" } })
     expect(screen.getByRole("region", { name: "Your profile" })).toBeInTheDocument()
+    expect(screen.getByRole("heading", { name: "Connections" })).toBeInTheDocument()
   })
 
   it("waits on a spinner while the story behind a /stories/:id is still loading", () => {

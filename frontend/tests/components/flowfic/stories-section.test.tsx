@@ -43,6 +43,7 @@ function story(id: number): Story {
     lang: "en",
     createdAt: new Date().toISOString(),
     userId: baseUser.id,
+    privacy: "private",
     settings: {},
     stats: { words: 10 },
   }
@@ -57,7 +58,7 @@ function renderPreview(stories: Story[] | null) {
       error={false}
       onViewStory={vi.fn()}
       onDeleteStory={vi.fn().mockResolvedValue(true)}
-      onUpdateTitle={vi.fn().mockResolvedValue(true)}
+      onUpdateStory={vi.fn().mockResolvedValue(true)}
     />,
   )
 }

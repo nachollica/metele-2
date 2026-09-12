@@ -14,7 +14,13 @@ from sqlmodel import desc, func, select
 
 from app.db_models import Story
 from app.dependencies import CurrentUser, DbSession
-from app.models import StorySettings, StorySettingsStrict, StoryStats, StoryStatsStrict
+from app.models import (
+    StoryPrivacy,
+    StorySettings,
+    StorySettingsStrict,
+    StoryStats,
+    StoryStatsStrict,
+)
 
 router = APIRouter(prefix="/stories", tags=["stories"])
 
@@ -31,6 +37,7 @@ class StoryRead(BaseModel):
     lang: str
     created_at: datetime
     user_id: str | None
+    privacy: StoryPrivacy
     settings: StorySettings
     stats: StoryStats
 
@@ -47,10 +54,18 @@ class StoryCreate(BaseModel):
 
 class StoryUpdate(BaseModel):
     """
-    Editable fields on a saved story. Only the title can change — the text,
-    settings and stats are immutable session artifacts."""
+    Editable fields on a saved story: the title and its privacy level — the
+    text, settings and stats are immutable session artifacts.
+
+    Both fields are optional and independent: a request touching only one
+    must leave the other untouched. ``title`` distinguishes "not sent" from
+    "sent as null" (the latter clears it back to the client-derived title),
+    so the route reads ``model_dump(exclude_unset=True)`` rather than the
+    field's value.
+    """
 
     title: str | None = Field(default=None, max_length=200)
+    privacy: StoryPrivacy | None = Field(default=None)
 
     model_config = {"extra": "forbid"}
 
@@ -173,7 +188,7 @@ def create_story(
 @router.patch(
     "/{story_id}",
     response_model=StoryRead,
-    summary="Update a story's title (the only editable field).",
+    summary="Update a story's title and/or privacy level.",
 )
 def update_story(
     story_id: int,
@@ -187,10 +202,18 @@ def update_story(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Story {story_id} not found.",
         )
-    # Normalize a blank title to NULL so the client falls back to the derived
-    # title instead of persisting an empty string.
-    title = payload.title.strip() if payload.title is not None else None
-    row.title = title or None
+    # `exclude_unset` distinguishes "the client didn't send this field" from
+    # "the client sent null" — a title-only PATCH must not touch privacy, and
+    # a privacy-only PATCH (title omitted, so defaults to None) must not wipe
+    # an existing title.
+    data = payload.model_dump(exclude_unset=True)
+    if "title" in data:
+        # Normalize a blank title to NULL so the client falls back to the
+        # derived title instead of persisting an empty string.
+        title = payload.title.strip() if payload.title is not None else None
+        row.title = title or None
+    if payload.privacy is not None:
+        row.privacy = payload.privacy
     db.add(row)
     db.commit()
     db.refresh(row)

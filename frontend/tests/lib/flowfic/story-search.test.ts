@@ -11,6 +11,7 @@ function story(id: number, over: Partial<Story> = {}): Story {
     lang: "en",
     createdAt: new Date(2026, 0, id).toISOString(), // Jan {id}, 2026 (local)
     userId: "u",
+    privacy: "private",
     settings: {},
     stats: {},
     ...over,

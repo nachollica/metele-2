@@ -178,6 +178,15 @@ def test_create_rejects_unknown_settings_key(auth_client) -> None:
     assert res.status_code == 422
 
 
+def test_create_defaults_privacy_to_private(auth_client) -> None:
+    res = auth_client.post(
+        URL,
+        json={"text": "x", "lang": "en", "settings": VALID_SETTINGS, "stats": VALID_STATS},
+    )
+    assert res.status_code == 201, res.text
+    assert res.json()["privacy"] == "private"
+
+
 # ---- Update --------------------------------------------------------------
 
 
@@ -220,10 +229,53 @@ def test_update_rejects_overlong_title(auth_client, db_engine, test_user) -> Non
 
 
 def test_update_rejects_unknown_field(auth_client, db_engine, test_user) -> None:
-    # Strict update: only the title is editable — other keys are a 422.
+    # Strict update: title/privacy are the only editable fields; other keys
+    # are a 422.
     sid = _seed_story(db_engine, test_user.id)
     res = auth_client.patch(f"{URL}/{sid}", json={"text": "hacked"})
     assert res.status_code == 422
+
+
+def test_seeded_story_defaults_to_private(auth_client, db_engine, test_user) -> None:
+    sid = _seed_story(db_engine, test_user.id)
+    res = auth_client.get(f"{URL}/{sid}")
+    assert res.json()["privacy"] == "private"
+
+
+def test_update_sets_privacy(auth_client, db_engine, test_user) -> None:
+    sid = _seed_story(db_engine, test_user.id)
+    res = auth_client.patch(f"{URL}/{sid}", json={"privacy": "public"})
+    assert res.status_code == 200, res.text
+    assert res.json()["privacy"] == "public"
+
+
+def test_update_rejects_unknown_privacy_value(auth_client, db_engine, test_user) -> None:
+    sid = _seed_story(db_engine, test_user.id)
+    res = auth_client.patch(f"{URL}/{sid}", json={"privacy": "bogus"})
+    assert res.status_code == 422
+
+
+def test_update_privacy_only_leaves_title_untouched(auth_client, db_engine, test_user) -> None:
+    # Regression: a privacy-only PATCH must not wipe the title, since the
+    # handler used to write `row.title` unconditionally regardless of
+    # whether the client sent that field at all.
+    sid = _seed_story(db_engine, test_user.id)
+    auth_client.patch(f"{URL}/{sid}", json={"title": "Named"})
+    res = auth_client.patch(f"{URL}/{sid}", json={"privacy": "connections"})
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["title"] == "Named"
+    assert body["privacy"] == "connections"
+
+
+def test_update_title_only_leaves_privacy_untouched(auth_client, db_engine, test_user) -> None:
+    sid = _seed_story(db_engine, test_user.id)
+    auth_client.patch(f"{URL}/{sid}", json={"privacy": "public"})
+    res = auth_client.patch(f"{URL}/{sid}", json={"title": "Renamed"})
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["title"] == "Renamed"
+    assert body["privacy"] == "public"
 
 
 # ---- Count ---------------------------------------------------------------

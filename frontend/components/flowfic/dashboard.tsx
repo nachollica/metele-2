@@ -20,6 +20,7 @@ import { LoginModal } from "@/components/auth/login-modal"
 import { useBackendStatus } from "@/lib/backend"
 import { useTranslations } from "@/lib/i18n"
 import { useInspiration } from "@/lib/flowfic/inspiration"
+import { clearPendingInvite, readPendingInvite } from "@/lib/flowfic/pending-invite"
 import {
   clearPendingStory,
   markPendingStoryIntent,
@@ -74,7 +75,7 @@ export function Dashboard() {
     loadingMore: storiesLoadingMore,
     loadMore: loadMoreStories,
     remove: removeStory,
-    update: updateStoryTitle,
+    update: updateStory,
   } = useStories(engine.storiesRefreshKey)
 
   // Initial screen comes from the URL so a deep link / refresh lands on the
@@ -213,6 +214,13 @@ export function Dashboard() {
   // Only an intent-flagged draft saves itself. A draft the player never asked
   // us to keep is offered by `RecoverStoryModal` instead, so signing in for
   // some unrelated reason days later cannot resurrect forgotten work.
+  //
+  // The same redirect can also be carrying someone back from a connect link
+  // they opened while anonymous (see `pending-invite.ts`). Both bridges are
+  // read in this one effect since both only make sense once, right after auth
+  // settles — but a pending invite wins the navigation: the story still saves
+  // itself either way (nothing about that is lost), it just doesn't also jump
+  // to its own detail screen when a connect screen is waiting to be shown.
   const restorePendingRef = useRef(engine.restorePendingStory)
   useEffect(() => {
     restorePendingRef.current = engine.restorePendingStory
@@ -229,6 +237,13 @@ export function Dashboard() {
     if (authStatus === "loading" || restoredRef.current) return
     restoredRef.current = true
     if (authStatus !== "authenticated") return
+
+    const pendingInviteToken = readPendingInvite()
+    if (pendingInviteToken !== null) {
+      clearPendingInvite()
+      navigate({ name: "connect", token: pendingInviteToken })
+    }
+
     // A sprint already under way means auth was unusually slow; leave the
     // draft alone rather than opening a dialog over a running clock.
     if (engine.gameState !== "idle") return
@@ -240,8 +255,11 @@ export function Dashboard() {
     }
     void restorePendingRef.current().then((story) => {
       // Land on the story itself: the strongest possible statement that
-      // nothing was lost, and it needs no surface of its own.
-      if (story !== null) navigate({ name: "story", id: story.id })
+      // nothing was lost, and it needs no surface of its own. Skipped when a
+      // pending invite already claimed the navigation.
+      if (story !== null && pendingInviteToken === null) {
+        navigate({ name: "story", id: story.id })
+      }
     })
   }, [authStatus, engine.gameState, navigate])
 
@@ -548,9 +566,10 @@ export function Dashboard() {
                 onShowSection={showSection}
                 onViewStory={onViewStory}
                 onDeleteStory={removeStory}
-                onUpdateStoryTitle={updateStoryTitle}
+                onUpdateStory={updateStory}
                   onBackHome={goHome}
                   onBackToStories={() => showSection("stories")}
+                  onOpenProfile={openProfile}
                 />
               </ContentColumn>
             </div>

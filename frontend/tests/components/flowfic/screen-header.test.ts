@@ -51,6 +51,14 @@ describe("screenHeader", () => {
     })
   })
 
+  it("returns home from a connect screen", () => {
+    expect(screenHeader({ name: "connect", token: "abc123" }, t)).toEqual({
+      title: "Connect",
+      backTo: "home",
+      backLabel: "Back to home",
+    })
+  })
+
   it("returns home from an unknown path", () => {
     expect(screenHeader({ name: "notfound" }, t)).toEqual({
       title: "Page not found",

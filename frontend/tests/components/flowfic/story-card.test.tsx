@@ -14,6 +14,7 @@ function makeStory(overrides: Partial<Story> = {}): Story {
     lang: "en",
     createdAt: new Date().toISOString(),
     userId: "u",
+    privacy: "private",
     settings: {},
     stats: { words: 42 },
     ...overrides,
@@ -49,9 +50,9 @@ describe("StoryCard", () => {
   })
 
   it("renames inline through the options menu", async () => {
-    const onUpdateTitle = vi.fn().mockResolvedValue(true)
+    const onUpdateStory = vi.fn().mockResolvedValue(true)
     const user = userEvent.setup()
-    renderWithLocale(<StoryCard story={makeStory()} onUpdateTitle={onUpdateTitle} />)
+    renderWithLocale(<StoryCard story={makeStory()} onUpdateStory={onUpdateStory} />)
 
     await user.click(screen.getByRole("button", { name: "Story options" }))
     await user.click(screen.getByRole("menuitem", { name: /rename/i }))
@@ -60,6 +61,50 @@ describe("StoryCard", () => {
     await user.type(input, "Coastal Nights")
     await user.click(screen.getByRole("button", { name: /save title/i }))
 
-    expect(onUpdateTitle).toHaveBeenCalledWith(3, "Coastal Nights")
+    expect(onUpdateStory).toHaveBeenCalledWith(3, { title: "Coastal Nights" })
+  })
+
+  describe("privacy control", () => {
+    it("hides the privacy control when no update handler is given", () => {
+      renderWithLocale(<StoryCard story={makeStory()} />)
+      expect(
+        screen.queryByRole("button", { name: /visibility/i }),
+      ).not.toBeInTheDocument()
+    })
+
+    it("shows the current privacy level's icon button", () => {
+      renderWithLocale(
+        <StoryCard story={makeStory({ privacy: "connections" })} onUpdateStory={vi.fn()} />,
+      )
+      expect(
+        screen.getByRole("button", { name: "Visibility: Connections" }),
+      ).toBeInTheDocument()
+    })
+
+    it("changes privacy through the menu", async () => {
+      const onUpdateStory = vi.fn().mockResolvedValue(true)
+      const user = userEvent.setup()
+      renderWithLocale(<StoryCard story={makeStory()} onUpdateStory={onUpdateStory} />)
+
+      await user.click(screen.getByRole("button", { name: "Visibility: Private" }))
+      await user.click(screen.getByRole("menuitemradio", { name: /public/i }))
+
+      expect(onUpdateStory).toHaveBeenCalledWith(3, { privacy: "public" })
+    })
+
+    it("shows an inline error and keeps the menu open when the update fails", async () => {
+      const onUpdateStory = vi.fn().mockResolvedValue(false)
+      const user = userEvent.setup()
+      renderWithLocale(<StoryCard story={makeStory()} onUpdateStory={onUpdateStory} />)
+
+      await user.click(screen.getByRole("button", { name: "Visibility: Private" }))
+      await user.click(screen.getByRole("menuitemradio", { name: /public/i }))
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "Couldn't update the story's visibility.",
+      )
+      // The menu is still open — the radio group is still in the document.
+      expect(screen.getByRole("menuitemradio", { name: /public/i })).toBeInTheDocument()
+    })
   })
 })

@@ -24,6 +24,7 @@ function library(): StoryWire[] {
     lang: "en",
     created_at: new Date(Date.now() - i * 3_600_000).toISOString(),
     user_id: "dev|e2e",
+    privacy: "private",
     settings: {},
     stats: { words: 100 + i },
   }))

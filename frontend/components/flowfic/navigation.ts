@@ -20,6 +20,7 @@ export type Screen =
   | { name: "section"; section: Section }
   | { name: "profile" }
   | { name: "story"; id: number }
+  | { name: "connect"; token: string }
   | { name: "notfound" }
 
 const SECTION_PATH: Record<Section, string> = {
@@ -42,6 +43,8 @@ export function screenToPath(screen: Screen): string | null {
       return SECTION_PATH[screen.section]
     case "story":
       return `/stories/${screen.id}`
+    case "connect":
+      return `/connect/${screen.token}`
     case "notfound":
       return null
   }
@@ -68,5 +71,10 @@ export function pathToScreen(pathname: string): Screen {
   }
   const storyMatch = /^\/stories\/(\d+)$/.exec(path)
   if (storyMatch) return { name: "story", id: Number(storyMatch[1]) }
+  // Tokens are `secrets.token_urlsafe` output (backend) — URL-safe base64
+  // (`[A-Za-z0-9_-]`), so this can never contain a `.` and stays clear of
+  // Caddy's SPA-fallback exclusion for dotted paths (see prod/conf/Caddyfile).
+  const connectMatch = /^\/connect\/([A-Za-z0-9_-]+)$/.exec(path)
+  if (connectMatch) return { name: "connect", token: connectMatch[1] }
   return { name: "notfound" }
 }

@@ -49,6 +49,8 @@ export function screenHeader(
       }
     case "profile":
       return { title: t.profile.title, backTo: "home", backLabel: t.nav.backToHome }
+    case "connect":
+      return { title: t.connect.title, backTo: "home", backLabel: t.nav.backToHome }
     // Both a story and a not-found reached from one return to the stories list.
     case "story":
       return {

@@ -8,6 +8,7 @@ import {
   fetchStories,
   updateStory,
   type Story,
+  type StoryUpdatePatch,
 } from "@/lib/flowfic/stories-api"
 
 // Pull this many stories at a time (the backend's max). My Stories filters and
@@ -43,9 +44,9 @@ export type UseStories = {
   loadMore: () => Promise<void>
   /** Optimistically remove a story; resolves false if the delete failed. */
   remove: (id: number) => Promise<boolean>
-  /** Rename a story (title only; null clears to the derived title). Updates
-   *  the list in place; resolves false if the update failed. */
-  update: (id: number, title: string | null) => Promise<boolean>
+  /** Update a story's title and/or privacy level. Updates the list in place;
+   *  resolves false if the update failed. */
+  update: (id: number, patch: StoryUpdatePatch) => Promise<boolean>
 }
 
 /**
@@ -167,10 +168,10 @@ export function useStories(refreshKey = 0): UseStories {
   )
 
   const update = useCallback(
-    async (id: number, title: string | null): Promise<boolean> => {
+    async (id: number, patch: StoryUpdatePatch): Promise<boolean> => {
       const token = await getAccessToken()
       if (token === null) return false
-      const updated = await updateStory(token, id, title)
+      const updated = await updateStory(token, id, patch)
       if (updated === null) return false
       setStories((prev) =>
         prev === null ? prev : prev.map((s) => (s.id === id ? updated : s)),

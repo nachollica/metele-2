@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, type KeyboardEvent } from "react"
-import { Check, MoreHorizontal, Pencil, Trash2, X } from "lucide-react"
+import { Check, Globe, Lock, MoreHorizontal, Pencil, Trash2, Users, X } from "lucide-react"
+import type { LucideIcon } from "lucide-react"
 
 import {
   AlertDialog,
@@ -18,15 +19,17 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 
 import { cn } from "@/lib/utils"
-import { useLocale, useTranslations } from "@/lib/i18n"
+import { useLocale, useTranslations, type Translations } from "@/lib/i18n"
 import { formatStoryDate } from "@/lib/flowfic/format"
 import { deriveTitle, formatCount, storyVisual } from "@/lib/flowfic/gamification"
-import type { Story } from "@/lib/flowfic/stories-api"
+import type { Story, StoryPrivacy, StoryUpdatePatch } from "@/lib/flowfic/stories-api"
 import { FIELD_LABEL, HINT, ITEM_TITLE, MICRO } from "@/lib/text-styles"
 
 import { IconChip, panelVariants } from "./dashboard-widgets"
@@ -36,12 +39,36 @@ function readNumber(obj: Record<string, unknown>, key: string): number {
   return typeof v === "number" && Number.isFinite(v) ? v : 0
 }
 
+const PRIVACY_LEVELS: readonly StoryPrivacy[] = ["private", "connections", "public"]
+
+const PRIVACY_ICONS: Record<StoryPrivacy, LucideIcon> = {
+  private: Lock,
+  connections: Users,
+  public: Globe,
+}
+
+function privacyLabel(t: Translations, level: StoryPrivacy): string {
+  return {
+    private: t.sidebar.privacyPrivate,
+    connections: t.sidebar.privacyConnections,
+    public: t.sidebar.privacyPublic,
+  }[level]
+}
+
+function privacyDescription(t: Translations, level: StoryPrivacy): string {
+  return {
+    private: t.sidebar.privacyPrivateDescription,
+    connections: t.sidebar.privacyConnectionsDescription,
+    public: t.sidebar.privacyPublicDescription,
+  }[level]
+}
+
 type Props = {
   story: Story
   onSelect?: (story: Story) => void
   onDelete?: (id: number) => Promise<boolean>
-  /** Rename handler (title only; null clears back to the derived title). */
-  onUpdateTitle?: (id: number, title: string | null) => Promise<boolean>
+  /** Rename and/or privacy-level handler. */
+  onUpdateStory?: (id: number, patch: StoryUpdatePatch) => Promise<boolean>
   /** Stretch to the height of the parent row (the landing's fixed-height
    *  preview panel divides its space into equal rows). */
   fill?: boolean
@@ -49,10 +76,11 @@ type Props = {
 
 /**
  * One story as a full-width row: cover icon, title, a two-line text preview,
- * and a words + date meta line. The overflow menu offers Rename (inline
- * editing) and Delete when the respective handlers are provided.
+ * and a words + date meta line. A privacy control and the overflow menu
+ * (Rename, Delete) sit in the top-right corner when their handlers are
+ * provided.
  */
-export function StoryCard({ story, onSelect, onDelete, onUpdateTitle, fill = false }: Props) {
+export function StoryCard({ story, onSelect, onDelete, onUpdateStory, fill = false }: Props) {
   const t = useTranslations()
   const locale = useLocale()
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -63,7 +91,12 @@ export function StoryCard({ story, onSelect, onDelete, onUpdateTitle, fill = fal
   const [draft, setDraft] = useState("")
   const [renameBusy, setRenameBusy] = useState(false)
 
+  const [privacyMenuOpen, setPrivacyMenuOpen] = useState(false)
+  const [privacyBusy, setPrivacyBusy] = useState(false)
+  const [privacyError, setPrivacyError] = useState(false)
+
   const { icon, tone } = storyVisual(story.id)
+  const PrivacyIcon = PRIVACY_ICONS[story.privacy]
   const title = story.title?.trim() || deriveTitle(story.text, t.dashboard.untitledStory)
   const words = readNumber(story.stats, "words")
   const meta = `${formatCount(words, locale)} ${t.dashboard.words} · ${formatStoryDate(
@@ -72,7 +105,8 @@ export function StoryCard({ story, onSelect, onDelete, onUpdateTitle, fill = fal
     t.dashboard.today,
   )}`
 
-  const hasMenu = Boolean(onDelete || onUpdateTitle)
+  const hasMenu = Boolean(onDelete || onUpdateStory)
+  const showPrivacyControl = Boolean(onUpdateStory) && !renaming
 
   async function handleConfirm() {
     if (!onDelete) return
@@ -92,11 +126,21 @@ export function StoryCard({ story, onSelect, onDelete, onUpdateTitle, fill = fal
     setRenaming(true)
   }
 
+  async function handlePrivacyChange(next: StoryPrivacy) {
+    if (!onUpdateStory || next === story.privacy) return
+    setPrivacyBusy(true)
+    setPrivacyError(false)
+    const ok = await onUpdateStory(story.id, { privacy: next })
+    setPrivacyBusy(false)
+    if (ok) setPrivacyMenuOpen(false)
+    else setPrivacyError(true)
+  }
+
   async function submitRename() {
-    if (!onUpdateTitle) return
+    if (!onUpdateStory) return
     const next = draft.trim()
     setRenameBusy(true)
-    const ok = await onUpdateTitle(story.id, next.length > 0 ? next : null)
+    const ok = await onUpdateStory(story.id, { title: next.length > 0 ? next : null })
     setRenameBusy(false)
     if (ok) setRenaming(false)
   }
@@ -168,7 +212,7 @@ export function StoryCard({ story, onSelect, onDelete, onUpdateTitle, fill = fal
             )}
             aria-label={`${title} — ${meta}`}
           >
-            <div className={cn(ITEM_TITLE, "truncate pr-8")}>{title}</div>
+            <div className={cn(ITEM_TITLE, "truncate pr-16")}>{title}</div>
             {/* Filling a fixed row leaves less vertical room than a naturally
                 sized card, so the preview drops to a single line there. */}
             <p
@@ -185,46 +229,105 @@ export function StoryCard({ story, onSelect, onDelete, onUpdateTitle, fill = fal
         )}
       </div>
 
-      {hasMenu && !renaming ? (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label={t.sidebar.rowMenuLabel}
-              className="absolute top-2 right-2 size-7"
+      {showPrivacyControl || (hasMenu && !renaming) ? (
+        <div className="absolute top-2 right-2 flex items-center gap-1">
+          {showPrivacyControl ? (
+            <DropdownMenu
+              open={privacyMenuOpen}
+              onOpenChange={(open) => {
+                if (privacyBusy) return
+                setPrivacyMenuOpen(open)
+                if (open) setPrivacyError(false)
+              }}
             >
-              <MoreHorizontal className="size-4" aria-hidden />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-40">
-            {onUpdateTitle ? (
-              <DropdownMenuItem
-                onSelect={(e) => {
-                  e.preventDefault()
-                  startRename()
-                }}
-              >
-                <Pencil className="size-4" aria-hidden />
-                {t.sidebar.renameStory}
-              </DropdownMenuItem>
-            ) : null}
-            {onDelete ? (
-              <DropdownMenuItem
-                variant="destructive"
-                onSelect={(e) => {
-                  e.preventDefault()
-                  setError(false)
-                  setConfirmOpen(true)
-                }}
-              >
-                <Trash2 className="size-4" aria-hidden />
-                {t.sidebar.deleteStory}
-              </DropdownMenuItem>
-            ) : null}
-          </DropdownMenuContent>
-        </DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label={t.sidebar.privacyButtonLabel.replace(
+                    "{level}",
+                    privacyLabel(t, story.privacy),
+                  )}
+                  className="size-7"
+                >
+                  <PrivacyIcon className="size-4" aria-hidden />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuRadioGroup
+                  value={story.privacy}
+                  onValueChange={(value) => void handlePrivacyChange(value as StoryPrivacy)}
+                >
+                  {PRIVACY_LEVELS.map((level) => {
+                    const LevelIcon = PRIVACY_ICONS[level]
+                    return (
+                      <DropdownMenuRadioItem
+                        key={level}
+                        value={level}
+                        disabled={privacyBusy}
+                        onSelect={(e) => e.preventDefault()}
+                      >
+                        <LevelIcon className="size-4" aria-hidden />
+                        <span className="flex flex-col">
+                          <span>{privacyLabel(t, level)}</span>
+                          <span className={MICRO}>{privacyDescription(t, level)}</span>
+                        </span>
+                      </DropdownMenuRadioItem>
+                    )
+                  })}
+                </DropdownMenuRadioGroup>
+                {privacyError ? (
+                  <p className="text-destructive px-2 py-1.5 text-xs" role="alert">
+                    {t.sidebar.privacyUpdateFailed}
+                  </p>
+                ) : null}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
+
+          {hasMenu && !renaming ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label={t.sidebar.rowMenuLabel}
+                  className="size-7"
+                >
+                  <MoreHorizontal className="size-4" aria-hidden />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-40">
+                {onUpdateStory ? (
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault()
+                      startRename()
+                    }}
+                  >
+                    <Pencil className="size-4" aria-hidden />
+                    {t.sidebar.renameStory}
+                  </DropdownMenuItem>
+                ) : null}
+                {onDelete ? (
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onSelect={(e) => {
+                      e.preventDefault()
+                      setError(false)
+                      setConfirmOpen(true)
+                    }}
+                  >
+                    <Trash2 className="size-4" aria-hidden />
+                    {t.sidebar.deleteStory}
+                  </DropdownMenuItem>
+                ) : null}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
+        </div>
       ) : null}
 
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>

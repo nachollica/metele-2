@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from enum import Enum
 from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel, Field
@@ -13,6 +14,22 @@ if TYPE_CHECKING:
 # screen's mode grid, which the "Custom modes" toggle flips over to. Both
 # backend and tests reference this constant so the limit stays single-sourced.
 MAX_CUSTOM_PRESETS = 4
+
+
+class StoryPrivacy(str, Enum):
+    """
+    Who can read a story besides its owner.
+
+    Stored as plain text (see ``app.enum_field.EnumString``) rather than a
+    native Postgres enum — adding a value here would otherwise need an
+    ``ALTER TYPE`` migration the additive-column shim can't express.
+    ``PUBLIC`` still means "any signed-in user", never an anonymous caller —
+    there is no unauthenticated story-read route.
+    """
+
+    PRIVATE = "private"
+    CONNECTIONS = "connections"
+    PUBLIC = "public"
 
 
 class PresetSettings(BaseModel):

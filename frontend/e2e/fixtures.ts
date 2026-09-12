@@ -37,6 +37,7 @@ export type StoryWire = {
   lang: string
   created_at: string
   user_id: string | null
+  privacy: "private" | "connections" | "public"
   settings: Record<string, unknown>
   stats: Record<string, unknown>
 }
@@ -141,6 +142,34 @@ export async function readStoredDraft(page: Page): Promise<unknown | null> {
   }, PENDING_STORY_KEY)
 }
 
+// Key the frontend stores a connect-link token under across a sign-in
+// redirect, mirroring `lib/flowfic/pending-invite.ts`. Duplicated here for the
+// same reason as `PENDING_STORY_KEY`: if the key moves, these specs should
+// fail rather than silently stop covering the restore path.
+export const PENDING_INVITE_KEY = "flowfic:pending-invite"
+
+// Plant a pending invite token, as if a connect-screen sign-in had just
+// written it down ahead of the (real) Auth0 redirect. Must be called BEFORE
+// `page.goto`.
+export async function seedPendingInvite(page: Page, token: string): Promise<void> {
+  await page.addInitScript(
+    (args) => {
+      const a = args as { key: string; value: string }
+      window.localStorage.setItem(a.key, a.value)
+    },
+    { key: PENDING_INVITE_KEY, value: JSON.stringify({ token, savedAt: Date.now() }) },
+  )
+}
+
+// A user as the `/connections` endpoints expose them — camelCase on the wire
+// already (see `PublicUser` in `backend/app/routes/connections.py`), unlike
+// `StoryWire`, so no snake_case mapping is needed here.
+export type PublicUserWire = {
+  id: string
+  name: string
+  avatarUrl: string | null
+}
+
 // Handle returned by `mockBackend` so a test can assert on what the frontend
 // sent and control what subsequent reads return.
 export type BackendMock = {
@@ -148,6 +177,10 @@ export type BackendMock = {
   postedStories: Array<Record<string, unknown>>
   /** Current server-side story list (newest first), as wire objects. */
   stories: StoryWire[]
+  /** The dev user's own invite link, or null when disabled. */
+  ownInviteToken: string | null
+  /** The dev user's current connections. */
+  connections: Array<{ user: PublicUserWire; connectedAt: string }>
 }
 
 // Settings-shape contract the real backend enforces on POST /stories (mirrors
@@ -198,12 +231,25 @@ export async function mockBackend(
     // When false, GET /ping is aborted so the app sees the backend as
     // unreachable (the header auth control then hides). Defaults to reachable.
     pingReachable?: boolean
+    // The dev user's own invite link at boot, or null (the default) for "never
+    // created".
+    initialOwnInviteToken?: string | null
+    // The dev user's connections at boot.
+    initialConnections?: Array<{ user: PublicUserWire; connectedAt: string }>
+    // Invite links belonging to OTHER users, keyed by token — this is how a
+    // spec exercises `/connect/:token` for a link the dev user didn't create.
+    // Accepting one of these adds its owner to `handle.connections`.
+    otherInvites?: Record<string, PublicUserWire>
   } = {},
 ): Promise<BackendMock> {
   const handle: BackendMock = {
     postedStories: [],
     stories: [...(options.initialStories ?? [])],
+    ownInviteToken: options.initialOwnInviteToken ?? null,
+    connections: [...(options.initialConnections ?? [])],
   }
+  const otherInvites = { ...(options.otherInvites ?? {}) }
+  let inviteCounter = 0
 
   // Stub the inspiration catalog and its film-grab images so the suite never
   // reaches the public internet. A single deterministic film keeps the shared
@@ -332,11 +378,98 @@ export async function mockBackend(
         lang: String(body.lang ?? "en"),
         created_at: new Date().toISOString(),
         user_id: DEV_USER.id,
+        privacy: "private",
         settings: (body.settings as Record<string, unknown>) ?? {},
         stats: (body.stats as Record<string, unknown>) ?? {},
       }
       handle.stories.unshift(created)
       await route.fulfill({ status: 201, json: created })
+      return
+    }
+
+    // Update a story's title and/or privacy (`exclude_unset` semantics, like
+    // the real backend — a key absent from the body is left untouched).
+    const storyIdMatch = /^\/stories\/(\d+)$/.exec(path)
+    if (storyIdMatch && method === "PATCH") {
+      const id = Number(storyIdMatch[1])
+      const story = handle.stories.find((s) => s.id === id)
+      if (!story) {
+        await route.fulfill({ status: 404, json: { detail: "not found" } })
+        return
+      }
+      const body = (request.postDataJSON() ?? {}) as Record<string, unknown>
+      if ("title" in body) story.title = (body.title as string | null) ?? null
+      if (typeof body.privacy === "string") {
+        story.privacy = body.privacy as StoryWire["privacy"]
+      }
+      await route.fulfill({ json: story })
+      return
+    }
+
+    // ---- Connections: the dev user's own invite link ----------------------
+
+    if (path === "/connections/invite" && method === "GET") {
+      await route.fulfill({ json: { token: handle.ownInviteToken } })
+      return
+    }
+    if (path === "/connections/invite" && method === "POST") {
+      inviteCounter += 1
+      handle.ownInviteToken = `mock-invite-token-${inviteCounter}`
+      await route.fulfill({ json: { token: handle.ownInviteToken } })
+      return
+    }
+    if (path === "/connections/invite" && method === "DELETE") {
+      handle.ownInviteToken = null
+      await route.fulfill({ status: 204 })
+      return
+    }
+
+    // ---- Connections: redeeming someone else's link ------------------------
+
+    const previewMatch = /^\/connections\/invite\/([^/]+)$/.exec(path)
+    if (previewMatch && method === "GET") {
+      const inviteToken = previewMatch[1]
+      const inviter =
+        inviteToken === handle.ownInviteToken ? DEV_USER : otherInvites[inviteToken]
+      if (!inviter) {
+        await route.fulfill({ status: 404, json: { detail: "not found" } })
+        return
+      }
+      await route.fulfill({ json: { inviter } })
+      return
+    }
+
+    const acceptMatch = /^\/connections\/invite\/([^/]+)\/accept$/.exec(path)
+    if (acceptMatch && method === "POST") {
+      const inviteToken = acceptMatch[1]
+      if (inviteToken === handle.ownInviteToken) {
+        await route.fulfill({ status: 409, json: { detail: "own link" } })
+        return
+      }
+      const inviter = otherInvites[inviteToken]
+      if (!inviter) {
+        await route.fulfill({ status: 404, json: { detail: "not found" } })
+        return
+      }
+      const connectedAt = new Date().toISOString()
+      if (!handle.connections.some((c) => c.user.id === inviter.id)) {
+        handle.connections.push({ user: inviter, connectedAt })
+      }
+      await route.fulfill({ json: { user: inviter, connectedAt } })
+      return
+    }
+
+    // ---- Connections: the dev user's connections list ----------------------
+
+    if (path === "/connections" && method === "GET") {
+      await route.fulfill({ json: handle.connections })
+      return
+    }
+    const removeMatch = /^\/connections\/([^/]+)$/.exec(path)
+    if (removeMatch && method === "DELETE") {
+      const otherId = removeMatch[1]
+      handle.connections = handle.connections.filter((c) => c.user.id !== otherId)
+      await route.fulfill({ status: 204 })
       return
     }
 

@@ -11,6 +11,7 @@ Browser tests for the journeys that the Vitest unit/component suite can't cover
 | `authenticated-save` | The signed-in save path: the POST contract, a player-supplied title, and the fallback to a derived one. |
 | `stories` | My stories: the library count heading, and paging past the first 100 with "Load more". |
 | `navigation` | History-API routing: `/new`, deep links, refresh, Back/Forward, mid-game Back, and logout. |
+| `connections` | Story privacy from My stories, the profile's connections card (invite create/regenerate/disable, list/remove), and the `/connect/:token` screen — invalid link, own link, connecting while authenticated, and the anonymous sign-in bridge. |
 | `i18n` | Locale detection from `navigator.language`. |
 | `backend-unreachable` / `dev-login` | The auth control's backend-driven visibility, and the dev-user backdoor. |
 
@@ -34,7 +35,11 @@ Chromium is the only configured browser. Install it once with
   also *enforces* the settings contract, rejecting a drifted payload with a 422
   exactly as the backend would — so a frontend/backend settings mismatch fails
   the save journey here instead of passing silently. Keep its key list in sync
-  with `GameSettings` and `StorySettingsStrict`.
+  with `GameSettings` and `StorySettingsStrict`. It also fakes the whole
+  `/connections/*` surface (the dev user's own invite link, their connections
+  list, and any number of other users' invite links passed as `otherInvites`)
+  so `connections.spec.ts` can exercise the connect screen without a second
+  real account.
 - No real Auth0. `playwright.config.ts` starts the dev server with empty
   `NEXT_PUBLIC_AUTH0_*` vars, which forces the app's "unconfigured" auth shell
   (always anonymous, no external calls). Authenticated journeys use the dev-user

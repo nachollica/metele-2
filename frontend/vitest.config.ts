@@ -40,13 +40,15 @@ export default defineConfig({
       // ~58% is enough — it is the floor we have, and the point is that it
       // cannot quietly erode. Before this the report was printed and ignored.
       //
-      // Last raised when the game engine gained its first tests (the pending
-      // story / save path), which took the whole report up roughly ten points.
+      // Last raised when the user-connections feature added its own API
+      // clients, hooks, and screens (connections-api, use-connections,
+      // pending-invite, connect-screen, connections-panel) alongside their
+      // tests.
       thresholds: {
-        statements: 57,
-        branches: 53,
-        functions: 56,
-        lines: 60,
+        statements: 61,
+        branches: 56,
+        functions: 61,
+        lines: 64,
       },
     },
   },

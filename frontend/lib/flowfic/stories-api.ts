@@ -7,6 +7,14 @@
 import { apiFetch } from "@/lib/auth/client"
 import type { GameResult, GameSettings } from "@/lib/flowfic/types"
 
+/**
+ * Who besides the owner can read a story. Mirrors the backend's
+ * `StoryPrivacy` enum (`app/models.py`) — kept as a plain string union here
+ * rather than a mapped enum, the same way the backend stores it as text
+ * rather than a native Postgres enum.
+ */
+export type StoryPrivacy = "private" | "connections" | "public"
+
 export type Story = {
   id: number
   /** Optional display title; derived from the text on the client when null. */
@@ -16,6 +24,7 @@ export type Story = {
   /** ISO-8601 timestamp; `Date` after `new Date(s.createdAt)`. */
   createdAt: string
   userId: string | null
+  privacy: StoryPrivacy
   settings: Record<string, unknown>
   stats: Record<string, unknown>
 }
@@ -34,6 +43,7 @@ type StoryWire = {
   lang: string
   created_at: string
   user_id: string | null
+  privacy: StoryPrivacy
   settings: Record<string, unknown>
   stats: Record<string, unknown>
 }
@@ -46,6 +56,7 @@ function fromWire(s: StoryWire): Story {
     lang: s.lang,
     createdAt: s.created_at,
     userId: s.user_id,
+    privacy: s.privacy,
     settings: s.settings,
     stats: s.stats,
   }
@@ -116,19 +127,30 @@ export async function createStory(
 }
 
 /**
- * Update a story's title (the only editable field). Pass null to clear it back
- * to the client-derived title. Returns the updated story, or null on failure.
+ * Editable fields on a saved story. Both are optional and independent — a
+ * patch touching only one must leave the other untouched (the backend reads
+ * this with `exclude_unset`, so an omitted key is never sent as null). Pass
+ * `title: null` to clear it back to the client-derived title.
+ */
+export type StoryUpdatePatch = {
+  title?: string | null
+  privacy?: StoryPrivacy
+}
+
+/**
+ * Update a story's title and/or privacy level. Returns the updated story, or
+ * null on failure.
  */
 export async function updateStory(
   token: string,
   id: number,
-  title: string | null,
+  patch: StoryUpdatePatch,
 ): Promise<Story | null> {
   try {
     const res = await apiFetch(token, `/stories/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title }),
+      body: JSON.stringify(patch),
     })
     if (!res.ok) {
       console.warn(`[stories-api] update failed ${res.status}`)

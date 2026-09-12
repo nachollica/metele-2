@@ -94,6 +94,7 @@ test("a story deep link resolves the story; the back arrow returns to /stories",
     lang: "en",
     created_at: new Date().toISOString(),
     user_id: "dev|e2e",
+    privacy: "private",
     settings: {},
     stats: {},
   }

@@ -1,7 +1,7 @@
 "use client"
 
 import { type GameSettings } from "@/lib/flowfic/types"
-import { type Story } from "@/lib/flowfic/stories-api"
+import { type Story, type StoryUpdatePatch } from "@/lib/flowfic/stories-api"
 
 import { type Section } from "./dashboard-nav"
 import { Panel } from "./dashboard-widgets"
@@ -33,7 +33,7 @@ type Props = {
   storiesError: boolean
   onViewStory: (story: Story) => void
   onDeleteStory: (id: number) => Promise<boolean>
-  onUpdateStoryTitle: (id: number, title: string | null) => Promise<boolean>
+  onUpdateStory: (id: number, patch: StoryUpdatePatch) => Promise<boolean>
   /** Mode grid face, lifted here so it survives the panel toggling. */
   gridMode: GridMode
   onToggleGridMode: () => void
@@ -53,7 +53,7 @@ export function LandingHome({
   storiesError,
   onViewStory,
   onDeleteStory,
-  onUpdateStoryTitle,
+  onUpdateStory,
   gridMode,
   onToggleGridMode,
   showcaseFace,
@@ -93,7 +93,7 @@ export function LandingHome({
         storiesError={storiesError}
         onViewStory={onViewStory}
         onDeleteStory={onDeleteStory}
-        onUpdateStoryTitle={onUpdateStoryTitle}
+        onUpdateStory={onUpdateStory}
       />
     </>
   )

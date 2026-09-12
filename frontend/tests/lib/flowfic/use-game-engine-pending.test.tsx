@@ -85,6 +85,7 @@ function savedStory(id = 7): Story {
     lang: "en",
     createdAt: "2026-09-11T10:00:00Z",
     userId: "google-oauth2|abc",
+    privacy: "private",
     settings: {},
     stats: {},
   }

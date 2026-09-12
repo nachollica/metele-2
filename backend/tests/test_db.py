@@ -64,6 +64,26 @@ class TestAdditiveMigrations:
         finally:
             engine.dispose()
 
+    def test_adds_privacy_column_to_legacy_stories(self, tmp_path) -> None:
+        engine = create_engine(f"sqlite:///{tmp_path / 'mig.db'}")
+        try:
+            with engine.begin() as conn:
+                conn.execute(
+                    text("CREATE TABLE stories (id INTEGER PRIMARY KEY, text VARCHAR NOT NULL)")
+                )
+                conn.execute(text("INSERT INTO stories (id, text) VALUES (1, 'existing row')"))
+            apply_additive_migrations(engine)
+            cols = {c["name"] for c in inspect(engine).get_columns("stories")}
+            assert "privacy" in cols
+            # A row that predates the column reads back as private, matching
+            # the DEFAULT the ALTER carries — existing stories don't become
+            # visible to anyone just because the column showed up.
+            with engine.connect() as conn:
+                value = conn.execute(text("SELECT privacy FROM stories WHERE id = 1")).scalar()
+            assert value == "private"
+        finally:
+            engine.dispose()
+
     def test_missing_tables_are_skipped(self, tmp_path) -> None:
         # A fresh, empty database has nothing to migrate — ``create_all``
         # builds the tables in their full shape afterwards.
