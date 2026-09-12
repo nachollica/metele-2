@@ -158,3 +158,11 @@ db-tunnel:
 [doc("Connect to the remote Prod DB.")]
 db:
     PGPASSWORD=flowfic_pw psql -h 127.0.0.1 -p 5432 -U flowfic_user -d flowfic_db
+
+[group("prod-db")]
+[doc("Dump the Prod DB (pg_dump run inside the db container over ssh, piped \
+straight into a local gzip file — no tunnel, no local psql/pg_dump version to \
+match). Usage: just db-dump [OUT]")]
+db-dump OUT=("flowfic-" + datetime("%Y%m%d-%H%M%S") + ".sql.gz"):
+    ssh {{deploy_host}} 'docker exec flowfic-db pg_dump -U flowfic_user -d flowfic_db' | gzip > {{OUT}}
+    @echo "Dumped Prod DB to {{OUT}}"
