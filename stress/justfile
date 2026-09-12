@@ -1,0 +1,153 @@
+# stress — load-test harness for the production stack.
+#
+# Every recipe forwards its arguments straight to the Python CLI, so the flags
+# documented by `just stress::cli --help` work verbatim from the repo root:
+#
+#   just stress::seed --seed 40,5 --seed 8,80 --seed 2,300
+#
+# Read stress/README.md before pointing any of this at production.
+
+# The project is not installed (`package = false`, matching word-assets), so
+# `-m` needs src/ on the path. pytest gets this from its own `pythonpath`.
+harness := "PYTHONPATH=src uv run python -m flowfic_stress"
+
+[doc("Print available commands.")]
+help:
+    @just --list
+
+[doc("Install / refresh dependencies into ./.venv/.")]
+init:
+    uv sync
+
+# ----- The harness -----------------------------------------------------
+
+[group("harness")]
+[doc("Run the harness CLI directly. `just stress::cli --help` lists every flag.")]
+cli *ARGS:
+    {{harness}} {{ARGS}}
+
+[group("harness")]
+[doc("Report what the deployed server currently is: version, environment, \
+whether dev-login is open, which workers answer, and what they loaded.")]
+status *ARGS:
+    {{harness}} status {{ARGS}}
+
+# ----- Generating load -------------------------------------------------
+
+# The k6 release to install on the generator hosts. Pinned so a run is
+# reproducible and two generators cannot silently differ.
+k6_version := "2.2.0"
+
+[group("load")]
+[doc("Install the pinned k6 on a generator host (one-time). Fetches the release \
+tarball rather than adding an apt repo — the Oracle images ship no dirmngr, so \
+the keyserver path fails, and a single static binary needs no package manager \
+at all. Usage: just stress::provision-load [HOST]")]
+provision-load HOST="mario":
+    ssh {{HOST}} 'set -eu; \
+      if command -v k6 >/dev/null 2>&1 && k6 version | grep -q "v{{k6_version}}"; then \
+        echo "k6 v{{k6_version}} already installed"; exit 0; fi; \
+      tmp=$(mktemp -d); trap "rm -rf $tmp" EXIT; \
+      url="https://github.com/grafana/k6/releases/download/v{{k6_version}}/k6-v{{k6_version}}-linux-amd64.tar.gz"; \
+      curl -fsSL "$url" -o "$tmp/k6.tar.gz"; \
+      tar zxf "$tmp/k6.tar.gz" -C "$tmp" --strip-components=1; \
+      sudo install -m 0755 "$tmp/k6" /usr/local/bin/k6; \
+      k6 version'
+
+[group("load")]
+[doc("Generate load. Needs an open dev-login window and a seeded run. \
+Usage: just stress::run --run-id RUN --profile stress --rate 20 --mix sprint=25")]
+run *ARGS:
+    {{harness}} run {{ARGS}}
+
+[group("canary")]
+[doc("Install k6 and Google Chrome on the canary host (one-time). Uses Google's \
+own apt repo rather than the distro `chromium`, which on Ubuntu 24.04 is only a \
+snap shim. Usage: just stress::provision-canary [HOST]")]
+provision-canary HOST="luigi": (provision-load HOST)
+    ssh {{HOST}} 'set -eu; \
+      if command -v google-chrome >/dev/null 2>&1; then \
+        echo "chrome already installed: $(google-chrome --version)"; exit 0; fi; \
+      tmp=$(mktemp -d); trap "rm -rf $tmp" EXIT; \
+      curl -fsSL -o "$tmp/chrome.deb" https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb; \
+      sudo apt-get update -qq; \
+      sudo apt-get install -y -qq "$tmp/chrome.deb"; \
+      google-chrome --version'
+
+[group("canary")]
+[doc("Run the headless browser probe. Compare an idle run against one taken \
+during load — the delta is the signal, the absolute number carries the \
+generator's distance to the origin. Usage: just stress::canary --run-id RUN")]
+canary *ARGS:
+    {{harness}} canary {{ARGS}}
+
+[group("load")]
+[doc("Re-render a finished run's report from its stored artifacts. \
+Usage: just stress::report --run-id RUN")]
+report *ARGS:
+    {{harness}} report {{ARGS}}
+
+# ----- The dev-login window --------------------------------------------
+
+[group("window")]
+[doc("Open or close the dev-login window on the server. Usage: \
+just stress::devlogin on | just stress::devlogin off. While open, /api/docs is \
+public and dev-login can mint a token for any existing user — close it as soon \
+as the run finishes.")]
+devlogin STATE *ARGS:
+    {{harness}} devlogin {{STATE}} {{ARGS}}
+
+# ----- Synthetic data --------------------------------------------------
+
+[group("data")]
+[doc("Create the synthetic population. Repeat --seed USERS,STORIES to build \
+tiers: `just stress::seed --seed 40,5 --seed 8,80 --seed 2,300` is a realistic \
+long tail, `--seed 50,50` a flat one. Story depth is what decides whether the \
+/stats endpoints' full-history scan is exercised at all.")]
+seed *ARGS:
+    {{harness}} seed {{ARGS}}
+
+[group("data")]
+[doc("Delete a run's synthetic rows. Usage: just stress::clean --run-id RUN, \
+or --all for every load-test row. Only ever matches the lt_ prefix.")]
+clean *ARGS:
+    {{harness}} clean {{ARGS}}
+
+# ----- Code checks -----------------------------------------------------
+
+[group("development")]
+[doc("Lint with ruff.")]
+lint:
+    uv run ruff check .
+
+[group("development")]
+[doc("Check-only lint + format (no autofix).")]
+check:
+    uv run ruff check .
+    uv run ruff format --check .
+
+[group("development")]
+[doc("Autofix lint findings + format.")]
+fix:
+    uv run ruff check --fix .
+    uv run ruff format .
+
+[group("development")]
+[doc("Static type check.")]
+tc:
+    uv run mypy src tests
+
+[group("development")]
+[doc("Run the pytest suite. Covers the pure configuration logic — the parts \
+that decide how much load lands on prod and which rows cleanup deletes. The \
+rest talks to real servers and is exercised by a smoke run instead.")]
+test:
+    uv run pytest
+
+[group("development")]
+[doc("Run all harness code checks.")]
+cc: fix tc test
+
+[group("development")]
+[doc("Run all harness checks without mutating files (CI entry point).")]
+ci: check tc test

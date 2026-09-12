@@ -9,6 +9,8 @@ mod frontend
 # Build-time generator for the word artifacts (vector pools + match maps) that
 # feed the backend and frontend. Its heavy NLP deps live only here.
 mod word-assets
+# Load-test harness for the deployed stack — drives it over ssh, ships nothing.
+mod stress
 
 [doc("Print available commands.")]
 help:
@@ -55,11 +57,13 @@ dev: up
 # ----- Code checks --------------------------------------------
 
 [group("checks")]
-[doc("Run all checks across frontend, backend, and the word-assets tool.")]
+[doc("Run all checks across frontend, backend, the word-assets tool, and the \
+stress harness.")]
 cc:
     just frontend::cc
     just backend::cc
     just word-assets::cc
+    just stress::cc
 
 [group("checks")]
 [doc("Verify the generated word artifacts are present (pools + match maps).")]
@@ -79,9 +83,12 @@ inspiration INPUT_DIR=".":
 # ----- Deploy ----------------------------------------------------------
 
 # Host this deploys to (must be defined in `~/.ssh/config`).
-deploy_host := "ash"
+deploy_host := "misty"
 # Path on the remote server where the project lives.
-deploy_path := "repos/flowfic"
+deploy_path := ".0/flowfic"
+# CPU architecture of the deploy host. The build machine is arm64, the server
+# amd64, so the backend image must be cross-built or Docker refuses to run it.
+deploy_platform := "linux/amd64"
 
 [group("deploy")]
 [doc("Sync prod files to the SSH server.")]
@@ -110,7 +117,7 @@ prod-restart-api:
 [doc("Build the backend image, ship it via SSH, and load it on the server.")]
 deploy-backend:
     # docker compose build api
-    docker build -t flowfic-api:latest ./backend
+    docker build --platform {{deploy_platform}} -t flowfic-api:latest ./backend
     docker save flowfic-api:latest | gzip > flowfic-api.tar.gz
     scp flowfic-api.tar.gz {{deploy_host}}:{{deploy_path}}/
     # `docker rmi` is tolerant (`|| true`): it fails when the image doesn't
@@ -120,12 +127,22 @@ deploy-backend:
     rm flowfic-api.tar.gz
 
 [group("deploy")]
-[doc("Build the frontend static assets and replace the remote out/ directory.")]
+[doc("Build the frontend static assets and refresh the remote out/ directory in \
+place. Caddy bind-mounts out/, so the directory's identity must survive a \
+deploy — see the rsync note below.")]
 deploy-frontend:
     just frontend::build
-    tar -C frontend -zcf out.tar.gz out
+    # COPYFILE_DISABLE stops macOS tar from emitting AppleDouble `._*` sidecars,
+    # which would otherwise be served out of /static alongside the real files;
+    # --no-xattrs drops the macOS-only attributes GNU tar warns about on unpack.
+    COPYFILE_DISABLE=1 tar -C frontend --exclude='._*' --no-xattrs -zcf out.tar.gz out
     scp out.tar.gz {{deploy_host}}:{{deploy_path}}/
-    ssh {{deploy_host}} 'cd {{deploy_path}} && rm -rf out && tar zxf out.tar.gz'
+    # `rm -rf out` here would unlink the very inode Caddy bind-mounted at start,
+    # leaving the container serving a deleted directory — every path 404s until
+    # someone recreates it, with the new files sitting untouched on the host.
+    # Unpack beside it and rsync --delete into the existing out/ instead, so the
+    # directory is emptied and refilled without ever losing its identity.
+    ssh {{deploy_host}} 'cd {{deploy_path}} && rm -rf out.new && mkdir -p out.new out && tar zxf out.tar.gz -C out.new && rsync -a --delete out.new/out/ out/ && rm -rf out.new out.tar.gz'
     rm out.tar.gz
 
 [group("deploy")]
@@ -135,7 +152,7 @@ deploy: deploy-backend deploy-frontend prod-down prod-up
 [group("prod-db")]
 [doc("Open SSH tunnel for Prod DB.")]
 db-tunnel:
-    ssh -nNT -L 5432:127.0.0.1:5432 ash
+    ssh -nNT -L 5432:127.0.0.1:5432 {{deploy_host}}
 
 [group("prod-db")]
 [doc("Connect to the remote Prod DB.")]

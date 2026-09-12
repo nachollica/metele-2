@@ -167,10 +167,18 @@ _state_lock = threading.Lock()
 
 @dataclass(frozen=True)
 class PoolData:
-    """A language's loaded pool: aligned words, normalised vectors, and zipf."""
+    """
+    A language's loaded pool: aligned words, normalised vectors, and zipf.
+
+    ``matrix`` stays float16 in RAM, matching the baked artifact — it is not
+    widened to float32. numpy's ``@`` on two float16 arrays produces a float16
+    result without an internal upcast (verified: the transient during the
+    matmul is just the output array, not a full-size copy of the operands), so
+    there is no memory reason to load it as anything wider.
+    """
 
     words: list[str]
-    matrix: np.ndarray  # (N, dim) float32, L2-normalised
+    matrix: np.ndarray  # (N, dim) float16, L2-normalised
     index: dict[str, int]  # casefolded word -> row
     zipf: np.ndarray  # (N,) float32
 
@@ -225,7 +233,7 @@ def _load_pool(language: Language) -> PoolData:
         # Don't cache the miss: an artifact appearing later (e.g. a test writing
         # one, or a build finishing) should be picked up without a reconfigure.
         return PoolData(
-            [], np.zeros((0, 0), dtype=np.float32), {}, np.zeros((0,), dtype=np.float32)
+            [], np.zeros((0, 0), dtype=np.float16), {}, np.zeros((0,), dtype=np.float32)
         )
 
     with _state_lock:
@@ -234,7 +242,11 @@ def _load_pool(language: Language) -> PoolData:
             return cached
         data = np.load(path, allow_pickle=True)
         words = [str(w) for w in data["words"]]
-        matrix = np.ascontiguousarray(data["vectors"], dtype=np.float32)
+        # Stays float16 — do NOT widen to float32 here. That cast used to be
+        # the API container's largest fixed memory cost (~93MB across both
+        # languages per worker, doubled again by the two uvicorn workers), for
+        # no benefit: numpy's matmul handles float16 operands directly.
+        matrix = np.ascontiguousarray(data["vectors"], dtype=np.float16)
         zipf = np.ascontiguousarray(data["zipf"], dtype=np.float32)
         index = {word.casefold(): row for row, word in enumerate(words)}
         pool = PoolData(words, matrix, index, zipf)
@@ -251,6 +263,28 @@ def ensure_ready(languages: tuple[Language, ...] = LANGUAGES) -> None:
     """
     for language in languages:
         _load_pool(language)
+
+
+def loaded_pool_sizes() -> dict[str, int]:
+    """
+    Word count per language for the pools **already resident in this process**.
+
+    Deliberately reads the memoised cache instead of calling
+    :func:`_load_pool`: a language absent from the cache is simply omitted,
+    never loaded on demand. ``/ping`` reports this, and an unauthenticated
+    probe must not be able to trigger a multi-hundred-megabyte artifact load —
+    on a small host that would fault the matrices in from swap.
+
+    An empty mapping therefore means "nothing preloaded yet", which is itself
+    the signal worth having: a worker whose artifacts failed to load answers
+    ``{}`` rather than looking healthy.
+    """
+    cfg = get_config()
+    return {
+        language.value: len(pool.words)
+        for (data_dir, language), pool in _pool_cache.items()
+        if data_dir == cfg.data_dir
+    }
 
 
 def is_common(word: str, language: Language, min_zipf: float = DEFAULT_MIN_ZIPF) -> bool:

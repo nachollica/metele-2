@@ -123,8 +123,8 @@ def build_pool(lang: str, fasttext_path: str, *, vocab_size: int, dim: int) -> i
 
     Intersects the clean candidate words with those fastText has a vector for,
     L2-normalises, and writes ``backend/data/word_pool/{lang}.vN.npz`` (words,
-    float16 vectors, float16 zipf). float16 keeps the artifact small; the backend
-    widens it to float32 on load.
+    float16 vectors, float16 zipf). float16 keeps the artifact small; the
+    backend loads it as float16 too — see ``_load_pool`` in ``word_engine.py``.
     """
     if lang not in LANGUAGES:
         raise ValueError(f"unsupported language {lang!r}")

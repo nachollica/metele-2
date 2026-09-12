@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Per-run artifacts: the k6 summary, monitor samples, the generated report, and
+# the dev-login token. Regenerable, and the token must never be committed.
+runs/
